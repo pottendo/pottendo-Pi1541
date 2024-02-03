@@ -22,6 +22,7 @@ The following is supposed to work no the the circle based _V1.24c_, as I've test
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, Webserver runs, but one can only control the led so far
 
 Note that Option B hardware (split IECLines) of Pi1541 is not tested (I don't have the necessay hardware). The code uses `<somePin>.SetMode(GPIOModeInput)` method. This should neither activate _PullUp_ nor _PullDown_ for any of the respective input pins.
+
 <p>
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
@@ -60,8 +61,9 @@ Additional Options in `options.txt`
 The following options control new functions available:
 | Option | Value | Purpose |
 |--------|-------|---------|
-| netEthernet | 0 or 1 | enable ethernet network|
-| netWifi | 0 or 1 | enable network network|
+| netEthernet | 0 or 1 | disabl / enable ethernet network|
+| netWifi | 0 or 1 | disable / enable Wifi network|
+| headLess | 0 or 1 | disable / enable screen output |
 
 Know Bugs
 ---------
