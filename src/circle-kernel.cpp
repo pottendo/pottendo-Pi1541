@@ -409,7 +409,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		emulator();
 		break;
 	case 2:
-#if RASPPI >= 3 && RASPPI <= 4	
+#if RASPPI >= 3
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
 		if (options.GetNetEthernet()) // cable network has priority over Wifi
 		{

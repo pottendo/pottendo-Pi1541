@@ -63,8 +63,13 @@ typedef unsigned KTHType;        /* needed for backward compatibility, Circle 64
 
 //#define MEM_COHERENT_REGION		0x400000
 #else
+#if RASSPI >= 5
+#include <circle/bcm2712.h>
+#elif RASPPI == 4
+#include <circle/bcm2711.h>
+#else
 #include <circle/bcm2835.h>
-//#include <circle/bcm2711.h>
+#endif
 #define PERIPHERAL_BASE     ARM_IO_BASE
 #endif
 

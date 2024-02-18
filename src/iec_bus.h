@@ -342,7 +342,7 @@ public:
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
 #if defined (__CIRCLE__)			
-#if 0
+#if defined (CIRCLE_GPIO)
 			IEC_Bus::IO_led.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_led.SetMode(GPIOModeOutput, true);
 			IEC_Bus::IO_sound.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_sound.SetMode(GPIOModeOutput, true);
 			IEC_Bus::IO_CLK.AssignPin(PIGPIO_CLOCK); IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
@@ -431,7 +431,7 @@ public:
 			inputRepeat[index] = 0;
 			inputRepeatPrev[index] = 0;
 		}
-
+#if !defined(__CIRCLE__)
 		// Enable the internal pullups for the input button pins using the method described in BCM2835-ARM-Peripherals manual.
 		RPI_GpioBase->GPPUD = 2;
 		for (index = 0; index < 150; ++index)
@@ -443,7 +443,7 @@ public:
 		}
 		RPI_GpioBase->GPPUD = 0;
 		RPI_GpioBase->GPPUDCLK0 = 0;
-
+#endif
 		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 		if (IEC_Bus::rotaryEncoderEnable == true)
 		{
@@ -474,8 +474,11 @@ public:
 
 	static void UpdateButton(int index, unsigned gplev0)
 	{
+#if defined (CIRCLE_GPIO)		
+		bool inputcurrent = IO_buttons[index].Read() == 0;
+#else
 		bool inputcurrent = (gplev0 & ButtonPinFlags[index]) == 0;
-		//XXXbool inputcurrent = IO_buttons[index].Read() == 0;
+#endif		
 
 		InputButtonPrev[index] = InputButton[index];
 		inputRepeatPrev[index] = inputRepeat[index];

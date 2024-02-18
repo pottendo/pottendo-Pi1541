@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.24) to the current Circle bare metal libr
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. Some ideas:
 - Webserver to download images
+- Make options changeable via a WebGUI
 - Support for Pi5 (later, once supported by Circle)
 - ...
 
@@ -34,13 +35,14 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
+- as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Stephen!**
 
 <p>
 
-**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work at 85C - for some reason I can't lower this threshold via `cmdline.txt` using `socmaxtemp=70`, as this doesn't set the limit as documented [here](https://circle-rpi.readthedocs.io/en/latest/basic-system-services/cpu-clock-rate-management.html#ccputhrottle) - at least not on my RPi3/RPi4.
+**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work lates at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=70`.
 
 TODOs
 -----
@@ -100,7 +102,7 @@ cd circle-stdlib
 # or even Pi4 64 bit
 # ./configure -r 4 -p aarch64-none-elf-
 
-# Path Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
+# Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
 
 cd libs/circle
 patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle.diff 
@@ -121,6 +123,7 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | 3 | circle build | `make` | `kernel8-32.img` ||
 | Pi Zero 2W | circle build | `make` | `kernel8-32.img` | PWM Sound not upported |
 | Pi 4 | circle build | `make` | `kernel7l.img` ||
+| Pi 5 | circle build | `make` | `kernel_2712.img` | still broken |
 
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
@@ -138,7 +141,7 @@ boot_delay=1
 arm_64bit=0
 
 enable_uart=1
-gpu_mem=16
+#gpu_mem=16  # If activated you need start_cd.elf, fixup_cd.dat (Pi3 and Zero 2W) in your root directory
 
 hdmi_group=2
 #hdmi_mode=4
@@ -179,7 +182,7 @@ cd ${BUILDDIR}/circle-stdlib/libs/circle/addon/wlan/firmware
 make
 ```
 this downloads the necessary files in the current directory.
-copy the content to you Pi1541 SDCard in the directlry 
+copy the content to you Pi1541 SDCard in the directory 
   `firmware/`
 it should look like this:
 ```
@@ -190,6 +193,9 @@ brcmfmac43436-sdio.clm_blob
 brcmfmac43436-sdio.txt
 brcmfmac43455-sdio.bin
 brcmfmac43455-sdio.clm_blob
+brcmfmac43455-sdio.raspberrypi,5-model-b.bin
+brcmfmac43455-sdio.raspberrypi,5-model-b.clm_blob
+brcmfmac43455-sdio.raspberrypi,5-model-b.txt
 brcmfmac43455-sdio.txt
 brcmfmac43456-sdio.bin
 brcmfmac43456-sdio.clm_blob
