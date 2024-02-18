@@ -218,7 +218,7 @@ void IEC_Bus::ReadBrowseMode(void)
 #endif		
 		if (PI_Clock != CLOCKIn)
 		{
-			Kernel.log("CLOCKIn changed: %d", CLOCKIn);
+			DEBUG_LOG("CLOCKIn changed: %d", CLOCKIn);
 			PI_Clock = CLOCKIn;
 		}
 	}
