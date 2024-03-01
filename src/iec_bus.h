@@ -356,7 +356,7 @@ public:
 				IO_buttons[i].SetMode(GPIOModeInputPullUp, true);
 				Kernel.log("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
 			}
-#endif			
+#endif
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SOUND, FS_OUTPUT);
@@ -591,7 +591,7 @@ public:
 		if (!splitIECLines)
 		{
 			unsigned outputs = 0;
-#if 1
+#if !defined (CIRCLE_GPIO)
 			if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
 			if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
 			//if (SRQSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_SRQ - 10) * 3));			// For Option A hardware we should not support pulling more than 2 lines low at any one time!
@@ -628,7 +628,7 @@ public:
 				clear = tmp;
 			}
 		}
-#if 1
+#if !defined (CIRCLE_GPIO)
 		if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
 		else clear |= 1 << PIGPIO_OUT_LED;
 
@@ -648,7 +648,10 @@ public:
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;
-		//usDelay(amount); return;
+#if defined (__CIRCLE__)		
+		usDelay(amount); 
+		return;
+#endif		
 		for (count = 0; count < amount; ++count)
 		{
 			unsigned before;

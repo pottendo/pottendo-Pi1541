@@ -179,13 +179,13 @@ void IEC_Bus::ReadBrowseMode(void)
 	ReadGPIOUserInput();
 
 #if defined (CIRCLE_GPIO)
-	bool ATNIn = IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW);
+	bool ATNIn = (IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW));
 #else
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 #endif	
 	if (PI_Atn != ATNIn)
 	{
-		DEBUG_LOG("ATN changed: %d", ATNIn);
+		//DEBUG_LOG("ATN changed: %d", ATNIn);
 		PI_Atn = ATNIn;
 	}
 
@@ -193,13 +193,13 @@ void IEC_Bus::ReadBrowseMode(void)
 	{
 #if defined(CIRCLE_GPIO)
 		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
-		bool DATAIn = IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW);
+		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
 #endif		
 		if (PI_Data != DATAIn)
 		{
-			DEBUG_LOG("DATAIn changed: %d", DATAIn);
+			//DEBUG_LOG("DATAIn changed: %d", DATAIn);
 			PI_Data = DATAIn;
 		}
 	}
@@ -212,13 +212,13 @@ void IEC_Bus::ReadBrowseMode(void)
 	{
 #if defined (CIRCLE_GPIO)
 		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
-		bool CLOCKIn = IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW);
+		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK  : 0);
 #endif		
 		if (PI_Clock != CLOCKIn)
 		{
-			DEBUG_LOG("CLOCKIn changed: %d", CLOCKIn);
+			//DEBUG_LOG("CLOCKIn changed: %d", CLOCKIn);
 			PI_Clock = CLOCKIn;
 		}
 	}
@@ -246,7 +246,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 
 #ifndef REAL_XOR
 #if defined (CIRCLE_GPIO)
-	bool ATNIn = IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW);
+	bool ATNIn = (IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW));
 #else	
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 #endif	
@@ -280,7 +280,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	{
 #if defined (CIRCLE_GPIO)		
 		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
-		bool DATAIn = IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW);
+		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
 #endif		
@@ -329,7 +329,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	{
 #if defined (CIRCLE_GPIO)
 		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
-		bool CLOCKIn = IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW);
+		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
 #else
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK : 0);
 #endif		
@@ -434,6 +434,27 @@ void IEC_Bus::ReadEmulationMode1581(void)
 	//XXXResetting = !ignoreReset && (IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
 
+#if defined (__CIRCLE__)
+#include <time.h>
+int clock_gettime(clockid_t clockid, struct timespec *tp)
+{
+    unsigned t = CTimer::GetClockTicks();
+    tp->tv_sec = t / 1000000L;
+    tp->tv_nsec = (t % 1000000L) * 1000;
+    return 0;
+}
+inline void timespec_diff(struct timespec *a, struct timespec *b, struct timespec *result)
+{
+    	result->tv_sec  = a->tv_sec  - b->tv_sec;
+    	result->tv_nsec = a->tv_nsec - b->tv_nsec;
+    	if (result->tv_nsec < 0)
+    	{
+	        --result->tv_sec;
+	        result->tv_nsec += 1000000000L;
+	    }
+}
+#endif
+
 void IEC_Bus::RefreshOuts1541(void)
 {
 	unsigned set = 0;
@@ -442,8 +463,10 @@ void IEC_Bus::RefreshOuts1541(void)
 
 	if (!splitIECLines)
 	{
+//		struct timespec start, end, d;
+//		clock_gettime(CLOCK_REALTIME, &start);		
+#if !defined (CIRCLE_GPIO)						/* this is needed, the Circle code won't work */
 		unsigned outputs = 0;
-#if !defined (CIRCLE_GPIO)
 		if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
 		if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
 
@@ -460,6 +483,9 @@ void IEC_Bus::RefreshOuts1541(void)
 			IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
 		}
 #endif
+//		clock_gettime(CLOCK_REALTIME, &end);
+//		timespec_diff(&end, &start, &d);
+//		Kernel.log("diff = %04d.%08d", d.tv_sec, d.tv_nsec / 1000L);
 	}
 	else
 	{
@@ -476,7 +502,7 @@ void IEC_Bus::RefreshOuts1541(void)
 		}
 	}
 
-#if !defined (CIRCLE_GPIO)	/* this is needed, the Circle code won't work on RPI3s */
+#if !defined (CIRCLE_GPIO)
 	if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
 	else clear |= 1 << PIGPIO_OUT_LED;
 

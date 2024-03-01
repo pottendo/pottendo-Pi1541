@@ -69,6 +69,7 @@ endif
 else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8-rpi4.img
+#XFLAGS += -DCIRCLE_GPIO=1
 else
 TARGET_CIRCLE ?= kernel7l.img
 endif
@@ -98,7 +99,7 @@ version:
 	@cmp -s /tmp/__version_cmp $(SRCDIR)/version.h || echo "#define PPI1541VERSION \"`git describe --tags`\"" > $(SRCDIR)/version.h 
 
 $(TARGET_CIRCLE): version
-	$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS)" COMMON_OBJS="$(COMMON_OBJS)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
+	@$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS)" COMMON_OBJS="$(COMMON_OBJS)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
 	@cp $(SRCDIR)/$@ ./`basename $@ .img`$(TARGET_PZ2).img
 
 $(TARGET): version $(OBJS_LEGACY) $(LIBS)
