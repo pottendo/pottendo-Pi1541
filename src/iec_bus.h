@@ -561,14 +561,12 @@ public:
 		unsigned gplev0;
 		do
 		{
-			gplev0 = read32(ARM_GPIO_GPLEV0);
-			//XXXgplev0 = CGPIOPin::ReadAll();
-
 #if !defined (__CIRCLE__)
+			gplev0 = read32(ARM_GPIO_GPLEV0);
 			Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == 
 				 (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 #else			
-			Resetting = !ignoreReset && (IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
+			Resetting = (!ignoreReset && (IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0)));
 #endif			
 
 			if (Resetting)
