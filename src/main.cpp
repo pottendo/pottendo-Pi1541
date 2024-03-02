@@ -923,7 +923,11 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 #if defined(RPI2)
 	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
 #else
+#if defined (__CIRCLE__)
+	ctBefore = Kernel.get_clock_ticks();
+#else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
+#endif	
 #endif
 
 	while (exitReason == EXIT_UNKNOWN)
@@ -1024,7 +1028,11 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 #else
 		do	// Sync to the 1MHz clock
 		{
+#if defined (__CIRCLE__)
+			ctAfter = Kernel.get_clock_ticks();
+#else
 			ctAfter = read32(ARM_SYSTIMER_CLO);
+#endif	
 			unsigned ct = ctAfter - ctBefore;
 			if (ct > 1)
 			{
@@ -1136,7 +1144,11 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #if defined(RPI2)
 	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
 #else
+#if defined (__CIRCLE__)
+	ctBefore = Kernel.get_clock_ticks();
+#else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
+#endif	
 #endif
 
 	//resetWhileEmulating = false;
@@ -1234,7 +1246,11 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #else
 		do	// Sync to the 1MHz clock
 		{
+#if defined (__CIRCLE__)
+			ctAfter = Kernel.get_clock_ticks();
+#else
 			ctAfter = read32(ARM_SYSTIMER_CLO);
+#endif	
 			unsigned ct = ctAfter - ctBefore;
 			if (ct > 1)
 			{

@@ -364,7 +364,11 @@ FileBrowser::BrowsableList::BrowsableList()
 	, searchPrefixIndex(0)
 	, searchLastKeystrokeTime(0)
 {
+#if defined (__CIRCLE__)
+	lastUpdateTime = Kernel.get_clock_ticks();
+#else
 	lastUpdateTime = read32(ARM_SYSTIMER_CLO);
+#endif	
 	searchPrefix[0] = 0;
 }
 
@@ -404,7 +408,11 @@ bool FileBrowser::BrowsableList::CheckBrowseNavigation()
 	u32 index;
 
 	// Calculate the number of micro seconds since we were last called.
+#if defined (__CIRCLE__)
+	u32 updateTime = Kernel.get_clock_ticks();
+#else
 	u32 updateTime = read32(ARM_SYSTIMER_CLO);
+#endif	
 	u32 timeDelta;
 	if (updateTime < lastUpdateTime)
 		timeDelta = updateTime + (0xffffffff - lastUpdateTime);	// wrapped

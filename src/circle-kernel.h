@@ -103,6 +103,7 @@ public:
 	inline void set_kbd(CUSBKeyboardDevice *kbd) { m_pKeyboard = kbd; }
 	void playsound(void);
 	inline bool screen_available(void) { return screen_failed; }
+	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
 	
 private:
 	CActLED				m_ActLED;
