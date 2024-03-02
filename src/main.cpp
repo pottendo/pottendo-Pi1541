@@ -63,6 +63,8 @@ extern "C"
 #include "ssd_logo.h"
 #include "version.h"
 
+static unsigned ctb, cta;
+
 unsigned versionMajor = 1;
 unsigned versionMinor = 24;
 #if defined (__CIRCLE__)
@@ -958,10 +960,20 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 		//read32(ARM_SYSTIMER_CLO);
 		//read32(ARM_SYSTIMER_CLO);
 
+		ctb = Kernel.get_clock_ticks();
 //		IEC_Bus::ReadEmulationMode1541();
 		if (refreshOutsAfterCPUStep)
 			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
 
+		{	
+			unsigned delta;
+			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
+			{
+				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
+				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
+				//DEBUG_LOG("delta = %d", delta);
+			}
+		}
 		IEC_Bus::OutputLED = pi1541.drive.IsLEDOn();
 #if defined(RPI3)
 		if (IEC_Bus::OutputLED ^ oldLED)
@@ -1038,7 +1050,7 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 			{
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				//DEBUG_LOG("!");
+				//DEBUG_LOG("! ct = %d", ct);
 			}
 		} while (ctAfter == ctBefore);
 #endif

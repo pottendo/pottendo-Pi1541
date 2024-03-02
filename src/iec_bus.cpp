@@ -453,6 +453,8 @@ inline void timespec_diff(struct timespec *a, struct timespec *b, struct timespe
 	        result->tv_nsec += 1000000000L;
 	    }
 }
+
+static unsigned cta, ctb;
 #endif
 
 void IEC_Bus::RefreshOuts1541(void)
@@ -465,6 +467,7 @@ void IEC_Bus::RefreshOuts1541(void)
 	{
 //		struct timespec start, end, d;
 //		clock_gettime(CLOCK_REALTIME, &start);		
+		ctb = Kernel.get_clock_ticks();
 #if !defined (CIRCLE_GPIO)						/* this is needed, the Circle code won't work */
 		unsigned outputs = 0;
 		if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
@@ -483,6 +486,15 @@ void IEC_Bus::RefreshOuts1541(void)
 			IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
 		}
 #endif
+		{	
+			unsigned delta;
+			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
+			{
+				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
+				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
+				DEBUG_LOG("%s: delta = %d", __FUNCTION__, delta);
+			}
+		}		
 //		clock_gettime(CLOCK_REALTIME, &end);
 //		timespec_diff(&end, &start, &d);
 //		Kernel.log("diff = %04d.%08d", d.tv_sec, d.tv_nsec / 1000L);
