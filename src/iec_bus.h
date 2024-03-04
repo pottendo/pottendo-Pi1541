@@ -599,14 +599,14 @@ public:
 #else
 			if (AtnaDataSetToOut || DataSetToOut)
 			{
-				IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, true);
+				IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, false);
 				//Kernel.log("%s: DATA fired", __FUNCTION__);
 			}
-			else IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
+			else IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 			if (ClockSetToOut) {
-				IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, true);
+				IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, false);
 				//Kernel.log("%s: CLOCK fired", __FUNCTION__);
-			} else IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
+			} else IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
 #endif
 		}
 		else

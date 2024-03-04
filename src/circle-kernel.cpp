@@ -51,7 +51,8 @@ extern Options options;
 CKernel::CKernel(void) :
 	mScreen (mOptions.GetWidth (), mOptions.GetHeight ()),
 	mTimer (&mInterrupt),
-	mLogger (mOptions.GetLogLevel (), &mTimer), mScheduler(),
+	mLogger (mOptions.GetLogLevel (), &mTimer), 
+	mScheduler(),
 	m_USBHCI (&mInterrupt, &mTimer, true),
 	m_pKeyboard (0),
 	m_EMMC (&mInterrupt, &mTimer, &m_ActLED),

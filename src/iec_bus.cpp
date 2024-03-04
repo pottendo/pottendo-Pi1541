@@ -192,7 +192,7 @@ void IEC_Bus::ReadBrowseMode(void)
 	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 #if defined(CIRCLE_GPIO)
-		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
+		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
@@ -211,7 +211,7 @@ void IEC_Bus::ReadBrowseMode(void)
 	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 #if defined (CIRCLE_GPIO)
-		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
+		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
 		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK  : 0);
@@ -279,7 +279,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 #if defined (CIRCLE_GPIO)		
-		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
+		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
 #else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
@@ -328,7 +328,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 #if defined (CIRCLE_GPIO)
-		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
+		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
 		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
 #else
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK : 0);
@@ -477,21 +477,19 @@ void IEC_Bus::RefreshOuts1541(void)
 		write32(ARM_GPIO_GPFSEL1, nValue);
 #else
 		if (AtnaDataSetToOut || DataSetToOut)
-			IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, true);
+			IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, false);
 		else 
-			IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
+			IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 		if (ClockSetToOut) {
-			IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, true);
+			IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, false);
 		} else {
-			IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
+			IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
 		}
 #endif
 		{	
 			unsigned delta;
-			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
+			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 2)
 			{
-				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
-				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
 				DEBUG_LOG("%s: delta = %d", __FUNCTION__, delta);
 			}
 		}		

@@ -22,9 +22,9 @@
 
 void reboot_now(void);
 void Reboot_Pi(void);
-static inline void delay_us(u32 usec) { Kernel.get_timer()->SimpleusDelay(usec); }
-static inline void usDelay(u32 usec) { Kernel.get_timer()->SimpleusDelay(usec); }
-static inline void MsDelay(u32 msec) { Kernel.get_timer()->SimpleusDelay(msec * 1000L); }
+static inline void delay_us(u32 usec) { Kernel.get_timer()->usDelay(usec); }
+static inline void usDelay(u32 usec) { Kernel.get_timer()->usDelay(usec); }
+static inline void MsDelay(u32 msec) { Kernel.get_timer()->usDelay(msec * 1000L); }
 
 void USPiInitialize(void);
 void TimerSystemInitialize(void);
