@@ -67,16 +67,22 @@ CKernel::CKernel(void) :
 	screen_failed(false),
 	no_pwm(false)
 {
-	if (mScreen.Initialize() == false) 
+	boolean serialOK;
+	
+	serialOK = mSerial.Initialize (115200);
+	screen_failed = mScreen.Initialize ();
+	CDevice *pTarget = m_DeviceNameService.GetDevice (mOptions.GetLogDevice (), FALSE);
+	if (pTarget == 0)
 	{
-		m_ActLED.Blink(2);
-		screen_failed = true;
+	    if (screen_failed)
+			pTarget = &mScreen;
+	    else if (serialOK)
+			pTarget = &mSerial;
+	    else
+			m_ActLED.Blink(5); // we're screwed for logging, tell the user by blinking
 	}
-	if (mSerial.Initialize (115200) == true)
-		mLogger.Initialize (&mSerial);
-	else
-		m_ActLED.Blink(3);
-
+	mLogger.Initialize (pTarget);
+	
 	if (screen_failed)
 		log("screen initialization failed...  trying headless");
 	strcpy(ip_address, "<n/a>");
