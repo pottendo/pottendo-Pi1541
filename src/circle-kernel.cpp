@@ -74,7 +74,7 @@ CKernel::CKernel(void) :
 	CDevice *pTarget = m_DeviceNameService.GetDevice (mOptions.GetLogDevice (), FALSE);
 	if (pTarget == 0)
 	{
-	    if (screen_failed)
+	    if (!screen_failed)
 			pTarget = &mScreen;
 	    else if (serialOK)
 			pTarget = &mSerial;
