@@ -55,7 +55,7 @@ What will not come
 ------------------
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
-- Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working.
+- Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working. It requires the circle-development branch as some optimized GPIO functions aren't released yet.
   
 Additional Options in `options.txt`
 -----------------------------------
@@ -101,7 +101,7 @@ cd circle-stdlib
 # ./configure -r 4
 # or even Pi4 64 bit
 # ./configure -r 4 -p aarch64-none-elf-
-# or even Pi5 64 bit
+# or even Pi5 64 bit, requires circle development branch as of now
 # ./configure -r 5 -p aarch64-none-elf-
 
 # Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
