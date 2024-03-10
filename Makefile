@@ -70,9 +70,10 @@ endif
 else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8-rpi4.img
-XFLAGS += -DCIRCLE_GPIO=1
+#XFLAGS += -DCIRCLE_GPIO=1
 else
 TARGET_CIRCLE ?= kernel7l.img
+#XFLAGS += -DCIRCLE_GPIO=1
 endif
 else ifeq ($(strip $(RASPPI)),5)
 ifeq ($(strip $(AARCH)),64)
