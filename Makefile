@@ -65,11 +65,12 @@ TARGET_CIRCLE ?= kernel8.img
 else
 TARGET_CIRCLE ?= kernel8-32.img
 COMMON_OBJS += SpinLock.o
+#XFLAGS += -DCIRCLE_GPIO=1
 endif
 else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8-rpi4.img
-#XFLAGS += -DCIRCLE_GPIO=1
+XFLAGS += -DCIRCLE_GPIO=1
 else
 TARGET_CIRCLE ?= kernel7l.img
 endif

@@ -5,7 +5,6 @@ This is an optional port of Pi1541 (V1.24) to the current Circle bare metal libr
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. Some ideas:
 - Webserver to download images
 - Make options changeable via a WebGUI
-- Support for Pi5 (later, once supported by Circle)
 - ...
 
 Credits to Stephen (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages!
@@ -56,7 +55,8 @@ What will not come
 ------------------
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
-
+- Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working.
+  
 Additional Options in `options.txt`
 -----------------------------------
 The following options control new functions available:
@@ -101,6 +101,8 @@ cd circle-stdlib
 # ./configure -r 4
 # or even Pi4 64 bit
 # ./configure -r 4 -p aarch64-none-elf-
+# or even Pi5 64 bit
+# ./configure -r 5 -p aarch64-none-elf-
 
 # Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
 
@@ -122,8 +124,8 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` ||
 | 3 | circle build | `make` | `kernel8-32.img` ||
 | Pi Zero 2W | circle build | `make` | `kernel8-32.img` | PWM Sound not upported |
-| Pi 4 | circle build | `make` | `kernel7l.img` ||
-| Pi 5 | circle build | `make` | `kernel_2712.img` | still broken |
+| Pi 4 | circle build | `make` | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) ||
+| Pi 5 | circle build | `make` | `kernel_2712.img` | broken, PWM Sound not (yet) supported |
 
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
@@ -170,6 +172,18 @@ arm_64bit=0
 [all]
 enable_uart=1   # in case you have Pin 14/15 connected via TTL cable
 kernel=kernel7l.img
+```
+
+Model 5 - `config.txt` (boots, but won't run Pi1541 properly)
+```
+# some generic Pi5 configs can remain
+
+# Run in 64-bit mode
+arm_64bit=1     # must be 64 bit mode
+
+[all]
+kernel_address=0x80000
+kernel=kernel_2712.img
 ```
 
 Uart console on pins *14(TX)/15(RX)* gives useful log information.

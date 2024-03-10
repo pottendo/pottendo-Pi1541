@@ -960,20 +960,9 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 		//read32(ARM_SYSTIMER_CLO);
 		//read32(ARM_SYSTIMER_CLO);
 
-		ctb = Kernel.get_clock_ticks();
 //		IEC_Bus::ReadEmulationMode1541();
 		if (refreshOutsAfterCPUStep)
 			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
-
-		{	
-			unsigned delta;
-			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
-			{
-				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
-				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				//DEBUG_LOG("delta = %d", delta);
-			}
-		}
 		IEC_Bus::OutputLED = pi1541.drive.IsLEDOn();
 #if defined(RPI3)
 		if (IEC_Bus::OutputLED ^ oldLED)

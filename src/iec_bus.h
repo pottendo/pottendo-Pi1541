@@ -326,6 +326,7 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_CLOCK;
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
+	static unsigned _mask;
 #endif	
 public:
 	static inline void Initialise(void)
@@ -341,16 +342,17 @@ public:
 
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
-#if defined (__CIRCLE__)			
+#if defined (__CIRCLE__)
+			_mask = ((1 << PIGPIO_OUT_LED) | (1 << PIGPIO_OUT_SOUND));			
 #if defined (CIRCLE_GPIO)
-			IEC_Bus::IO_led.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_led.SetMode(GPIOModeOutput, true);
-			IEC_Bus::IO_sound.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_sound.SetMode(GPIOModeOutput, true);
-			IEC_Bus::IO_CLK.AssignPin(PIGPIO_CLOCK); IEC_Bus::IO_CLK.SetMode(GPIOModeInput, true);
-			IEC_Bus::IO_ATN.AssignPin(PIGPIO_ATN); IEC_Bus::IO_ATN.SetMode(GPIOModeInput, true);
-			IEC_Bus::IO_DAT.AssignPin(PIGPIO_DATA); IEC_Bus::IO_DAT.SetMode(GPIOModeInput, true);
-			IEC_Bus::IO_SRQ.AssignPin(PIGPIO_SRQ); IEC_Bus::IO_SRQ.SetMode(GPIOModeInput, true);
+			IEC_Bus::IO_led.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_led.SetMode(GPIOModeOutput, false);
+			IEC_Bus::IO_sound.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_sound.SetMode(GPIOModeOutput, false);
+			IEC_Bus::IO_CLK.AssignPin(PIGPIO_CLOCK); IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
+			IEC_Bus::IO_ATN.AssignPin(PIGPIO_ATN); IEC_Bus::IO_ATN.SetMode(GPIOModeInput, false);
+			IEC_Bus::IO_DAT.AssignPin(PIGPIO_DATA); IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
+			IEC_Bus::IO_SRQ.AssignPin(PIGPIO_SRQ); IEC_Bus::IO_SRQ.SetMode(GPIOModeInput, false);
+			IEC_Bus::IO_RST.AssignPin(PIGPIO_RESET); IEC_Bus::IO_RST.SetMode(GPIOModeInput, false);
 #endif			
-			IEC_Bus::IO_RST.AssignPin(PIGPIO_RESET); IEC_Bus::IO_RST.SetMode(GPIOModeInput, true);
 			for (int i = 0; i < 5; i++) {
 				IO_buttons[i].AssignPin(ButtonPins[i]);
 				IO_buttons[i].SetMode(GPIOModeInputPullUp, true);
@@ -474,11 +476,7 @@ public:
 
 	static void UpdateButton(int index, unsigned gplev0)
 	{
-#if defined (CIRCLE_GPIO)		
-		bool inputcurrent = IO_buttons[index].Read() == 0;
-#else
 		bool inputcurrent = (gplev0 & ButtonPinFlags[index]) == 0;
-#endif		
 
 		InputButtonPrev[index] = InputButton[index];
 		inputRepeatPrev[index] = inputRepeat[index];
@@ -561,14 +559,13 @@ public:
 		unsigned gplev0;
 		do
 		{
-#if !defined (__CIRCLE__)
+#if !defined (CIRCLE_GPIO)
 			gplev0 = read32(ARM_GPIO_GPLEV0);
+#else			
+			gplev0 = CGPIOPin::ReadAll();
+#endif			
 			Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == 
 				 (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-#else			
-			Resetting = (!ignoreReset && (IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0)));
-#endif			
-
 			if (Resetting)
 				IEC_Bus::WaitMicroSeconds(100);
 		}
@@ -597,20 +594,23 @@ public:
 			unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs;
 			write32(ARM_GPIO_GPFSEL1, nValue);
 #else
+			u32 im = 0, om = 0;
 			if (AtnaDataSetToOut || DataSetToOut)
-			{
-				IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, false);
-				//Kernel.log("%s: DATA fired", __FUNCTION__);
-			}
-			else IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
-			if (ClockSetToOut) {
-				IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, false);
-				//Kernel.log("%s: CLOCK fired", __FUNCTION__);
-			} else IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
+				om |= (1 << PIGPIO_DATA);
+			else
+				im |= (1 << PIGPIO_DATA);
+			if (ClockSetToOut)
+				om |= (1 << PIGPIO_CLOCK);
+			else
+				im |= (1 << PIGPIO_CLOCK);
+			CGPIOPin::SetModeAll(im, om);
 #endif
 		}
 		else
 		{
+#if defined (CIRCLE_GPIO)		
+			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
+#endif	
 			if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
 			else clear |= 1 << PIGPIO_OUT_DATA;
 
@@ -636,10 +636,9 @@ public:
 		write32(ARM_GPIO_GPSET0, set);
 		write32(ARM_GPIO_GPCLR0, clear);
 #else
-		if (OutputLED) IEC_Bus::IO_led.Write(HIGH);
-		else IEC_Bus::IO_led.Write(LOW);
-		if (OutputSound) IEC_Bus::IO_sound.Write(HIGH);
-		else IEC_Bus::IO_sound.Write(LOW);
+		if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
+		if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
+		CGPIOPin::WriteAll(set, _mask);
 #endif
 	}			
 	

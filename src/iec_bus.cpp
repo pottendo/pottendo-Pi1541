@@ -110,6 +110,8 @@ CGPIOPin IEC_Bus::IO_OUT_LED;
 CGPIOPin IEC_Bus::IO_OUT_CLOCK;
 CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
+
+unsigned IEC_Bus::_mask;
 #endif
 
 void IEC_Bus::ReadGPIOUserInput()
@@ -174,15 +176,16 @@ void IEC_Bus::ReadBrowseMode(void)
 {
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
-	//XXXgplev0 = CGPIOPin::ReadAll();
+#else
+	gplev0 = CGPIOPin::ReadAll();
+	//gplev1 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET | PIGPIO_MASK_ANY_BUTTON );
+	//gplev0 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET | PIGPIO_MASK_ANY_BUTTON );
+	//if (gplev0 != gplev1)
+	//	Kernel.log("rv = 0x%08x apirv = 0x%08x", gplev0, gplev1);
 #endif	
 	ReadGPIOUserInput();
 
-#if defined (CIRCLE_GPIO)
-	bool ATNIn = (IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW));
-#else
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
-#endif	
 	if (PI_Atn != ATNIn)
 	{
 		//DEBUG_LOG("ATN changed: %d", ATNIn);
@@ -191,12 +194,7 @@ void IEC_Bus::ReadBrowseMode(void)
 
 	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
-#if defined(CIRCLE_GPIO)
-		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
-		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
-#else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
-#endif		
 		if (PI_Data != DATAIn)
 		{
 			//DEBUG_LOG("DATAIn changed: %d", DATAIn);
@@ -210,12 +208,7 @@ void IEC_Bus::ReadBrowseMode(void)
 
 	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
-#if defined (CIRCLE_GPIO)
-		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
-		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
-#else		
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK  : 0);
-#endif		
 		if (PI_Clock != CLOCKIn)
 		{
 			//DEBUG_LOG("CLOCKIn changed: %d", CLOCKIn);
@@ -226,11 +219,7 @@ void IEC_Bus::ReadBrowseMode(void)
 	{
 		PI_Clock = true;
 	}
-#if defined (CIRCLE_GPIO)
-	Resetting = !ignoreReset && (IEC_Bus::IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-#else
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-#endif	
 }
 
 void IEC_Bus::ReadEmulationMode1541(void)
@@ -239,17 +228,18 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	IOPort* portB = 0;
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
-	//XXXgplev0 = CGPIOPin::ReadAll();
+#else	
+	gplev0 = CGPIOPin::ReadAll();
+	//gplev0 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET);
+	//gplev1 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET);
+	//if (gplev0 != gplev1)
+	//	Kernel.log("rv = 0x%08x apirv = 0x%08x", gplev0, gplev1);
 #endif	
 
 	portB = port;
 
 #ifndef REAL_XOR
-#if defined (CIRCLE_GPIO)
-	bool ATNIn = (IEC_Bus::IO_ATN.Read() == (invertIECInputs ? HIGH : LOW));
-#else	
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
-#endif	
 	if (PI_Atn != ATNIn)
 	{
 		PI_Atn = ATNIn;
@@ -278,12 +268,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 
 	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
-#if defined (CIRCLE_GPIO)		
-		IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
-		bool DATAIn = (IEC_Bus::IO_DAT.Read() == (invertIECInputs ? HIGH : LOW));
-#else		
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
-#endif		
 		//if (PI_Data != DATAIn)
 		{
 			PI_Data = DATAIn;
@@ -296,9 +281,6 @@ void IEC_Bus::ReadEmulationMode1541(void)
 		portB->SetInput(VIAPORTPINS_DATAIN, true);	// simulate the read in software
 	}
 #else
-#if defined (CIRCLE_GPIO)
-#error "not yet circle ported"
-#endif
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 	if (PI_Atn != ATNIn)
 	{
@@ -327,12 +309,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 #endif
 	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
-#if defined (CIRCLE_GPIO)
-		IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
-		bool CLOCKIn = (IEC_Bus::IO_CLK.Read() == (invertIECInputs ? HIGH : LOW));
-#else
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK : 0);
-#endif		
 
 		//if (PI_Clock != CLOCKIn)
 		{
@@ -345,23 +322,20 @@ void IEC_Bus::ReadEmulationMode1541(void)
 		PI_Clock = true;
 		portB->SetInput(VIAPORTPINS_CLOCKIN, true); // simulate the read in software
 	}
-#if defined (CIRCLE_GPIO)
-	Resetting = !ignoreReset && (IEC_Bus::IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-#else
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-#endif	
 }
 
 void IEC_Bus::ReadEmulationMode1581(void)
 {
 	IOPort* portB = 0;
+#if !defined (CIRCLE_GPIO)
 	gplev0 = read32(ARM_GPIO_GPLEV0);
-	//XXXgplev0 = CGPIOPin::ReadAll();
-
+#else	
+	gplev0 = CGPIOPin::ReadAll();
+#endif	
 	portB = port;
 
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
-	//XXXbool ATNIn = IEC_Bus::IO_ATN.Read() == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 	if (PI_Atn != ATNIn)
 	{
 		PI_Atn = ATNIn;
@@ -387,7 +361,6 @@ void IEC_Bus::ReadEmulationMode1581(void)
 	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
-		//XXXbool DATAIn = IO_DAT.Read() == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
 		if (PI_Data != DATAIn)
 		{
 			PI_Data = DATAIn;
@@ -403,7 +376,6 @@ void IEC_Bus::ReadEmulationMode1581(void)
 	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK : 0);
-		//XXXbool CLOCKIn = IO_CLK.Read() == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK : 0);
 		if (PI_Clock != CLOCKIn)
 		{
 			PI_Clock = CLOCKIn;
@@ -419,7 +391,6 @@ void IEC_Bus::ReadEmulationMode1581(void)
 	if (!SRQSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 		bool SRQIn = (gplev0 & PIGPIO_MASK_IN_SRQ) == (invertIECInputs ? PIGPIO_MASK_IN_SRQ : 0);
-		//XXXbool SRQIn = IEC_Bus::IO_SRQ.Read() == (invertIECInputs ? PIGPIO_MASK_IN_SRQ : 0);
 		if (PI_SRQ != SRQIn)
 		{
 			PI_SRQ = SRQIn;
@@ -431,31 +402,7 @@ void IEC_Bus::ReadEmulationMode1581(void)
 	}
 
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
-	//XXXResetting = !ignoreReset && (IO_RST.Read() == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
-
-#if defined (__CIRCLE__)
-#include <time.h>
-int clock_gettime(clockid_t clockid, struct timespec *tp)
-{
-    unsigned t = CTimer::GetClockTicks();
-    tp->tv_sec = t / 1000000L;
-    tp->tv_nsec = (t % 1000000L) * 1000;
-    return 0;
-}
-inline void timespec_diff(struct timespec *a, struct timespec *b, struct timespec *result)
-{
-    	result->tv_sec  = a->tv_sec  - b->tv_sec;
-    	result->tv_nsec = a->tv_nsec - b->tv_nsec;
-    	if (result->tv_nsec < 0)
-    	{
-	        --result->tv_sec;
-	        result->tv_nsec += 1000000000L;
-	    }
-}
-
-static unsigned cta, ctb;
-#endif
 
 void IEC_Bus::RefreshOuts1541(void)
 {
@@ -465,10 +412,8 @@ void IEC_Bus::RefreshOuts1541(void)
 
 	if (!splitIECLines)
 	{
-//		struct timespec start, end, d;
-//		clock_gettime(CLOCK_REALTIME, &start);		
-		ctb = Kernel.get_clock_ticks();
-#if !defined (CIRCLE_GPIO)						/* this is needed, the Circle code won't work */
+		//unsigned ctb = Kernel.get_clock_ticks();
+#if !defined (CIRCLE_GPIO)
 		unsigned outputs = 0;
 		if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
 		if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
@@ -476,29 +421,32 @@ void IEC_Bus::RefreshOuts1541(void)
 		unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs;
 		write32(ARM_GPIO_GPFSEL1, nValue);
 #else
+		u32 im = 0, om = 0;
 		if (AtnaDataSetToOut || DataSetToOut)
-			IEC_Bus::IO_DAT.SetMode(GPIOModeOutput, false);
-		else 
-			IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
-		if (ClockSetToOut) {
-			IEC_Bus::IO_CLK.SetMode(GPIOModeOutput, false);
-		} else {
-			IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
-		}
+			om |= (1 << PIGPIO_DATA);
+		else
+			im |= (1 << PIGPIO_DATA);
+		if (ClockSetToOut)
+			om |= (1 << PIGPIO_CLOCK);
+		else
+			im |= (1 << PIGPIO_CLOCK);
+		CGPIOPin::SetModeAll(im, om);
 #endif
+#if 0
 		{	
 			unsigned delta;
-			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 2)
+			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
 			{
 				DEBUG_LOG("%s: delta = %d", __FUNCTION__, delta);
 			}
-		}		
-//		clock_gettime(CLOCK_REALTIME, &end);
-//		timespec_diff(&end, &start, &d);
-//		Kernel.log("diff = %04d.%08d", d.tv_sec, d.tv_nsec / 1000L);
+		}
+#endif		
 	}
 	else
 	{
+#if defined (CIRCLE_GPIO)		
+		_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK));
+#endif		
 		if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
 		else clear |= 1 << PIGPIO_OUT_DATA;
 
@@ -522,10 +470,9 @@ void IEC_Bus::RefreshOuts1541(void)
 	write32(ARM_GPIO_GPCLR0, clear);
 	write32(ARM_GPIO_GPSET0, set);
 #else
-	if (OutputLED) IEC_Bus::IO_led.Write(HIGH);
-	else IEC_Bus::IO_led.Write(LOW);
-	if (OutputSound) IEC_Bus::IO_sound.Write(HIGH);
-	else IEC_Bus::IO_sound.Write(LOW);
+	if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
+	if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
+	CGPIOPin::WriteAll(set, _mask);
 #endif
 
 }
