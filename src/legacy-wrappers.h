@@ -59,4 +59,14 @@ int i2c_read(int BSCMaster, unsigned char slaveAddress, void* buffer, unsigned c
 int i2c_write(int BSCMaster, unsigned char slaveAddress, void* buffer, unsigned count);
 int i2c_scan(int BSCMaster, unsigned char slaveAddress);
 
+extern u32 _ctb;
+inline void time_fn_arm(void) { DisableIRQs(); _ctb = read32(ARM_SYSTIMER_CLO); /* Kernel.get_clock_ticks(); */ }
+inline void time_fn_eval(u32 ms_threshold, const char *t)
+{
+	unsigned delta, _cta;
+	_cta = read32 (ARM_SYSTIMER_CLO); //Kernal.get_clock_ticks();
+	EnableIRQs();
+	if ((delta = (_cta - _ctb)) > ms_threshold)
+		Kernel.log("%s: delta = %d", t, delta);
+}
 #endif /* __legacy_wrappers_h__ */

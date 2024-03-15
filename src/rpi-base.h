@@ -63,8 +63,16 @@ typedef unsigned KTHType;        /* needed for backward compatibility, Circle 64
 
 //#define MEM_COHERENT_REGION		0x400000
 #else
-#if RASSPI >= 5
+#if RASPPI >= 5
 #include <circle/bcm2712.h>
+
+/* for direct register access */
+#define ARM_GPIO0_RIO_BASE	0x1F000E0000UL
+	#define RIO_SET_OFFSET			0x2000
+	#define RIO_CLR_OFFSET			0x3000
+#define RIO0_OE(bank, offset)			(ARM_GPIO0_RIO_BASE + (bank)*0x4000 + (offset) + 4)
+#define RIO0_OUT(bank, offset)			(ARM_GPIO0_RIO_BASE + (bank)*0x4000 + (offset) + 0)
+
 #elif RASPPI == 4
 #include <circle/bcm2711.h>
 #else

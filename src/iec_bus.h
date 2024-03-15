@@ -603,8 +603,15 @@ public:
 				om |= (1 << PIGPIO_CLOCK);
 			else
 				im |= (1 << PIGPIO_CLOCK);
+#if RASPPI == 5		
+			if (im)
+				write32 (RIO0_OE (0, RIO_CLR_OFFSET), im);
+			if (om)
+				write32 (RIO0_OE (0, RIO_SET_OFFSET), om);
+#else			
 			CGPIOPin::SetModeAll(im, om);
-#endif
+#endif	/* RASPPI */
+#endif	/* CIRCLE_GPIO */
 		}
 		else
 		{
@@ -626,19 +633,23 @@ public:
 				clear = tmp;
 			}
 		}
-#if !defined (CIRCLE_GPIO)
+
 		if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
 		else clear |= 1 << PIGPIO_OUT_LED;
 
 		if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
 		else clear |= 1 << PIGPIO_OUT_SOUND;
 
+#if !defined (CIRCLE_GPIO)
 		write32(ARM_GPIO_GPSET0, set);
 		write32(ARM_GPIO_GPCLR0, clear);
 #else
-		if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
-		if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
+#if RASPPI == 5
+		write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
+		write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
+#else
 		CGPIOPin::WriteAll(set, _mask);
+#endif
 #endif
 	}			
 	

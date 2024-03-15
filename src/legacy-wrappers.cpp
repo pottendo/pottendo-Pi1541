@@ -19,7 +19,9 @@
 #include "circle-kernel.h"
 #include "rpi-gpio.h"
 
-rpi_gpio_t* RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
+//rpi_gpio_t* RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
+
+u32 _ctb;
 
 /* wrappers */
 void RPiConsole_put_pixel(uint32_t x, uint32_t y, uint16_t c) {	Kernel.set_pixel(x, y, c); }

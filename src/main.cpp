@@ -967,7 +967,7 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 #if defined(RPI3)
 		if (IEC_Bus::OutputLED ^ oldLED)
 		{
-			SetACTLed(IEC_Bus::OutputLED);
+			//SetACTLed(IEC_Bus::OutputLED);
 			oldLED = IEC_Bus::OutputLED;
 		}
 #endif
@@ -1188,7 +1188,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #if defined(RPI3)
 		if (IEC_Bus::OutputLED ^ oldLED)
 		{
-			SetACTLed(IEC_Bus::OutputLED);
+			//SetACTLed(IEC_Bus::OutputLED);
 			oldLED = IEC_Bus::OutputLED;
 		}
 #endif

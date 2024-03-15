@@ -178,10 +178,6 @@ void IEC_Bus::ReadBrowseMode(void)
 	gplev0 = read32(ARM_GPIO_GPLEV0);
 #else
 	gplev0 = CGPIOPin::ReadAll();
-	//gplev1 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET | PIGPIO_MASK_ANY_BUTTON );
-	//gplev0 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET | PIGPIO_MASK_ANY_BUTTON );
-	//if (gplev0 != gplev1)
-	//	Kernel.log("rv = 0x%08x apirv = 0x%08x", gplev0, gplev1);
 #endif	
 	ReadGPIOUserInput();
 
@@ -226,16 +222,16 @@ void IEC_Bus::ReadEmulationMode1541(void)
 {
 	bool AtnaDataSetToOutOld = AtnaDataSetToOut;
 	IOPort* portB = 0;
+	//u32 cnt = 100;
+	//time_fn_arm();
+	//do {
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
 #else	
 	gplev0 = CGPIOPin::ReadAll();
-	//gplev0 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET);
-	//gplev1 &= (PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_RESET);
-	//if (gplev0 != gplev1)
-	//	Kernel.log("rv = 0x%08x apirv = 0x%08x", gplev0, gplev1);
 #endif	
-
+	//} while (--cnt);
+	//time_fn_eval(1, "ReadAll()");
 	portB = port;
 
 #ifndef REAL_XOR
@@ -412,7 +408,7 @@ void IEC_Bus::RefreshOuts1541(void)
 
 	if (!splitIECLines)
 	{
-		//unsigned ctb = Kernel.get_clock_ticks();
+		//time_fn_arm();
 #if !defined (CIRCLE_GPIO)
 		unsigned outputs = 0;
 		if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
@@ -430,17 +426,16 @@ void IEC_Bus::RefreshOuts1541(void)
 			om |= (1 << PIGPIO_CLOCK);
 		else
 			im |= (1 << PIGPIO_CLOCK);
+#if RASPPI == 5		
+		if (im)
+			write32 (RIO0_OE (0, RIO_CLR_OFFSET), im);
+		if (om)
+			write32 (RIO0_OE (0, RIO_SET_OFFSET), om);
+#else			
 		CGPIOPin::SetModeAll(im, om);
-#endif
-#if 0
-		{	
-			unsigned delta;
-			if ((delta = (Kernel.get_clock_ticks() - ctb)) > 1)
-			{
-				DEBUG_LOG("%s: delta = %d", __FUNCTION__, delta);
-			}
-		}
-#endif		
+#endif	/* RASPPI */
+#endif	/* CIRCLE_GPIO */
+		//time_fn_eval(1, __FUNCTION__);
 	}
 	else
 	{
@@ -460,21 +455,23 @@ void IEC_Bus::RefreshOuts1541(void)
 		}
 	}
 
-#if !defined (CIRCLE_GPIO)
 	if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
 	else clear |= 1 << PIGPIO_OUT_LED;
 
 	if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
 	else clear |= 1 << PIGPIO_OUT_SOUND;
 
+#if !defined (CIRCLE_GPIO)
 	write32(ARM_GPIO_GPCLR0, clear);
 	write32(ARM_GPIO_GPSET0, set);
 #else
-	if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
-	if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
+#if RASPPI == 5
+	write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
+	write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
+#else
 	CGPIOPin::WriteAll(set, _mask);
 #endif
-
+#endif
 }
 
 void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
