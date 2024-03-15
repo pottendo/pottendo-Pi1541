@@ -209,7 +209,7 @@ bool CKernel::run_ethernet(void)
 	}
 	Kernel.log("Initializing ethernet network");
 #ifndef USE_DHCP
-	m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
+	m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
 #else
 	m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
 #endif
