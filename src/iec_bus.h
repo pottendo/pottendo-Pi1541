@@ -80,13 +80,21 @@
 #if defined(HAS_40PINS)
 enum PIGPIO
 {
-	// Original Non-split lines
+#if defined(__PICO2__)	
+	// Original Non-split lines	
+	PIGPIO_ATN = 10,			// 3
+	PIGPIO_CLOCK = 11,		// 11
+	PIGPIO_DATA = 12,		// 12
+	PIGPIO_RESET = 13,		// 5
+	PIGPIO_SRQ = 14,		// 35
+#else
+	// Original Non-split lines	
 	PIGPIO_ATN = 2,			// 3
 	PIGPIO_CLOCK = 17,		// 11
 	PIGPIO_DATA = 18,		// 12
 	PIGPIO_SRQ = 19,		// 35
 	PIGPIO_RESET = 3,		// 5
-
+#endif
 
 	// Pinout for those that want to split the lines (and the common ones like buttons, sound and LED)
 	// 0 IDSC			//28
@@ -345,7 +353,8 @@ public:
 #if !defined(__PICO2__)
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
-#endif			
+#endif
+
 #if defined (__CIRCLE__)
 			_mask = ((1 << PIGPIO_OUT_LED) | (1 << PIGPIO_OUT_SOUND));			
 #if defined (CIRCLE_GPIO)
@@ -362,6 +371,9 @@ public:
 				IO_buttons[i].SetMode(GPIOModeInputPullUp, true);
 				Kernel.log("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
 			}
+#endif
+#if defined (__PICO2__)
+///XXX implement initialization for simple config
 #endif
 
 #if !defined (__PICO2__)
@@ -395,7 +407,7 @@ public:
 			IEC_Bus::IO_OUT_DATA.AssignPin(PIGPIO_OUT_DATA); IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
 			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
 #elif defined(__PICO2__)
-	#warning "PICO2 TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+	#warning "PICO2 TODO SPLIT IEC lines init XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 			not_implemented(__FUNCTION__);
 #else
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_BUTTON4, FS_INPUT);

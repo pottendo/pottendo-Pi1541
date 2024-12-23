@@ -1,6 +1,7 @@
 #ifndef __PICO2_H__
 #define __PICO2_H__
 
+#define HAS_40PINS
 #include <stdint.h>
 #include <stdarg.h>
 typedef uint8_t u8;
