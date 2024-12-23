@@ -25,7 +25,7 @@
 #include "m8520.h"
 
 #include "rpi-gpio.h"
-#if !defined (__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 #include "rpiHardware.h"
 #endif
 
@@ -333,15 +333,19 @@ public:
 	{
 		volatile int index; // Force a real delay in the loop below.
 		// Clear all outputs to 0
-		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);
+#if !defined(__PICO2__)		
+		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	// XXX PICO2?
+#endif		
 		//CGPIOPin::WriteAll(0xffffffff, 0xffffffff);
 		if (!splitIECLines)
 		{
 			// This means that when any pin is turn to output it will output a 0 and pull lines low (ie an activation state on the IEC bus)
 			// Note: on the IEC bus you never output a 1 you simply tri state and it will be pulled up to a 1 (ie inactive state on the IEC bus) if no one else is pulling it low.
 
+#if !defined(__PICO2__)
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
+#endif			
 #if defined (__CIRCLE__)
 			_mask = ((1 << PIGPIO_OUT_LED) | (1 << PIGPIO_OUT_SOUND));			
 #if defined (CIRCLE_GPIO)
@@ -359,14 +363,41 @@ public:
 				Kernel.log("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
 			}
 #endif
+
+#if !defined (__PICO2__)
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SOUND, FS_OUTPUT);
 			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_LED, FS_OUTPUT);
+#endif			
 		}
 		else
 		{
-#if !defined (__CIRCLE__)			
+#if defined(__CIRCLE__)			
+			IEC_Bus::IO_IN_BUTTON4.AssignPin(PIGPIO_IN_BUTTON4); IEC_Bus::IO_IN_BUTTON4.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON5.AssignPin(PIGPIO_IN_BUTTON5); IEC_Bus::IO_IN_BUTTON5.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_RESET.AssignPin(PIGPIO_IN_RESET); IEC_Bus::IO_IN_RESET.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_SRQ.AssignPin(PIGPIO_IN_SRQ); IEC_Bus::IO_IN_SRQ.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON2.AssignPin(PIGPIO_IN_BUTTON2); IEC_Bus::IO_IN_BUTTON2.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON3.AssignPin(PIGPIO_IN_BUTTON3); IEC_Bus::IO_IN_BUTTON3.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_ATN.AssignPin(PIGPIO_IN_ATN); IEC_Bus::IO_IN_ATN.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_DATA.AssignPin(PIGPIO_IN_DATA); IEC_Bus::IO_IN_DATA.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_CLOCK.AssignPin(PIGPIO_IN_CLOCK); IEC_Bus::IO_IN_CLOCK.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON1.AssignPin(PIGPIO_IN_BUTTON1); IEC_Bus::IO_IN_BUTTON1.SetMode(GPIOModeInput);
+
+			//IO_OUT_RESET.AssignPin(PIGPIO_OUT_RESET); IEC_Bus::IO_OUT_RESET.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_SPI0_RS.AssignPin(PIGPIO_OUT_SPI0_RS); IEC_Bus::IO_OUT_SPI0_RS.SetMode(GPIOModeOutput);
+
+			IEC_Bus::IO_OUT_ATN.AssignPin(PIGPIO_OUT_ATN); IEC_Bus::IO_OUT_ATN.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_SOUND.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_OUT_SOUND.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_LED.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_OUT_LED.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_CLOCK.AssignPin(PIGPIO_OUT_CLOCK); IEC_Bus::IO_OUT_CLOCK.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_DATA.AssignPin(PIGPIO_OUT_DATA); IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
+			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
+#elif defined(__PICO2__)
+	#warning "PICO2 TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+			not_implemented(__FUNCTION__);
+#else
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_BUTTON4, FS_INPUT);
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_BUTTON5, FS_INPUT);
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_RESET, FS_INPUT);
@@ -388,27 +419,6 @@ public:
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_CLOCK, FS_OUTPUT);
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_DATA, FS_OUTPUT);
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SRQ, FS_OUTPUT);
-#else
-			IEC_Bus::IO_IN_BUTTON4.AssignPin(PIGPIO_IN_BUTTON4); IEC_Bus::IO_IN_BUTTON4.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON5.AssignPin(PIGPIO_IN_BUTTON5); IEC_Bus::IO_IN_BUTTON5.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_RESET.AssignPin(PIGPIO_IN_RESET); IEC_Bus::IO_IN_RESET.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_SRQ.AssignPin(PIGPIO_IN_SRQ); IEC_Bus::IO_IN_SRQ.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON2.AssignPin(PIGPIO_IN_BUTTON2); IEC_Bus::IO_IN_BUTTON2.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON3.AssignPin(PIGPIO_IN_BUTTON3); IEC_Bus::IO_IN_BUTTON3.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_ATN.AssignPin(PIGPIO_IN_ATN); IEC_Bus::IO_IN_ATN.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_DATA.AssignPin(PIGPIO_IN_DATA); IEC_Bus::IO_IN_DATA.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_CLOCK.AssignPin(PIGPIO_IN_CLOCK); IEC_Bus::IO_IN_CLOCK.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON1.AssignPin(PIGPIO_IN_BUTTON1); IEC_Bus::IO_IN_BUTTON1.SetMode(GPIOModeInput);
-
-			//IO_OUT_RESET.AssignPin(PIGPIO_OUT_RESET); IEC_Bus::IO_OUT_RESET.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_SPI0_RS.AssignPin(PIGPIO_OUT_SPI0_RS); IEC_Bus::IO_OUT_SPI0_RS.SetMode(GPIOModeOutput);
-
-			IEC_Bus::IO_OUT_ATN.AssignPin(PIGPIO_OUT_ATN); IEC_Bus::IO_OUT_ATN.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_SOUND.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_OUT_SOUND.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_LED.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_OUT_LED.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_CLOCK.AssignPin(PIGPIO_OUT_CLOCK); IEC_Bus::IO_OUT_CLOCK.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_DATA.AssignPin(PIGPIO_OUT_DATA); IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
 #endif			
 		}
 	
@@ -433,7 +443,7 @@ public:
 			inputRepeat[index] = 0;
 			inputRepeatPrev[index] = 0;
 		}
-#if !defined(__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 		// Enable the internal pullups for the input button pins using the method described in BCM2835-ARM-Peripherals manual.
 		RPI_GpioBase->GPPUD = 2;
 		for (index = 0; index < 150; ++index)
@@ -559,15 +569,22 @@ public:
 		unsigned gplev0;
 		do
 		{
+#if !defined(__PICO2__)			
 #if !defined (CIRCLE_GPIO)
 			gplev0 = read32(ARM_GPIO_GPLEV0);
 #else			
 			gplev0 = CGPIOPin::ReadAll();
 #endif			
+#else
+			gplev0 = 0;	//XXX PICO2 fix needed here
+#endif	
 			Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == 
 				 (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 			if (Resetting)
+			{
 				IEC_Bus::WaitMicroSeconds(100);
+				not_implemented(__FUNCTION__);/* XXX PICO2 REMOVE ME, once I/O is implemented */
+			}
 		}
 		while (Resetting);
 	}
@@ -656,7 +673,7 @@ public:
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;
-#if defined (__CIRCLE__)		
+#if defined (__CIRCLE__) || defined(__PICO2__)	
 		usDelay(amount); 
 		return;
 #endif		

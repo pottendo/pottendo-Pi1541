@@ -155,7 +155,7 @@ static void SetHeaderVersion()
 
 void Error(u8 errorCode, u8 track = 0, u8 sector = 0)
 {
-	char* msg = "UNKNOWN";
+	const char* msg = "UNKNOWN";
 	switch (errorCode)
 	{
 		case ERROR_00_OK:
@@ -203,7 +203,7 @@ void IEC_Commands::Channel::Close()
 	{
 		if (writing)
 		{
-			u32 bytesWritten;
+			UINT bytesWritten;
 			if (f_write(&file, buffer, cursor, &bytesWritten) != FR_OK)
 			{
 			}
@@ -616,7 +616,7 @@ static bool CopyFile(char* filenameNew, char* filenameOld, bool concatenate)
 		if (res == FR_OK)
 		{
 			char buffer[1024];
-			u32 bytes;
+			UINT bytes;
 
 			success = true;
 			do
@@ -1552,7 +1552,7 @@ void IEC_Commands::LoadFile()
 	{
 		FSIZE_t size = f_size(&channel.file);
 		FSIZE_t sizeRemaining = size;
-		u32 bytesRead;
+		UINT bytesRead;
 		channel.fileSize = (u32)channel.filInfo.fsize;
 
 		char* ext = strrchr((char*)channel.filInfo.fname, '.');
@@ -1654,7 +1654,7 @@ void IEC_Commands::LoadFile()
 
 void IEC_Commands::SaveFile()
 {
-	u32 bytesWritten;
+	UINT bytesWritten;
 	u8 byte;
 
 	Channel& channel = channels[secondaryAddress];
@@ -1952,7 +1952,7 @@ void IEC_Commands::OpenFile()
 			if (C128BootSectorName)
 			{
 				FIL fpBS;
-				u32 bytes;
+				UINT bytes;
 				if (FR_OK == f_open(&fpBS, C128BootSectorName, FA_READ))
 					f_read(&fpBS, channel.buffer, 256, &bytes);
 				else
@@ -2118,7 +2118,7 @@ void IEC_Commands::CloseFile(u8 secondary)
 	channel.Close();
 }
 
-int IEC_Commands::CreateNewDisk(char* filenameNew, char* ID, bool automount)
+int IEC_Commands::CreateNewDisk(char* filenameNew, const char* ID, bool automount)
 {
 	DisplayMessage(240, 280, false, "Creating new disk", RGBA(0xff, 0xff, 0xff, 0xff), RGBA(0xff, 0, 0, 0xff));
 	DisplayMessage(0, 0, true, "Creating new disk", RGBA(0xff, 0xff, 0xff, 0xff), RGBA(0xff, 0, 0, 0xff));

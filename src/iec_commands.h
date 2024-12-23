@@ -20,7 +20,7 @@
 #define IEC_COMMANDS_H
 
 #include "iec_bus.h"
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__)
 #include "ff.h"
 #endif
 #include "debug.h"
@@ -94,7 +94,7 @@ public:
 	const FILINFO* GetImageSelected() const { return &filInfoSelectedImage; }
 	void SetStarFileName(const char* fileName) { starFileName = fileName; }
 
-	int CreateNewDisk(char* filenameNew, char* ID, bool automount);
+	int CreateNewDisk(char* filenameNew, const char* ID, bool automount);
 
 	void SetDisplayingDevices(bool displayingDevices) { this->displayingDevices = displayingDevices; }
 

@@ -18,6 +18,7 @@
 
 #ifndef InputMappings_H
 #define InputMappings_H
+#include "types.h"
 #include "Keyboard.h"
 
 #define ESC_FLAG		(1 << 0)

@@ -21,7 +21,7 @@
 #include "FileBrowser.h"
 #include "iec_bus.h"
 #include "debug.h"
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined (__PICO2__)
 extern "C"
 {
 #include "rpi-aux.h"

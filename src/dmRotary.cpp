@@ -56,6 +56,8 @@ void RotaryEncoder::Initialize(rpi_gpio_pin_t clockGpioPin, rpi_gpio_pin_t dataG
 	ROT_CLK.AssignPin(clockGpioPin); ROT_CLK.SetMode(GPIOModeInputPullUp, true);
 	ROT_DAT.AssignPin(dataGpioPin); ROT_DAT.SetMode(GPIOModeInputPullUp, true);
 	ROT_SW.AssignPin(switchGpioPin); ROT_SW.SetMode(GPIOModeInputPullUp, true);
+#elif defined (__PICO2__)
+// XXX some pico specifics here
 #else
 	//Set pins for input
 	RPI_SetGpioInput(clockGpioPin);

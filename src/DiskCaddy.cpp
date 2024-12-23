@@ -67,6 +67,7 @@ bool DiskCaddy::Empty()
 				screen->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 			}
 #endif
+#if !defined(__PICO2__)
 			if (screenLCD)
 			{
 				RGBA BkColour = RGBA(0, 0, 0, 0xFF);
@@ -81,6 +82,7 @@ bool DiskCaddy::Empty()
 				screenLCD->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 				screenLCD->SwapBuffers();
 			}
+#endif
 		}
 		disks[index]->Close();
 		delete disks[index];
@@ -98,6 +100,7 @@ bool DiskCaddy::Empty()
 			screen->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 		}
 #endif
+#if !defined(__PICO2__)
 		if (screenLCD)
 		{
 			RGBA BkColour = RGBA(0, 0, 0, 0xFF);
@@ -112,6 +115,7 @@ bool DiskCaddy::Empty()
 			screenLCD->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 			screenLCD->SwapBuffers();
 		}
+#endif
 	}
 
 	disks.clear();
@@ -142,7 +146,7 @@ bool DiskCaddy::Insert(const FILINFO* fileInfo, bool readOnly)
 			screen->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 		}
 #endif
-
+#if !defined(__PICO2__)
 		if (screenLCD)
 		{
 			RGBA BkColour = RGBA(0, 0, 0, 0xFF);
@@ -157,7 +161,8 @@ bool DiskCaddy::Insert(const FILINFO* fileInfo, bool readOnly)
 			screenLCD->PrintText(false, x, y, buffer, RGBA(0xff, 0xff, 0xff, 0xff), red);
 			screenLCD->SwapBuffers();
 		}
-		u32 bytesRead;
+#endif
+		UINT bytesRead;
 		SetACTLed(true);
 		f_read(&fp, DiskImage::readBuffer, READBUFFER_SIZE, &bytesRead);
 		SetACTLed(false);
@@ -371,6 +376,7 @@ void DiskCaddy::ShowSelectedImage(u32 index)
 	}
 #endif
 
+#if !defined(__PICO2__)
 	if (screenLCD)
 	{
 		unsigned numberOfImages = GetNumberOfImages();
@@ -429,6 +435,7 @@ void DiskCaddy::ShowSelectedImage(u32 index)
 		}
 		screenLCD->SwapBuffers();
 	}
+#endif
 }
 
 bool DiskCaddy::Update()
@@ -460,11 +467,12 @@ bool DiskCaddy::Update()
 
 		oldCaddyIndex = caddyIndex;
 		ShowSelectedImage(oldCaddyIndex);
-
+#if !defined(__PICO2__)
 		if (screenLCD)
 		{
 			
 		}
+#endif
 		return true;
 	}
 	return false;

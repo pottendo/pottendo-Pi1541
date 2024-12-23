@@ -20,14 +20,15 @@
 #define Keyboard_H
 #include <stdio.h>
 
-#if !defined (__CIRCLE__)	
+#if defined(__CIRCLE__)
+#include "circle-types.h"
+#elif defined(__PICO2__)
+#else
 extern "C"
 {
 #include <uspi/usbkeyboard.h>
 }
 #include "rpi-base.h"
-#else
-#include "circle-types.h"
 #endif
 #if not defined(EXPERIMENTALZERO)
 

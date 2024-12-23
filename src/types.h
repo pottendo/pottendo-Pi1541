@@ -1,7 +1,16 @@
 #ifndef types_h
 #define types_h
 
-#if !defined (__CIRCLE__)
+#if defined (__CIRCLE__)
+
+#include "circle-types.h"
+
+#elif defined(__PICO2__)
+
+#include "pico2.h"
+
+#else
+
 #include <stddef.h>
 #include <uspi/types.h>
 #include "integer.h"
@@ -9,10 +18,6 @@
 typedef unsigned long long	u64;
 
 typedef signed long long	s64;
-
-#else
-
-#include "circle-types.h"
 
 #endif
 

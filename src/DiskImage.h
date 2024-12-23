@@ -184,9 +184,11 @@ public:
 	unsigned LastTrackUsed();
 
 	bool IsDirty() const { return dirty; }
-
+#if !defined(__PICO2__)
 	static unsigned char readBuffer[READBUFFER_SIZE];
-
+#else
+	static unsigned char *readBuffer;
+#endif
 	static void CRC(unsigned short& runningCRC, unsigned char data);
 
 	union

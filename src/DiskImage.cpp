@@ -64,10 +64,14 @@ static const u8 blankD64DIRBAM[] =
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	//	0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-
+#if !defined(__PICO2__)
 unsigned char DiskImage::readBuffer[READBUFFER_SIZE];
-
 static unsigned char compressionBuffer[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
+#else
+unsigned char *DiskImage::readBuffer;
+static unsigned char *compressionBuffer;
+#endif
+
 
 static const unsigned short SECTOR_LENGTH = 256;
 static const unsigned short SECTOR_LENGTH_WITH_CHECKSUM = 260;
@@ -147,6 +151,8 @@ DiskImage::DiskImage()
 	, attachedImageSize(0)
 	, fileInfo(0)
 {
+	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
+	compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 	memset(tracks, 0x55, sizeof(tracks));
 	memset(trackUsed, 0, sizeof(trackUsed));
 }
@@ -318,8 +324,8 @@ bool DiskImage::WriteD64(char* name)
 	FRESULT res = f_open(&fp, fileInfo ? fileInfo->fname : name, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res == FR_OK)
 	{
-		u32 bytesToWrite;
-		u32 bytesWritten;
+		UINT bytesToWrite;
+		UINT bytesWritten;
 
 		unsigned track, sector, sectors;
 		BYTE d64data[MAXBLOCKSONDISK * 256], *d64ptr;
@@ -752,8 +758,8 @@ bool DiskImage::WriteD81()
 	FRESULT res = f_open(&fp, fileInfo->fname, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res == FR_OK)
 	{
-		u32 bytesToWrite;
-		u32 bytesWritten;
+		UINT bytesToWrite;
+		UINT bytesWritten;
 
 		for (unsigned trackIndex = 0; trackIndex < D81_TRACK_COUNT; ++trackIndex)
 		{
@@ -914,7 +920,7 @@ static bool WriteDwords(FIL* fp, u32* values, u32 amount)
 {
 	u32 index;
 	u32 bytesToWrite = 4;
-	u32 bytesWritten;
+	UINT bytesWritten;
 
 	for (index = 0; index < amount; ++index)
 	{
@@ -934,7 +940,7 @@ bool DiskImage::WriteG64(char* name)
 	if (res == FR_OK)
 	{
 		u32 bytesToWrite;
-		u32 bytesWritten;
+		UINT bytesWritten;
 		int track_inc = 1;
 
 		BYTE header[12];
@@ -1105,7 +1111,7 @@ bool DiskImage::WriteNIB()
 	if (res == FR_OK)
 	{
 		u32 bytesToWrite;
-		u32 bytesWritten;
+		UINT bytesWritten;
 
 		int track;
 		char header[0x100];
@@ -1207,7 +1213,7 @@ bool DiskImage::WriteNBZ()
 		FRESULT res = f_open(&fp, fileInfo->fname, FA_READ);
 		if (res == FR_OK)
 		{
-			u32 bytesRead;
+			UINT bytesRead;
 			f_read(&fp, readBuffer, READBUFFER_SIZE, &bytesRead);
 			f_close(&fp);
 			DEBUG_LOG("Reloaded %s - %d for compression\r\n", fileInfo->fname, bytesRead);
@@ -1219,7 +1225,7 @@ bool DiskImage::WriteNBZ()
 				if (res == FR_OK)
 				{
 					u32 bytesToWrite = bytesRead;
-					u32 bytesWritten;
+					UINT bytesWritten;
 
 					if (f_write(&fp, compressionBuffer, bytesToWrite, &bytesWritten) != FR_OK || bytesToWrite != bytesWritten)
 					{

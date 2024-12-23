@@ -27,13 +27,13 @@
 #include "InputMappings.h"
 #include "stb_image.h"
 #include "Petscii.h"
-#if !defined (__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 extern "C"
 {
 #include "rpi-gpio.h"
 }
 #else
-const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02", "USB03"};
+const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
 #endif
 
 #include "iec_commands.h"
@@ -876,7 +876,7 @@ void FileBrowser::DisplayPNG(FILINFO& filIcon, int x, int y)
 			char* PNG = (char*)malloc(filIcon.fsize);
 			if (PNG)
 			{
-				u32 bytesRead;
+				UINT bytesRead;
 				SetACTLed(true);
 				f_read(&fp, PNG, filIcon.fsize, &bytesRead);
 				SetACTLed(false);
@@ -1307,7 +1307,7 @@ bool FileBrowser::MakeLST(const char* filenameLST)
 	if (res == FR_OK)
 	{
 		FileBrowser::BrowsableList::Entry* entry = 0;
-		u32 bytes;
+		UINT bytes;
 
 		BrowsableList& list = caddySelections.entries.size() > 1 ? caddySelections : folder;
 
@@ -1354,7 +1354,7 @@ bool FileBrowser::SelectLST(const char* filenameLST)
 		res = f_open(&fp, filenameLST, FA_READ);
 		if (res == FR_OK)
 		{
-			u32 bytesRead;
+			UINT bytesRead;
 			SetACTLed(true);
 			f_read(&fp, FileBrowser::LSTBuffer, FileBrowser::LSTBuffer_size, &bytesRead);
 			SetACTLed(false);
@@ -1802,7 +1802,7 @@ int FileBrowser::BrowsableList::FindNextAutoName(char* filename)
 
 	char scanfname[64];
 	strncpy (scanfname, filename, 54);
-	strncat (scanfname, "%d",2);
+	strncat (scanfname, "%d", 3);
 
 	int foundnumber;
 

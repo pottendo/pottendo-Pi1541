@@ -18,23 +18,30 @@
 
 #include <string.h>
 #include <strings.h>
-#if !defined (__CIRCLE__)
-#include "defs.h"
-#include "Timer.h"
-#include "SpinLock.h"
-#else 
+#include "pico2.h"
+#if defined(__CIRCLE__) 
 #include "circle-kernel.h"
 #if RASPPI <= 3
 #include "SpinLock.h"
 #else
 #define SpinLock CSpinLock
 #endif
+#elif defined(__PICO2__)
+// XXX PICO specific includes here
+#else
+#include "defs.h"
+#include "Timer.h"
+#include "SpinLock.h"
 #endif
 #include "ROMs.h"
 #include "stb_image.h"
 extern "C"
 {
-#if !defined(__CIRCLE__)
+#if defined(__CIRCLE__) 
+#include "circle-types.h"
+#elif defined(__PICO2__)
+// XXX some pico2 specifics here
+#else
 #include "rpi-aux.h"
 #include "rpi-i2c.h"
 #include "rpi-gpio.h"
@@ -44,9 +51,8 @@ extern "C"
 #include "interrupt.h"
 #include <uspi.h>
 #include "sample.h"
-#else
-#include "circle-types.h"
 #endif
+
 #include "rpi-mailbox.h"
 }
 #include "InputMappings.h"
@@ -126,7 +132,7 @@ Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
 #endif
-#if !defined(__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 CEMMCDevice	m_EMMC;
 #else
 bool usb_mass_update = false;
@@ -163,7 +169,7 @@ const char* termainalTextNormal = "\E[0m";
 int headSoundFreq;
 int headSoundCounterDuration;
 
-#if !defined(__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 // Hooks required for USPi library
 extern "C"
 {
@@ -267,7 +273,7 @@ extern "C"
 #endif
 
 // Hooks for FatFs
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__)
 DWORD get_fattime() { return 0; }	// If you have hardware RTC return a correct value here. THis can then be reflected in file modification times/dates.
 #endif
 
@@ -280,7 +286,7 @@ extern void write6502_1581(u16 address, const u8 value);
 
 void InitialiseHardware()
 {
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined(__PICP2__)
 #if defined(RPI3)
 	RPI_GpioVirtInit();
 	RPI_TouchInit();
@@ -301,8 +307,10 @@ void InitialiseHardware()
 		screen = new ScreenHeadLess();
 		DEBUG_LOG("running headless\r\n");
 	}
+#if !defined(__PICO2__)	
 	screen->Open(screenWidth, screenHeight, 16);
-#if !defined (__CIRCLE__)
+#endif	
+#if !defined (__CIRCLE__) && !defined (__PICO2__)
 	RPI_PropertyInit();
 	RPI_PropertyAddTag(TAG_GET_MAX_CLOCK_RATE, ARM_CLK_ID);
 	RPI_PropertyProcess();
@@ -327,6 +335,7 @@ void InitialiseHardware()
 #endif		/* __CIRCLE__ */
 }
 
+#if !defined(__PICO2__)
 void InitialiseLCD()
 {
 	FILINFO filLcdIcon;
@@ -372,7 +381,7 @@ void InitialiseLCD()
 			res = f_open(&fp, filLcdIcon.fname, FA_READ);
 			if (res == FR_OK)
 			{
-				u32 bytesRead;
+				UINT bytesRead;
 				f_read(&fp, LcdLogoFile, LCD_LOGO_MAX_SIZE, &bytesRead);
 				f_close(&fp);
 				screenLCD->PlotRawImage(LcdLogoFile, 0, 0, width, height);
@@ -713,6 +722,8 @@ void UpdateScreen()
 	}
 #endif
 }
+
+#endif /* !defined (__PICO2__)*/
 
 static bool Snoop(u8 a)
 {
@@ -1537,7 +1548,7 @@ static void start_core(int core, func_ptr func)
 }
 #endif
 
-static bool AttemptToLoadROM(char* ROMName)
+static bool AttemptToLoadROM(const char* ROMName)
 {
 	FIL fp;
 	FRESULT res;
@@ -1552,7 +1563,7 @@ static bool AttemptToLoadROM(char* ROMName)
 	if ( (FR_OK == f_open(&fp, ROMName, FA_READ))
 		|| (FR_OK == f_open(&fp, ROMName2, FA_READ)) )
 	{
-		u32 bytesRead;
+		UINT bytesRead;
 		SetACTLed(true);
 		f_read(&fp, roms.ROMImages[0], ROMs::ROM_SIZE, &bytesRead);
 		strncpy(roms.ROMNames[0], ROMName, 255);
@@ -1593,7 +1604,7 @@ static void LoadOptions()
 	res = f_open(&fp, "options.txt", FA_READ);
 	if (res == FR_OK)
 	{
-		u32 bytesRead;
+		UINT bytesRead;
 		SetACTLed(true);
 		f_read(&fp, s_u8Memory, sizeof(s_u8Memory), &bytesRead);
 		SetACTLed(false);
@@ -1688,7 +1699,7 @@ static void CheckOptions()
 		if ( (FR_OK == f_open(&fp, FontROMName, FA_READ))
 			|| (FR_OK == f_open(&fp, FontROMName2, FA_READ)) )
 		{
-			u32 bytesRead;
+			UINT bytesRead;
 
 			screen->Clear(COLOUR_BLACK);
 			snprintf(tempBuffer, tempBufferSize, "Loading Font ROM %s\r\n", FontROMName);
@@ -1715,7 +1726,7 @@ static void CheckOptions()
 		//DEBUG_LOG("%d Rom Name = %s\r\n", ROMIndex, ROMName);
 		if ((FR_OK == f_open(&fp, ROMName1581, FA_READ)))
 		{
-			u32 bytesRead;
+			UINT bytesRead;
 
 			screen->Clear(COLOUR_BLACK);
 			snprintf(tempBuffer, tempBufferSize, "Loading ROM %s\r\n", ROMName1581);
@@ -1757,7 +1768,7 @@ static void CheckOptions()
 		if ( (FR_OK == f_open(&fp, ROMName, FA_READ))
 			|| (FR_OK == f_open(&fp, ROMName2, FA_READ)) )
 		{
-			u32 bytesRead;
+			UINT bytesRead;
 
 			screen->Clear(COLOUR_BLACK);
 			snprintf(tempBuffer, tempBufferSize, "Loading ROM %s\r\n", ROMName);
@@ -1808,8 +1819,10 @@ static void CheckOptions()
 
 void Reboot_Pi()
 {
+#if !defined(__PICO2__)	
 	if (screenLCD)
 		screenLCD->ClearInit(0);
+#endif		
 	reboot_now();
 }
 
@@ -1964,7 +1977,7 @@ extern "C"
 		FRESULT res;
 		FATFS fileSystemSD;
 		FATFS fileSystemUSB[16];
-#if !defined(__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 		m_EMMC.Initialize();
 #if not defined(EXPERIMENTALZERO)
 		RPI_AuxMiniUartInit(115200, 8);
@@ -1972,14 +1985,19 @@ extern "C"
 		disk_setEMM(&m_EMMC);
 		f_mount(&fileSystemSD, "SD:", 1);
 #endif		
+#if defined(__PICO2__)
+		f_mount(&fileSystemSD, "SD:", 1);
+#endif
 		LoadOptions();
 
 		InitialiseHardware();
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__)
 		enable_MMU_and_IDCaches();
 		_enable_unaligned_access();
 #endif
-		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);
+#if !defined(__PICO2__)
+		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	//XXXPICO?
+#endif		
 
 		DisplayLogo();
 
@@ -2009,7 +2027,7 @@ extern "C"
 		//if (!options.QuickBoot())
 			//IEC_Bus::WaitMicroSeconds(3 * 1000000);
 
-#if !defined (__CIRCLE__)		
+#if !defined (__CIRCLE__) && !defined(__PICO2__)
 		InterruptSystemInitialize();
 #endif
 #if not defined(EXPERIMENTALZERO)
@@ -2086,7 +2104,7 @@ extern "C"
 		pi1541.drive.SetVIA(&pi1541.VIA[1]);
 		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
 		IEC_Bus::Initialise();
-#if !defined(__CIRCLE__) 
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 		if (screenLCD)
 			screenLCD->ClearInit(0);
 #ifdef HAS_MULTICORE
@@ -2110,7 +2128,10 @@ extern "C"
 #ifndef USE_MULTICORE
 		emulator();	// If only one core the emulator runs on it now.
 #endif
-#endif		
+#endif
+#if defined(__PICO2__)
+		emulator();
+#endif
 	}
 }
 

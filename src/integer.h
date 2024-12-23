@@ -13,7 +13,7 @@ typedef unsigned __int64 QWORD;
 
 #else			/* Embedded platform */
 
-#if !defined (__CIRCLE__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__)
 /* These types MUST be 16-bit or 32-bit */
 typedef int				INT;
 typedef unsigned int	UINT;
@@ -29,7 +29,7 @@ typedef unsigned long	DWORD;
 
 /* This type MUST be 64-bit (Remove this for C89 compatibility) */
 typedef unsigned long long QWORD;
-#endif/* circle */
+#endif /* !circle */
 
 /* This type MUST be 8-bit */
 typedef unsigned char	BYTE;
@@ -38,5 +38,6 @@ typedef unsigned char	BYTE;
 
 //#include <cstdint>
 #include <stdint.h>
+#include <stddef.h>
 
 #endif
