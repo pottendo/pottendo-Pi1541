@@ -88,11 +88,13 @@ target_link_libraries(pico1541
 
 # Add the standard include files to the build
 target_include_directories(pico1541 PRIVATE
-  ${SDLIB}/src/include
-  ${SDLIB}/src/sd_driver
-  ${SDLIB}/src/ff15/source
-  ${CMAKE_BINARY_DIR}
-  ${CMAKE_CURRENT_LIST_DIR}
+    BEFORE
+    ${CMAKE_CURRENT_LIST_DIR}
+    AFTER
+    ${SDLIB}/src/ff15/source
+    ${SDLIB}/src/include
+    ${SDLIB}/src/sd_driver
+    ${CMAKE_BINARY_DIR}
 )
 
 # Add any user requested libraries
