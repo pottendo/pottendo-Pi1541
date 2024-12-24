@@ -42,7 +42,6 @@ set(PI1541SRC
     ${PI1541SRCDIR}/ROMs.cpp
     ${PI1541SRCDIR}/DiskCaddy.cpp
     ${PI1541SRCDIR}/FileBrowser.cpp
-    ${PI1541SRCDIR}/dmRotary.cpp
     ${PI1541SRCDIR}/DiskImage.cpp
     ${PI1541SRCDIR}/gcr.cpp
     ${PI1541SRCDIR}/prot.cpp
@@ -54,20 +53,21 @@ set(SDLIB lib/no-OS-FatFs)
 include(pico_sdk_import.cmake)
 
 project(pico1541 C CXX ASM)
-add_compile_options(-D__PICO2__ -DEXPERIMENTALZERO)
+#set(PICO_COPY_TO_RAM 1)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# generate version.h from git version
 set(VERSION_H ${CMAKE_BINARY_DIR}/version.h)
 add_custom_command(
     OUTPUT ${VERSION_H}
     COMMAND ${CMAKE_COMMAND} -E echo "Generating version.h"
     COMMAND echo "\\#define PPI1541VERSION \\"`git describe --tags`"" >/tmp/__version_cmp
     COMMAND cmp -s /tmp/__version_cmp ${VERSION_H} || echo "\\#define PPI1541VERSION \\"`git describe --tags`"" >${VERSION_H}
-    COMMENT "Generating header file..." ${VERSION_H}
+    #COMMENT "Generating header file..." ${VERSION_H}
 )
 
+add_compile_options(-D__PICO2__ -DEXPERIMENTALZERO -DPICO_DEBUG_MALLOC)
 add_executable(pico1541 ${PICO2SRC} ${PI1541SRC} ${VERSION_H})
 add_subdirectory(lib/no-OS-FatFs/src build)
 pico_set_program_name(pico1541 "pico1541")

@@ -30,7 +30,9 @@ typedef u32 RGBA;
 
 #define RGBA(r, g, b, a)  ( ((u32)((u8)(r))) | ((u32)((u8)(g)) << 8) | ((u32)((u8)(b)) << 16) | ((u32)((u8)(a)) << 24) )
 
+#if !defined(MAX)
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#endif
 
 class ScreenBase
 {

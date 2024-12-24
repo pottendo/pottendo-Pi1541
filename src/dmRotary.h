@@ -31,7 +31,7 @@
 extern "C"
 {
     #include "rpi-aux.h"
-#if !defined (__CIRCLE__)    
+#if !defined (__CIRCLE__) && !defined(__PICO2__)
     #include "rpiHardware.h"
 #endif    
 }

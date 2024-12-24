@@ -41,6 +41,7 @@ extern "C"
 #include "circle-types.h"
 #elif defined(__PICO2__)
 // XXX some pico2 specifics here
+#include "pico/stdlib.h"
 #else
 #include "rpi-aux.h"
 #include "rpi-i2c.h"
@@ -859,7 +860,7 @@ void CheckAutoMountImage(EXIT_TYPE reset_reason , FileBrowser* fileBrowser)
 	}
 }
 
-EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
+EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
 	bool oldLED = false;
@@ -936,8 +937,10 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 #if defined(RPI2)
 	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
 #else
-#if defined (__CIRCLE__)
+#if defined(__CIRCLE__)
 	ctBefore = Kernel.get_clock_ticks();
+#elif defined(__PICO2__)
+	ctBefore = time_us_32();
 #else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1042,6 +1045,8 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 		{
 #if defined (__CIRCLE__)
 			ctAfter = Kernel.get_clock_ticks();
+#elif defined(__PICO2__)
+			ctAfter = time_us_32();
 #else
 			ctAfter = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1328,7 +1333,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 }
 #endif
 
-void emulator()
+void __not_in_flash_func(emulator)(void)
 {
 #if not defined(EXPERIMENTALZERO)
 	Keyboard* keyboard = Keyboard::Instance();
@@ -1720,6 +1725,7 @@ static void CheckOptions()
 		}
 	}
 #endif
+#if defined(PI1581SUPPORT)
 	const char* ROMName1581 = options.GetRomName1581();
 	if (ROMName1581)
 	{
@@ -1747,6 +1753,7 @@ static void CheckOptions()
 			//DEBUG_LOG("Read ROM %s from options\r\n", ROMName);
 		}
 	}
+#endif
 
 	int ROMIndex;
 

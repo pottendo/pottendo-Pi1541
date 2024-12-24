@@ -27,13 +27,16 @@
 #include "InputMappings.h"
 #include "stb_image.h"
 #include "Petscii.h"
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#if defined(__CIRCLE__)
+const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
+#elif defined(__PICO2__)
+#include "pico/stdlib.h"
+const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
+#else
 extern "C"
 {
 #include "rpi-gpio.h"
 }
-#else
-const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
 #endif
 
 #include "iec_commands.h"
@@ -364,8 +367,10 @@ FileBrowser::BrowsableList::BrowsableList()
 	, searchPrefixIndex(0)
 	, searchLastKeystrokeTime(0)
 {
-#if defined (__CIRCLE__)
+#if defined(__CIRCLE__)
 	lastUpdateTime = Kernel.get_clock_ticks();
+#elif defined(__PICO2__)
+	lastUpdateTime = time_us_32();
 #else
 	lastUpdateTime = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -410,6 +415,8 @@ bool FileBrowser::BrowsableList::CheckBrowseNavigation()
 	// Calculate the number of micro seconds since we were last called.
 #if defined (__CIRCLE__)
 	u32 updateTime = Kernel.get_clock_ticks();
+#elif defined(__PICO2__)
+	u32 updateTime = time_us_32();
 #else
 	u32 updateTime = read32(ARM_SYSTIMER_CLO);
 #endif	

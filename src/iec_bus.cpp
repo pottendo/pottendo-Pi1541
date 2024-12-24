@@ -30,6 +30,8 @@ u32 IEC_Bus::PIGPIO_MASK_IN_DATA = 1 << PIGPIO_DATA;
 u32 IEC_Bus::PIGPIO_MASK_IN_CLOCK = 1 << PIGPIO_CLOCK;
 u32 IEC_Bus::PIGPIO_MASK_IN_SRQ = 1 << PIGPIO_SRQ;
 u32 IEC_Bus::PIGPIO_MASK_IN_RESET = 1 << PIGPIO_RESET;
+u32 IEC_Bus::PIGPIO_MASK_OUT_LED = 1 << PIGPIO_OUT_LED;
+u32 IEC_Bus::PIGPIO_MASK_OUT_SOUND = 1 << PIGPIO_OUT_SOUND;
 
 bool IEC_Bus::PI_Atn = false;
 bool IEC_Bus::PI_Data = false;
@@ -114,8 +116,9 @@ CGPIOPin IEC_Bus::IO_OUT_SRQ;
 unsigned IEC_Bus::_mask;
 #endif
 
-void IEC_Bus::ReadGPIOUserInput()
+void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)()
 {
+#if !defined(__PICO2__)	
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 	if (IEC_Bus::rotaryEncoderEnable == true)
 	{
@@ -159,8 +162,8 @@ void IEC_Bus::ReadGPIOUserInput()
 		UpdateButton(indexInsert, gplev0);
 	}
 	else // Unmolested original logic
+#endif /* __PICO2__ */
 	{
-
 		int index;
 		for (index = 0; index < buttonCount; ++index)
 		{
@@ -172,13 +175,17 @@ void IEC_Bus::ReadGPIOUserInput()
 
 
 //ROTARY: Modified for rotary encoder support - 09/05/2019 by Geo...
-void IEC_Bus::ReadBrowseMode(void)
+void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 {
+#if defined(__PICO2__)	
+	gplev0 = gpio_get_all();
+#else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
 #else
 	gplev0 = CGPIOPin::ReadAll();
 #endif	
+#endif
 	ReadGPIOUserInput();
 
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
@@ -218,18 +225,23 @@ void IEC_Bus::ReadBrowseMode(void)
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
 
-void IEC_Bus::ReadEmulationMode1541(void)
+void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 {
 	bool AtnaDataSetToOutOld = AtnaDataSetToOut;
 	IOPort* portB = 0;
 	//u32 cnt = 100;
 	//time_fn_arm();
 	//do {
+
+#if defined(__PICO2__)	
+	gplev0 = gpio_get_all();
+#else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
 #else	
 	gplev0 = CGPIOPin::ReadAll();
 #endif	
+#endif
 	//} while (--cnt);
 	//time_fn_eval(1, "ReadAll()");
 	portB = port;
@@ -321,6 +333,7 @@ void IEC_Bus::ReadEmulationMode1541(void)
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
 
+#if defined(PI1581SUPPORT)
 void IEC_Bus::ReadEmulationMode1581(void)
 {
 	IOPort* portB = 0;
@@ -399,13 +412,34 @@ void IEC_Bus::ReadEmulationMode1581(void)
 
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
+#endif /* PI1581 SUPPORT */
 
-void IEC_Bus::RefreshOuts1541(void)
+void __not_in_flash_func(IEC_Bus::RefreshOuts1541)(void)
 {
 	unsigned set = 0;
 	unsigned clear = 0;
 	unsigned tmp;
-
+#if defined (__PICO2__)		
+	if (!splitIECLines)
+	{
+		if (AtnaDataSetToOut || DataSetToOut)
+			set |= PIGPIO_MASK_IN_DATA;
+		if (ClockSetToOut)
+			set |= PIGPIO_MASK_IN_CLOCK;
+		gpio_set_dir_masked(PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK, set);
+	}
+	else
+	{
+		not_implemented("refreshOuts1541 - splitIECLines");
+		return;
+	}
+	set = 0;
+	if (OutputLED)
+		set |= PIGPIO_MASK_OUT_LED;
+	if (OutputSound)
+		set |= PIGPIO_MASK_OUT_SOUND;
+	gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
+#else
 	if (!splitIECLines)
 	{
 		//time_fn_arm();
@@ -472,6 +506,7 @@ void IEC_Bus::RefreshOuts1541(void)
 	CGPIOPin::WriteAll(set, _mask);
 #endif
 #endif
+#endif  /* __PICO2__ */
 }
 
 void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
@@ -567,6 +602,8 @@ void IEC_Bus::Reset(void)
 	if (AtnaDataSetToOut) PI_Data = true;
 #endif
 
+#if defined(PI1581SUPPORT)
 	RefreshOuts1581();
+#endif	
 }
 

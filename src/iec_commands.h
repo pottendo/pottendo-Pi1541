@@ -44,7 +44,7 @@ struct TimerMicroSeconds
 
 	bool Tick()
 	{
-		delay_us(1);
+		usDelay(1);
 		count++;
 		return TimedOut();
 	}

@@ -28,7 +28,10 @@
 #if !defined(__CIRCLE__) && !defined(__PICO2__)
 #include "rpiHardware.h"
 #endif
-
+#if defined(__PICO2__)
+#include "pico/stdlib.h"
+#include "hardware/pio.h"
+#endif
 //ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 #include "dmRotary.h"
 
@@ -82,11 +85,18 @@ enum PIGPIO
 {
 #if defined(__PICO2__)	
 	// Original Non-split lines	
-	PIGPIO_ATN = 10,			// 3
-	PIGPIO_CLOCK = 11,		// 11
-	PIGPIO_DATA = 12,		// 12
-	PIGPIO_RESET = 13,		// 5
-	PIGPIO_SRQ = 14,		// 35
+	PIGPIO_ATN = 10,
+	PIGPIO_CLOCK = 11,
+	PIGPIO_DATA = 12,
+	PIGPIO_RESET = 13,
+	PIGPIO_SRQ = 14,
+	PIGPIO_IN_BUTTON1 = 5,
+	PIGPIO_IN_BUTTON2 = 6,
+	PIGPIO_IN_BUTTON3 = 7,
+	PIGPIO_IN_BUTTON4 = 8,
+	PIGPIO_IN_BUTTON5 = 9,
+	PIGPIO_OUT_SOUND = 14,
+	PIGPIO_OUT_LED   = 15,
 #else
 	// Original Non-split lines	
 	PIGPIO_ATN = 2,			// 3
@@ -94,7 +104,6 @@ enum PIGPIO
 	PIGPIO_DATA = 18,		// 12
 	PIGPIO_SRQ = 19,		// 35
 	PIGPIO_RESET = 3,		// 5
-#endif
 
 	// Pinout for those that want to split the lines (and the common ones like buttons, sound and LED)
 	// 0 IDSC			//28
@@ -126,6 +135,7 @@ enum PIGPIO
 	PIGPIO_IN_DATA = 25,	// 22
 	PIGPIO_IN_CLOCK = 26,	// 37
 	PIGPIO_IN_BUTTON1 = 27	// 13 Common
+#endif
 };
 #else
 //Added GPIO bindings for Raspberry Pi 1B Rev 1/2 (only 26 I/O ports)
@@ -373,7 +383,28 @@ public:
 			}
 #endif
 #if defined (__PICO2__)
-///XXX implement initialization for simple config
+			gpio_init_mask(PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_SRQ | PIGPIO_MASK_IN_RESET);
+			gpio_init(PIGPIO_RESET);
+    		gpio_set_dir(PIGPIO_RESET, GPIO_IN);
+			gpio_init(PIGPIO_SRQ);
+    		gpio_set_dir(PIGPIO_SRQ, GPIO_IN);
+			gpio_init(PIGPIO_DATA);
+    		gpio_set_dir(PIGPIO_DATA, GPIO_IN);
+			gpio_init(PIGPIO_ATN);
+    		gpio_set_dir(PIGPIO_ATN, GPIO_IN);
+			gpio_init(PIGPIO_CLOCK);
+    		gpio_set_dir(PIGPIO_CLOCK, GPIO_IN);
+			for (int i = 0; i < 5; i++) 
+			{
+				gpio_init(ButtonPins[i]);
+				gpio_set_dir(ButtonPins[i], GPIO_IN);
+				gpio_pull_up(ButtonPins[i]);
+				printf("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
+			}
+			gpio_init(PIGPIO_OUT_LED);
+			gpio_set_dir(PIGPIO_OUT_LED, GPIO_OUT);
+			gpio_init(PIGPIO_OUT_SOUND);
+			gpio_set_dir(PIGPIO_OUT_SOUND, GPIO_OUT);
 #endif
 
 #if !defined (__PICO2__)
@@ -407,7 +438,7 @@ public:
 			IEC_Bus::IO_OUT_DATA.AssignPin(PIGPIO_OUT_DATA); IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
 			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
 #elif defined(__PICO2__)
-	#warning "PICO2 TODO SPLIT IEC lines init XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+	//#warning "PICO2 TODO SPLIT IEC lines init XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 			not_implemented(__FUNCTION__);
 #else
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_BUTTON4, FS_INPUT);
@@ -468,6 +499,7 @@ public:
 		RPI_GpioBase->GPPUD = 0;
 		RPI_GpioBase->GPPUDCLK0 = 0;
 #endif
+#if !defined(__PICO2__)
 		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 		if (IEC_Bus::rotaryEncoderEnable == true)
 		{
@@ -481,12 +513,15 @@ public:
 				IEC_Bus::rotaryEncoder.Initialize(RPI_GPIO22, RPI_GPIO23, RPI_GPIO27);
 			}
 		}
+#endif		
 	}
 
 	static inline void LetSRQBePulledHigh()
 	{
 		SRQSetToOut = IEC_Bus::invertIECInputs;
+#if defined(PI1581SUPPORT)
 		RefreshOuts1581();
+#endif	
 	}
 
 #if defined(EXPERIMENTALZERO)
@@ -588,14 +623,14 @@ public:
 			gplev0 = CGPIOPin::ReadAll();
 #endif			
 #else
-			gplev0 = 0;	//XXX PICO2 fix needed here
+			gplev0 = gpio_get_all();
 #endif	
-			Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == 
-				 (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
+			Resetting = !ignoreReset && 
+						((gplev0 & PIGPIO_MASK_IN_RESET) == 
+				 		 (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 			if (Resetting)
 			{
 				IEC_Bus::WaitMicroSeconds(100);
-				not_implemented(__FUNCTION__);/* XXX PICO2 REMOVE ME, once I/O is implemented */
 			}
 		}
 		while (Resetting);
@@ -605,7 +640,7 @@ public:
 	static void PortB_OnPortOut(void* pUserData, unsigned char status);
 
 	static void RefreshOuts1541(void);
-
+#if defined(PI1581SUPPORT)
 	static inline void RefreshOuts1581(void)
 	{
 		unsigned set = 0;
@@ -681,14 +716,14 @@ public:
 #endif
 #endif
 	}			
-	
+#endif /* PI1581SUPPORT */	
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;
 #if defined (__CIRCLE__) || defined(__PICO2__)	
 		usDelay(amount); 
 		return;
-#endif		
+#else
 		for (count = 0; count < amount; ++count)
 		{
 			unsigned before;
@@ -700,6 +735,7 @@ public:
 				after = read32(ARM_SYSTIMER_CLO);
 			} while (after == before);
 		}
+#endif		
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -779,11 +815,13 @@ public:
 		splitIECLines = value;
 		if (splitIECLines)
 		{
+#if !defined(__PICO2__)			
 			PIGPIO_MASK_IN_ATN = 1 << PIGPIO_IN_ATN;
 			PIGPIO_MASK_IN_DATA = 1 << PIGPIO_IN_DATA;
 			PIGPIO_MASK_IN_CLOCK = 1 << PIGPIO_IN_CLOCK;
 			PIGPIO_MASK_IN_SRQ = 1 << PIGPIO_IN_SRQ;
 			PIGPIO_MASK_IN_RESET = 1 << PIGPIO_IN_RESET;
+#endif			
 		}
 	}
 
@@ -856,6 +894,8 @@ private:
 	static u32 PIGPIO_MASK_IN_CLOCK;
 	static u32 PIGPIO_MASK_IN_SRQ;
 	static u32 PIGPIO_MASK_IN_RESET;
+	static u32 PIGPIO_MASK_OUT_LED;
+	static u32 PIGPIO_MASK_OUT_SOUND;
 
 	static u32 emulationModeCheckButtonIndex;
 

@@ -2,12 +2,15 @@
 #define DEFS_H
 
 #include "debug.h"
-#define PI1581SUPPORT 1
 // Indicates a Pi with the 40 pin GPIO connector
 // so that additional functionality (e.g. test pins) can be enabled
-#if defined(RPIZERO) || defined(RPI1BPLUS) || defined(RPI2) || defined(RPI3)
+#if defined(RPIZERO) || defined(RPI1BPLUS) || defined(RPI2) || defined(RPI3) || defined(__PICO2__)
 #define HAS_40PINS
 #endif
+
+#ifndef __PICO2__   /* for now disable, otherwise too big for RAM */
+#define PI1581SUPPORT 1
+#else
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
@@ -71,3 +74,4 @@
 #endif
 
 #endif
+#endif /* __PICO2__ */
