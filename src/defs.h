@@ -8,10 +8,10 @@
 #define HAS_40PINS
 #endif
 
-#ifndef __PICO2__   /* for now disable, otherwise too big for RAM */
+#if !defined(__PICO2__)
 #define PI1581SUPPORT 1
-#else
 
+#define __not_in_flash_func(a) a
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
 

@@ -18,7 +18,7 @@ you should now be able to build and run.
 
 ## Prerequisites
 Your SDCard has to be formated with FAT32 and must be populated with the usual Pi1541 files:
-- a valid options.txt, active `headLess = 1`, there's monitor display support yet
+- a valid options.txt, add `headLess = 1`, there's no monitor display support yet
 - matching floppy ROMs
 - a directory 1541 populated with some .d64 images, most noticable one FB.d64
 - maybe more
@@ -54,6 +54,7 @@ It's now unsolved how to overcome the memory limit when a diskimage is being rea
 The code is planned to remain compatible to all versions supported by Pi1541.
 
 ## TODO:
+- _rethink memory concept for diskimages - this is currently a blocker_
 - *implement I/O -> validate that pico 2 is fast enough for Pi1541*
 - fix `ff.h` and `ffconfig.h` for legacy build
 - activate UI: buttons & LCD display
