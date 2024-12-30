@@ -7,5 +7,5 @@
 *.swp
 *.d
 *~
-
+pico1541/lib
 src/version.h
