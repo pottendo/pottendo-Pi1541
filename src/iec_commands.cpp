@@ -25,9 +25,6 @@
 
 #include "iec_commands.h"
 #include "iec_bus.h"
-#if !defined (__CIRCLE__)
-#include "ff.h"
-#endif
 #include "DiskImage.h"
 #include "Petscii.h"
 #include "FileBrowser.h"
@@ -220,6 +217,9 @@ IEC_Commands::IEC_Commands()
 	deviceID = 8;
 	usingVIC20 = false;
 	autoBootFB128 = false;
+	for (int i = 0; i < 16; i++)
+		channels[i].open = false;
+
 	Reset();
 	starFileName = 0;
 	C128BootSectorName = 0;
@@ -231,6 +231,7 @@ IEC_Commands::IEC_Commands()
 
 void IEC_Commands::Reset(void)
 {
+printf("%s: - 1\n", __FUNCTION__);
 	receivedCommand = false;
 	receivedEOI = false;
 	secondaryAddress = 0;
@@ -238,8 +239,11 @@ void IEC_Commands::Reset(void)
 	atnSequence = ATN_SEQUENCE_IDLE;
 	deviceRole = DEVICE_ROLE_PASSIVE;
 	commandCode = 0;
+printf("%s: - 2\n", __FUNCTION__);
 	Error(ERROR_00_OK);
+printf("%s: - 3\n", __FUNCTION__);
 	CloseAllChannels();
+printf("%s: - 4\n", __FUNCTION__);
 }
 
 void IEC_Commands::CloseAllChannels()

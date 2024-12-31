@@ -9,6 +9,10 @@
 
 #include "pico2.h"
 
+#elif defined(ESP32)
+
+#include "esp32.h"
+
 #else
 
 #include <stddef.h>

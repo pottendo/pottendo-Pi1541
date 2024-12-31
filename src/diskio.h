@@ -6,7 +6,11 @@
 #define _DISKIO_DEFINED
 
 #include "integer.h"
+#if !defined(ESP32)
 #include "emmc.h"
+#else
+#include "esp32.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,9 +33,10 @@ typedef enum {
 /*---------------------------------------*/
 /* Prototypes for disk control functions */
 
-
+#if !defined(ESP32)
 void disk_setEMM(CEMMCDevice* pEMMCDevice);
 void disk_setUSB(unsigned deviceIndex);
+#endif
 
 DSTATUS disk_initialize (BYTE pdrv);
 DSTATUS disk_status (BYTE pdrv);

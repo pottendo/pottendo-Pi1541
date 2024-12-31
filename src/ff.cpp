@@ -17,8 +17,8 @@
 / by use of this software.
 /----------------------------------------------------------------------------*/
 
-
-#include "ff.h"			/* Declarations of FatFs API */
+#include "types.h"
+#include "ff-local.h"			/* Declarations of FatFs API */
 #include "diskio.h"		/* Declarations of device I/O functions */
 
 

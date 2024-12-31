@@ -8,7 +8,7 @@
 #define HAS_40PINS
 #endif
 
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 #define PI1581SUPPORT 1
 
 #define __not_in_flash_func(a) a

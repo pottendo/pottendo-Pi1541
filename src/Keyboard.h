@@ -23,6 +23,8 @@
 #if defined(__CIRCLE__)
 #include "circle-types.h"
 #elif defined(__PICO2__)
+
+#elif defined(ESP32)
 #else
 extern "C"
 {

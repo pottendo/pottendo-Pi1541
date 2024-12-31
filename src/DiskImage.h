@@ -20,7 +20,12 @@
 #define DISKIMAGE_H
 #include "types.h"
 #if !defined (__CIRCLE__)
+#if defined(__PICO2__) || defined(ESP32)
 #include "ff.h"
+#else
+#include "types.h"
+#include "ff-local.h"
+#endif
 #endif
 
 #define READBUFFER_SIZE 1024 * 512 * 2 // Now need over 800K for D81s
@@ -147,6 +152,7 @@ public:
 
 	inline bool IsD81() const { return diskType == D81; }
 	inline bool IsD71() const { return diskType == D71; }
+#if defined(PI1581SUPPORT)	
 	inline unsigned char GetD81Byte(unsigned track, unsigned headIndex, unsigned headPos) const { return tracksD81[track][headIndex][headPos]; }
 	inline void SetD81Byte(unsigned track, unsigned headIndex, unsigned headPos, unsigned char data)
 	{
@@ -171,6 +177,7 @@ public:
 			trackD81SyncBits[track][headIndex][headPos >> 3] &= ~(1 << (headPos & 7));
 
 	}
+#endif /* PI1581SUPPORT */
 
 	static DiskType GetDiskImageTypeViaExtention(const char* diskImageName);
 	static bool IsDiskImageExtention(const char* diskImageName);
@@ -184,7 +191,7 @@ public:
 	unsigned LastTrackUsed();
 
 	bool IsDirty() const { return dirty; }
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 	static unsigned char readBuffer[READBUFFER_SIZE];
 #else
 	static unsigned char *readBuffer;
@@ -194,11 +201,13 @@ public:
 	union
 	{
 #if defined(EXPERIMENTALZERO)
-		unsigned char tracks[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
+		unsigned char *tracks;
 #else
 		unsigned char tracks[HALF_TRACK_COUNT][MAX_TRACK_LENGTH];
 #endif
+#if defined(PI1581SUPPORT)
 		unsigned char tracksD81[HALF_TRACK_COUNT][2][MAX_TRACK_LENGTH];
+#endif		
 	};
 
 	bool WriteD64(char* name = 0);
@@ -266,13 +275,15 @@ private:
 	union
 	{
 		unsigned char trackDensity[HALF_TRACK_COUNT];
+#if defined(PI1581SUPPORT)		
 		unsigned char trackD81SyncBits[HALF_TRACK_COUNT][2][MAX_TRACK_LENGTH >> 3];
+#endif		
 	};
 	bool trackDirty[HALF_TRACK_COUNT];
 	bool trackUsed[HALF_TRACK_COUNT];
 
 	unsigned short crc;
-	static unsigned short CRC1021[256];
+	static const unsigned short CRC1021[256];
 };
 
 #endif

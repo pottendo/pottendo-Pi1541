@@ -6,9 +6,12 @@
 /* This is an example of glue functions to attach various exsisting      */
 /* storage control modules to the FatFs module with a defined API.       */
 /*-----------------------------------------------------------------------*/
-
 #include "diskio.h"		/* FatFs lower layer API */
 #include "debug.h"
+
+#define SD_BLOCK_SIZE		512
+
+#if !defined(ESP32)
 extern "C"
 {
 #include <uspi.h>
@@ -23,7 +26,6 @@ extern "C"
 static CEMMCDevice* pEMMC;
 static int USBDeviceIndex = -1;
 
-#define SD_BLOCK_SIZE		512
 
 void disk_setEMM(CEMMCDevice* pEMMCDevice)
 {
@@ -34,6 +36,7 @@ void disk_setUSB(unsigned deviceIndex)
 {
 	USBDeviceIndex = (int)deviceIndex;
 }
+
 
 int sd_card_init(struct block_device **dev)
 {
@@ -50,6 +53,57 @@ size_t sd_write(uint8_t *buf, size_t buf_size, uint32_t block_no)
 {
 	return pEMMC->DoWrite(buf, buf_size, block_no);
 }
+
+#else
+#include <SD.h>
+
+int sd_card_init(struct block_device **dev)
+{
+    if(!SD.begin()){
+        Serial.println("Card Mount Failed");
+        return -1;
+    }
+    uint8_t cardType = SD.cardType();
+
+    if(cardType == CARD_NONE){
+        Serial.println("No SD card attached");
+        return-1;
+    }
+
+    Serial.print("SD Card Type: ");
+    if(cardType == CARD_MMC){
+        Serial.println("MMC");
+    } else if(cardType == CARD_SD){
+        Serial.println("SDSC");
+    } else if(cardType == CARD_SDHC){
+        Serial.println("SDHC");
+    } else {
+        Serial.println("UNKNOWN");
+    }
+
+    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+    Serial.printf("SD Card Size: %lluMB\n", cardSize);
+
+    //listDir(SD, "/", 0);
+
+
+	return 0;
+}
+
+size_t sd_read(uint8_t *buf, size_t buf_size, uint32_t block_no)
+{
+//	g_pLogger->Write("", LogNotice, "sd_read %d", block_no);
+	not_implemented(__FUNCTION__);
+	return 0;
+}
+
+size_t sd_write(uint8_t *buf, size_t buf_size, uint32_t block_no)
+{
+	not_implemented(__FUNCTION__);
+	return 0;
+}
+
+#endif /* ESP32 */
 
 
 /*-----------------------------------------------------------------------*/
@@ -100,6 +154,7 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
+#if !defined(ESP32)	
 	//DSTATUS stat;
 	int result;
 
@@ -126,6 +181,7 @@ DSTATUS disk_initialize (
 	////	return stat;
 	}
 	//return STA_NOINIT;
+#endif
 	return 0;
 }
 
@@ -155,6 +211,7 @@ DRESULT disk_read (
 		}
 		return RES_OK;
 	}
+#if !defined(ESP32)	
 	else
 	{
 		unsigned bytes = (unsigned)USPiMassStorageDeviceRead((unsigned long long )(sector << UMSD_BLOCK_SHIFT), buff, count << UMSD_BLOCK_SHIFT, pdrv - 1);
@@ -164,6 +221,7 @@ DRESULT disk_read (
 
 		return RES_OK;
 	}
+#endif	
 
 	return RES_PARERR;
 }
@@ -194,6 +252,7 @@ DRESULT disk_write (
 		}
 		return RES_OK;
 	}
+#if !defined(ESP32)	
 	else
 	{
 		unsigned bytes = (unsigned)USPiMassStorageDeviceWrite(sector << UMSD_BLOCK_SHIFT, buff, count << UMSD_BLOCK_SHIFT, pdrv - 1);
@@ -204,7 +263,7 @@ DRESULT disk_write (
 
 		return RES_OK;
 	}
-
+#endif
 	return RES_PARERR;
 }
 

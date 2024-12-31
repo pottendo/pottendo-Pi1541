@@ -33,7 +33,6 @@ set(PI1541SRC
     ${PI1541SRCDIR}/iec_commands.cpp
     ${PI1541SRCDIR}/iec_bus.cpp
     ${PI1541SRCDIR}/Drive.cpp
-    ${PI1541SRCDIR}/wd177x.cpp
     ${PI1541SRCDIR}/options.cpp
     ${PI1541SRCDIR}/m6522.cpp
     ${PI1541SRCDIR}/m6502.cpp

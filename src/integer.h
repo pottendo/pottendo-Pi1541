@@ -13,7 +13,7 @@ typedef unsigned __int64 QWORD;
 
 #else			/* Embedded platform */
 
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 /* These types MUST be 16-bit or 32-bit */
 typedef int				INT;
 typedef unsigned int	UINT;

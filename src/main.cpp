@@ -18,7 +18,6 @@
 
 #include <string.h>
 #include <strings.h>
-#include "pico2.h"
 #if defined(__CIRCLE__) 
 #include "circle-kernel.h"
 #if RASPPI <= 3
@@ -28,6 +27,10 @@
 #endif
 #elif defined(__PICO2__)
 // XXX PICO specific includes here
+#include "pico2.h"
+#elif defined(ESP32)
+// XXX ESP32 specifics
+#include "esp32.h"
 #else
 #include "defs.h"
 #include "Timer.h"
@@ -42,6 +45,7 @@ extern "C"
 #elif defined(__PICO2__)
 // XXX some pico2 specifics here
 #include "pico/stdlib.h"
+#elif defined(ESP32)
 #else
 #include "rpi-aux.h"
 #include "rpi-i2c.h"
@@ -133,7 +137,7 @@ Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
 #endif
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
 #else
 bool usb_mass_update = false;
@@ -145,7 +149,7 @@ ScreenLCD* screenLCD = 0;
 Options options;
 const char* fileBrowserSelectedName;
 u8 deviceID = 8;
-IEC_Commands m_IEC_Commands;
+IEC_Commands *_m_IEC_Commands;	/* need dynamic allocation for ESPs with PSRAM */
 InputMappings* inputMappings;
 #if not defined(EXPERIMENTALZERO)
 Keyboard* keyboard;
@@ -170,7 +174,7 @@ const char* termainalTextNormal = "\E[0m";
 int headSoundFreq;
 int headSoundCounterDuration;
 
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32) 
 // Hooks required for USPi library
 extern "C"
 {
@@ -274,7 +278,7 @@ extern "C"
 #endif
 
 // Hooks for FatFs
-#if !defined (__CIRCLE__) && !defined(__PICO2__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 DWORD get_fattime() { return 0; }	// If you have hardware RTC return a correct value here. THis can then be reflected in file modification times/dates.
 #endif
 
@@ -287,7 +291,7 @@ extern void write6502_1581(u16 address, const u8 value);
 
 void InitialiseHardware()
 {
-#if !defined (__CIRCLE__) && !defined(__PICP2__)
+#if !defined (__CIRCLE__)
 #if defined(RPI3)
 	RPI_GpioVirtInit();
 	RPI_TouchInit();
@@ -308,10 +312,10 @@ void InitialiseHardware()
 		screen = new ScreenHeadLess();
 		DEBUG_LOG("running headless\r\n");
 	}
-#if !defined(__PICO2__)	
+#if !defined(__PICO2__)	&& !defined(ESP32)
 	screen->Open(screenWidth, screenHeight, 16);
 #endif	
-#if !defined (__CIRCLE__) && !defined (__PICO2__)
+#if !defined (__CIRCLE__) && !defined (__PICO2__) && !defined(ESP32)
 	RPI_PropertyInit();
 	RPI_PropertyAddTag(TAG_GET_MAX_CLOCK_RATE, ARM_CLK_ID);
 	RPI_PropertyProcess();
@@ -336,7 +340,7 @@ void InitialiseHardware()
 #endif		/* __CIRCLE__ */
 }
 
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 void InitialiseLCD()
 {
 	FILINFO filLcdIcon;
@@ -724,7 +728,7 @@ void UpdateScreen()
 #endif
 }
 
-#endif /* !defined (__PICO2__)*/
+#endif /* !defined(__PICO2__) && !defined(ESP32) */
 
 static bool Snoop(u8 a)
 {
@@ -769,7 +773,9 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
+printf("%s: - 1\n", __FUNCTION__);
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
+printf("%s: - 2\n", __FUNCTION__);
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -832,7 +838,7 @@ static void PlaySoundDMA()
 void GlobalSetDeviceID(u8 id)
 {
 	deviceID = id;
-	m_IEC_Commands.SetDeviceId(id);
+	_m_IEC_Commands->SetDeviceId(id);
 	pi1541.SetDeviceID(id);
 #if defined(PI1581SUPPORT)
 	pi1581.SetDeviceID(id);
@@ -941,6 +947,8 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 	ctBefore = Kernel.get_clock_ticks();
 #elif defined(__PICO2__)
 	ctBefore = time_us_32();
+#elif defined(ESP32)
+#warning "some get_tick() needed XXXXXXXXXXXXXX"
 #else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1047,6 +1055,8 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			ctAfter = Kernel.get_clock_ticks();
 #elif defined(__PICO2__)
 			ctAfter = time_us_32();
+#elif defined(ESP32)			
+#warning "some get_tick() needed XXXXXXXXXXXXXX"
 #else
 			ctAfter = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1340,34 +1350,44 @@ void __not_in_flash_func(emulator)(void)
 #endif
 	FileBrowser* fileBrowser;
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
+printf("%s: - 1\n", __FUNCTION__);
 
 	roms.lastManualSelectedROMIndex = 0;
 
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
+printf("%s: - 2\n", __FUNCTION__);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
+printf("%s: - 3\n", __FUNCTION__);
 	pi1541.Initialise();
+printf("%s: - 4\n", __FUNCTION__);
 
-	m_IEC_Commands.SetAutoBootFB128(options.AutoBootFB128());
-	m_IEC_Commands.Set128BootSectorName(options.Get128BootSectorName());
-	m_IEC_Commands.SetLowercaseBrowseModeFilenames(options.LowercaseBrowseModeFilenames());
-	m_IEC_Commands.SetNewDiskType(options.GetNewDiskType());
+	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
+	_m_IEC_Commands->Set128BootSectorName(options.Get128BootSectorName());
+	_m_IEC_Commands->SetLowercaseBrowseModeFilenames(options.LowercaseBrowseModeFilenames());
+	_m_IEC_Commands->SetNewDiskType(options.GetNewDiskType());
 
 	emulating = IEC_COMMANDS;
 	while (1)
 	{
+printf("%s: - 5\n", __FUNCTION__);
 		if (emulating == IEC_COMMANDS)
 		{
+printf("%s: - 6\n", __FUNCTION__);
 			IEC_Bus::VIA = 0;
 			IEC_Bus::CIA = 0;
 			IEC_Bus::port = 0;
+printf("%s: - 6aa\n", __FUNCTION__);
 
-			IEC_Bus::Reset();
+			IEC_Bus::Reset(); // XXXXXXX FIXME!
+printf("%s: - 6a\n", __FUNCTION__);
 
 			IEC_Bus::LetSRQBePulledHigh();
 #if not defined(EXPERIMENTALZERO)
 			core0RefreshingScreen.Acquire();
 #endif
+printf("%s: - 7\n", __FUNCTION__);
 			IEC_Bus::WaitMicroSeconds(100);
+printf("%s: - 8\n", __FUNCTION__);
 
 			roms.ResetCurrentROMIndex();
 			fileBrowser->ClearScreen();
@@ -1393,15 +1413,16 @@ void __not_in_flash_func(emulator)(void)
 				usb_mass_update = false;
 			}
 #endif
+printf("%s: - 9\n", __FUNCTION__);
 			if (!options.GetDisableSD2IECCommands())
 			{
-				m_IEC_Commands.SimulateIECBegin();
+				_m_IEC_Commands->SimulateIECBegin();
 
 				CheckAutoMountImage(exitReason, fileBrowser);
 
 				while (emulating == IEC_COMMANDS)
 				{
-					IEC_Commands::UpdateAction updateAction = m_IEC_Commands.SimulateIECUpdate();
+					IEC_Commands::UpdateAction updateAction = _m_IEC_Commands->SimulateIECUpdate();
 
 					switch (updateAction)
 					{
@@ -1409,7 +1430,7 @@ void __not_in_flash_func(emulator)(void)
 							if (options.GetOnResetChangeToStartingFolder())
 								fileBrowser->DisplayRoot();
 							IEC_Bus::Reset();
-							m_IEC_Commands.SimulateIECBegin();
+							_m_IEC_Commands->SimulateIECBegin();
 							CheckAutoMountImage(EXIT_UNKNOWN, fileBrowser);
 							break;
 						case IEC_Commands::NONE:
@@ -1421,7 +1442,7 @@ void __not_in_flash_func(emulator)(void)
 						case IEC_Commands::IMAGE_SELECTED:
 							// Check selections made via IEC commands (like fb64)
 
-							fileBrowserSelectedName = m_IEC_Commands.GetNameOfImageSelected();
+							fileBrowserSelectedName = _m_IEC_Commands->GetNameOfImageSelected();
 
 							if (DiskImage::IsLSTExtention(fileBrowserSelectedName))
 							{
@@ -1431,13 +1452,13 @@ void __not_in_flash_func(emulator)(void)
 								}
 								else
 								{
-									m_IEC_Commands.Reset();
+									_m_IEC_Commands->Reset();
 									fileBrowserSelectedName = 0;
 								}
 							}
 							else if (DiskImage::IsDiskImageExtention(fileBrowserSelectedName))
 							{
-								const FILINFO* filInfoSelected = m_IEC_Commands.GetImageSelected();
+								const FILINFO* filInfoSelected = _m_IEC_Commands->GetImageSelected();
 								DEBUG_LOG("IEC mounting %s\r\n", filInfoSelected->fname);
 								bool readOnly = (filInfoSelected->fattrib & AM_RDO) != 0;
 
@@ -1452,7 +1473,7 @@ void __not_in_flash_func(emulator)(void)
 							}
 
 							if (fileBrowserSelectedName == 0)
-								m_IEC_Commands.Reset();
+								_m_IEC_Commands->Reset();
 
 							selectedViaIECCommands = true;
 							break;
@@ -1469,7 +1490,7 @@ void __not_in_flash_func(emulator)(void)
 							fileBrowser->FolderChanged();
 							break;
 						case IEC_Commands::DEVICEID_CHANGED:
-							GlobalSetDeviceID( m_IEC_Commands.GetDeviceId() );
+							GlobalSetDeviceID( _m_IEC_Commands->GetDeviceId() );
 							fileBrowser->ShowDeviceAndROM();
 							break;
 						case IEC_Commands::DEVICE_SWITCHED:
@@ -1484,6 +1505,7 @@ void __not_in_flash_func(emulator)(void)
 			}
 			else
 			{
+printf("%s: - 10\n", __FUNCTION__);
 				while (emulating == IEC_COMMANDS)
 				{
 					fileBrowser->Update();
@@ -1607,6 +1629,7 @@ static void LoadOptions()
 	FRESULT res;
 
 	res = f_open(&fp, "options.txt", FA_READ);
+printf("%s: 2 - res = %d\n", __FUNCTION__, res);
 	if (res == FR_OK)
 	{
 		UINT bytesRead;
@@ -1826,7 +1849,7 @@ static void CheckOptions()
 
 void Reboot_Pi()
 {
-#if !defined(__PICO2__)	
+#if !defined(__PICO2__)	&& !defined(ESP32)
 	if (screenLCD)
 		screenLCD->ClearInit(0);
 #endif		
@@ -1976,39 +1999,86 @@ void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour,
 
 #endif
 }
+void list_directory(const char *path) {
+    FRESULT fr;              // Result code
+    FILINFO fno;             // File information structure
+    DIR dir;                 // Directory object
 
+    // Open the directory
+    fr = f_opendir(&dir, path);
+    if (fr != FR_OK) {
+        printf("Failed to open directory: %d\n", fr);
+        return;
+    }
+
+    printf("Contents of directory '%s':\n", path);
+
+    while (1) {
+        // Read a directory item
+        fr = f_readdir(&dir, &fno);
+        if (fr != FR_OK || fno.fname[0] == 0) break; // Break on error or end of dir
+
+        if (fno.fattrib & AM_DIR) {
+            printf("[DIR]  %s\n", fno.fname);
+        } else {
+            printf("[FILE] %s\t(%lu bytes)\n", fno.fname, (unsigned long)fno.fsize);
+        }
+    }
+
+    // Close the directory
+    f_closedir(&dir);
+    printf("%s: done\n", __FUNCTION__);
+}
 extern "C"
 {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 	{
 		FRESULT res;
 		FATFS fileSystemSD;
+#if !defined(EXPERIMENTALZERO)		
 		FATFS fileSystemUSB[16];
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#endif		
+
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		m_EMMC.Initialize();
 #if not defined(EXPERIMENTALZERO)
 		RPI_AuxMiniUartInit(115200, 8);
 #endif
 		disk_setEMM(&m_EMMC);
 		f_mount(&fileSystemSD, "SD:", 1);
-#endif		
+#endif
+#if defined(ESP32)
+		if (esp32_initSD() != 0)
+			return;
+#endif
+printf("%s: - 3\n", __FUNCTION__);
+	_m_IEC_Commands = new IEC_Commands;
+printf("%s: - 3a\n", __FUNCTION__);
+
 #if defined(__PICO2__)
-		f_mount(&fileSystemSD, "SD:", 1);
+		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
+    	if (FR_OK != fr) {
+        	printf("f_mount error: (%d)\n", fr);
+			return;
+    	}		
 #endif
 		LoadOptions();
+printf("%s: - 4\n", __FUNCTION__);
 
 		InitialiseHardware();
-#if !defined (__CIRCLE__) && !defined(__PICO2__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		enable_MMU_and_IDCaches();
 		_enable_unaligned_access();
 #endif
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	//XXXPICO?
 #endif		
-
+printf("%s: - 4a\n", __FUNCTION__);
 		DisplayLogo();
+printf("%s: - 4b\n", __FUNCTION__);
 
 		InitialiseLCD();
+printf("%s: - 4c\n", __FUNCTION__);
 #if not defined(EXPERIMENTALZERO)
 		int y_pos = 184;
 		snprintf(tempBuffer, tempBufferSize, "Copyright(C) 2018 Stephen White");
@@ -2034,7 +2104,7 @@ extern "C"
 		//if (!options.QuickBoot())
 			//IEC_Bus::WaitMicroSeconds(3 * 1000000);
 
-#if !defined (__CIRCLE__) && !defined(__PICO2__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		InterruptSystemInitialize();
 #endif
 #if not defined(EXPERIMENTALZERO)
@@ -2064,8 +2134,10 @@ extern "C"
 		inputMappings = new InputMappings();
 		//USPiMouseRegisterStatusHandler(MouseHandler);
 
+printf("%s: - 4d\n", __FUNCTION__);
 
 		CheckOptions();
+printf("%s: - 4e\n", __FUNCTION__);
 
 		IEC_Bus::SetSplitIECLines(options.SplitIECLines());
 		IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());
@@ -2075,6 +2147,7 @@ extern "C"
 		IEC_Bus::SetRotaryEncoderEnable(options.RotaryEncoderEnable());
 		//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 		IEC_Bus::SetRotaryEncoderInvert(options.RotaryEncoderInvert());
+printf("%s: - 4f\n", __FUNCTION__);
 #if not defined(EXPERIMENTALZERO)
 		if (!options.SoundOnGPIO())
 		{
@@ -2103,15 +2176,20 @@ extern "C"
 		}
 #endif
 		f_chdir("/1541");
-
-		m_IEC_Commands.SetStarFileName(options.GetStarFileName());
+printf("%s: fn = %s\n", __FUNCTION__, options.GetStarFileName() );
+		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
+printf("%s: - 5aa\n", __FUNCTION__);
 
 		GlobalSetDeviceID(deviceID);
+printf("%s: - 5a\n", __FUNCTION__);
 
 		pi1541.drive.SetVIA(&pi1541.VIA[1]);
+printf("%s: - 5b\n", __FUNCTION__);
 		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
+printf("%s: - 5c\n", __FUNCTION__);
 		IEC_Bus::Initialise();
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+printf("%s: - 6\n", __FUNCTION__);
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		if (screenLCD)
 			screenLCD->ClearInit(0);
 #ifdef HAS_MULTICORE
@@ -2136,9 +2214,21 @@ extern "C"
 		emulator();	// If only one core the emulator runs on it now.
 #endif
 #endif
-#if defined(__PICO2__)
+#if defined(__PICO2__) || defined(ESP32)
 		emulator();
 #endif
 	}
 }
 
+#if defined (ESP32)
+void esp32_setup(void);
+void esp32_loop(void);
+void setup(void)
+{
+	esp32_setup();
+}
+void loop(void)
+{
+	esp32_loop();
+}
+#endif

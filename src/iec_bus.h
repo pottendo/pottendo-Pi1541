@@ -97,6 +97,20 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON5 = 9,
 	PIGPIO_OUT_SOUND = 14,
 	PIGPIO_OUT_LED   = 15,
+#elif defined(ESP32)
+	PIGPIO_ATN = GPIO_NUM_3,
+	PIGPIO_CLOCK = GPIO_NUM_15,
+	PIGPIO_DATA = GPIO_NUM_4,
+	PIGPIO_RESET = GPIO_NUM_19,
+	PIGPIO_SRQ = 14,
+	PIGPIO_IN_BUTTON1 = 5,
+	PIGPIO_IN_BUTTON2 = 6,
+	PIGPIO_IN_BUTTON3 = 7,
+	PIGPIO_IN_BUTTON4 = 8,
+	PIGPIO_IN_BUTTON5 = 9,
+	PIGPIO_OUT_SOUND = GPIO_NUM_26,
+	PIGPIO_OUT_LED   = GPIO_NUM_33,
+
 #else
 	// Original Non-split lines	
 	PIGPIO_ATN = 2,			// 3
@@ -137,7 +151,7 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON1 = 27	// 13 Common
 #endif
 };
-#else
+#else/* HAS4-PINS */
 //Added GPIO bindings for Raspberry Pi 1B Rev 1/2 (only 26 I/O ports)
 enum PIGPIO
 {
@@ -190,9 +204,7 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON1 = 27	// 13 Common
 #endif
 };
-#endif
-
-
+#endif /* HAS40PINS */
 
 enum PIGPIOMasks
 {
@@ -351,8 +363,8 @@ public:
 	{
 		volatile int index; // Force a real delay in the loop below.
 		// Clear all outputs to 0
-#if !defined(__PICO2__)		
-		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	// XXX PICO2?
+#if !defined(__PICO2__)	&& !defined(ESP)
+		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
 #endif		
 		//CGPIOPin::WriteAll(0xffffffff, 0xffffffff);
 		if (!splitIECLines)
@@ -360,7 +372,7 @@ public:
 			// This means that when any pin is turn to output it will output a 0 and pull lines low (ie an activation state on the IEC bus)
 			// Note: on the IEC bus you never output a 1 you simply tri state and it will be pulled up to a 1 (ie inactive state on the IEC bus) if no one else is pulling it low.
 
-#if !defined(__PICO2__)
+#if !defined(__PICO2__)	&& !defined(ESP)
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
 #endif
@@ -382,7 +394,7 @@ public:
 				Kernel.log("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
 			}
 #endif
-#if defined (__PICO2__)
+#if defined(__PICO2__)
 			gpio_init_mask(PIGPIO_MASK_IN_ATN | PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK | PIGPIO_MASK_IN_SRQ | PIGPIO_MASK_IN_RESET);
 			gpio_init(PIGPIO_RESET);
     		gpio_set_dir(PIGPIO_RESET, GPIO_IN);
@@ -399,15 +411,32 @@ public:
 				gpio_init(ButtonPins[i]);
 				gpio_set_dir(ButtonPins[i], GPIO_IN);
 				gpio_pull_up(ButtonPins[i]);
-				printf("%s: assigning button %d to pin %d", __FUNCTION__, i, ButtonPins[i]);
+				printf("%s: assigning button %d to pin %d\n", __FUNCTION__, i, ButtonPins[i]);
 			}
 			gpio_init(PIGPIO_OUT_LED);
 			gpio_set_dir(PIGPIO_OUT_LED, GPIO_OUT);
 			gpio_init(PIGPIO_OUT_SOUND);
 			gpio_set_dir(PIGPIO_OUT_SOUND, GPIO_OUT);
-#endif
-
-#if !defined (__PICO2__)
+#endif/* __PICO2__ */
+#if defined(ESP32)
+			gpio_reset_pin((gpio_num_t)PIGPIO_ATN);
+			gpio_set_direction((gpio_num_t)PIGPIO_ATN, GPIO_MODE_INPUT);
+			gpio_set_pull_mode((gpio_num_t)PIGPIO_ATN, GPIO_PULLDOWN_ONLY);
+			gpio_reset_pin((gpio_num_t)PIGPIO_CLOCK);
+			gpio_set_direction((gpio_num_t)PIGPIO_CLOCK, GPIO_MODE_INPUT);
+			gpio_set_pull_mode((gpio_num_t)PIGPIO_CLOCK, GPIO_FLOATING);
+			gpio_reset_pin((gpio_num_t)PIGPIO_DATA);
+			gpio_set_direction((gpio_num_t)PIGPIO_DATA, GPIO_MODE_INPUT);
+			gpio_set_pull_mode((gpio_num_t)PIGPIO_DATA, GPIO_FLOATING);
+			gpio_reset_pin((gpio_num_t)PIGPIO_RESET);
+			gpio_set_direction((gpio_num_t)PIGPIO_RESET, GPIO_MODE_INPUT);
+			gpio_set_pull_mode((gpio_num_t)PIGPIO_RESET, GPIO_PULLDOWN_ONLY);
+			gpio_reset_pin((gpio_num_t)PIGPIO_OUT_LED);
+			gpio_set_direction((gpio_num_t)PIGPIO_OUT_LED, GPIO_MODE_OUTPUT);
+			gpio_reset_pin((gpio_num_t)PIGPIO_OUT_SOUND);
+			gpio_set_direction((gpio_num_t)PIGPIO_OUT_SOUND, GPIO_MODE_OUTPUT);
+#endif/* ESP32 */
+#if !defined (__PICO2__) && !defined(ESP)
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SOUND, FS_OUTPUT);
@@ -439,6 +468,8 @@ public:
 			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
 #elif defined(__PICO2__)
 	//#warning "PICO2 TODO SPLIT IEC lines init XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+			not_implemented(__FUNCTION__);
+#elif defined(ESP32)
 			not_implemented(__FUNCTION__);
 #else
 			RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_IN_BUTTON4, FS_INPUT);
@@ -486,7 +517,7 @@ public:
 			inputRepeat[index] = 0;
 			inputRepeatPrev[index] = 0;
 		}
-#if !defined(__CIRCLE__) && !defined(__PICO2__)
+#if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		// Enable the internal pullups for the input button pins using the method described in BCM2835-ARM-Peripherals manual.
 		RPI_GpioBase->GPPUD = 2;
 		for (index = 0; index < 150; ++index)
@@ -499,7 +530,7 @@ public:
 		RPI_GpioBase->GPPUD = 0;
 		RPI_GpioBase->GPPUDCLK0 = 0;
 #endif
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 		if (IEC_Bus::rotaryEncoderEnable == true)
 		{
@@ -616,14 +647,17 @@ public:
 		unsigned gplev0;
 		do
 		{
-#if !defined(__PICO2__)			
+#if defined(__CIRCLE__)			
 #if !defined (CIRCLE_GPIO)
 			gplev0 = read32(ARM_GPIO_GPLEV0);
-#else			
+#else
 			gplev0 = CGPIOPin::ReadAll();
 #endif			
-#else
+#elif defined(__PICO2__)
 			gplev0 = gpio_get_all();
+#elif defined(ESP32)
+			gplev0 = (gpio_get_level((gpio_num_t)PIGPIO_RESET) << PIGPIO_RESET);
+#else
 #endif	
 			Resetting = !ignoreReset && 
 						((gplev0 & PIGPIO_MASK_IN_RESET) == 
@@ -720,7 +754,7 @@ public:
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;
-#if defined (__CIRCLE__) || defined(__PICO2__)	
+#if defined (__CIRCLE__) || defined(__PICO2__) || defined(ESP32)	
 		usDelay(amount); 
 		return;
 #else
@@ -815,7 +849,7 @@ public:
 		splitIECLines = value;
 		if (splitIECLines)
 		{
-#if !defined(__PICO2__)			
+#if !defined(__PICO2__)	&& !defined(ESP32)
 			PIGPIO_MASK_IN_ATN = 1 << PIGPIO_IN_ATN;
 			PIGPIO_MASK_IN_DATA = 1 << PIGPIO_IN_DATA;
 			PIGPIO_MASK_IN_CLOCK = 1 << PIGPIO_IN_CLOCK;

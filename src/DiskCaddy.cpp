@@ -20,8 +20,12 @@
 #include "debug.h"
 #include <string.h>
 #include <stdlib.h>
-#if !defined (__CIRCLE__)
+#if !defined(__CIRCLE__)
+#if defined(__PICO2__) || defined(ESP32)
 #include "ff.h"
+#else
+#include "ff-local.h"
+#endif
 extern "C"
 {
 #include "rpi-gpio.h"	// For SetACTLed
@@ -183,9 +187,11 @@ bool DiskCaddy::Insert(const FILINFO* fileInfo, bool readOnly)
 			case DiskImage::NBZ:
 				success = InsertNBZ(fileInfo, (unsigned char*)DiskImage::readBuffer, bytesRead, readOnly);
 				break;
+#if defined(PI1581SUPPORT)				
 			case DiskImage::D81:
 				success = InsertD81(fileInfo, (unsigned char*)DiskImage::readBuffer, bytesRead, readOnly);
 				break;
+#endif				
 			case DiskImage::T64:
 				success = InsertT64(fileInfo, (unsigned char*)DiskImage::readBuffer, bytesRead, readOnly);
 				break;
@@ -376,7 +382,7 @@ void DiskCaddy::ShowSelectedImage(u32 index)
 	}
 #endif
 
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 	if (screenLCD)
 	{
 		unsigned numberOfImages = GetNumberOfImages();

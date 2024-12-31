@@ -20,8 +20,13 @@
 #define IEC_COMMANDS_H
 
 #include "iec_bus.h"
-#if !defined (__CIRCLE__) && !defined(__PICO2__)
+#if !defined(__CIRCLE__)
+#if defined(__PICO2__) || defined(ESP32)
 #include "ff.h"
+#else
+#include "types.h"
+#include "ff-local.h"
+#endif
 #endif
 #include "debug.h"
 #include "DiskImage.h"

@@ -32,6 +32,8 @@ const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
 #elif defined(__PICO2__)
 #include "pico/stdlib.h"
 const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
+#elif defined(ESP32)
+const char* VolumeStr[FF_VOLUMES] = {"SD","USB01"};
 #else
 extern "C"
 {
@@ -40,7 +42,7 @@ extern "C"
 #endif
 
 #include "iec_commands.h"
-extern IEC_Commands m_IEC_Commands;
+extern IEC_Commands *_m_IEC_Commands;
 extern Options options;
 
 
@@ -733,7 +735,7 @@ void FileBrowser::DisplayRoot()
 void FileBrowser::DeviceSwitched()
 {
 	displayingDevices = false;
-	m_IEC_Commands.SetDisplayingDevices(displayingDevices);
+	_m_IEC_Commands->SetDisplayingDevices(displayingDevices);
 	FolderChanged();
 }
 /*
@@ -956,7 +958,7 @@ void FileBrowser::PopFolder()
 		if (deviceRoot >= 0)
 		{
 			displayingDevices = true;
-			m_IEC_Commands.SetDisplayingDevices(displayingDevices);
+			_m_IEC_Commands->SetDisplayingDevices(displayingDevices);
 			RefreshFolderEntries();
 			folder.currentIndex = deviceRoot;
 			folder.SetCurrent();
@@ -1145,7 +1147,7 @@ void FileBrowser::UpdateInputFolders()
 				{
 					SwitchDrive("SD:");
 					displayingDevices = false;
-					m_IEC_Commands.SetDisplayingDevices(displayingDevices);
+					_m_IEC_Commands->SetDisplayingDevices(displayingDevices);
 					RefreshFolderEntries();
 				}
 				else
@@ -1159,7 +1161,7 @@ void FileBrowser::UpdateInputFolders()
 						{
 							SwitchDrive(USBDriveId);
 							displayingDevices = false;
-							m_IEC_Commands.SetDisplayingDevices(displayingDevices);
+							_m_IEC_Commands->SetDisplayingDevices(displayingDevices);
 							RefreshFolderEntries();
 						}
 					}
@@ -1232,7 +1234,7 @@ void FileBrowser::UpdateInputFolders()
 		char newFileName[64];
 		strncpy (newFileName, options.GetAutoBaseName(), 63);
 		int num = folder.FindNextAutoName( newFileName );
-		m_IEC_Commands.CreateNewDisk(newFileName, "42", true);
+		_m_IEC_Commands->CreateNewDisk(newFileName, "42", true);
 		FolderChanged();
 	}
 	else if (inputMappings->BrowseWriteProtect())

@@ -27,7 +27,7 @@
 #include "lz.h"
 #include "Petscii.h"
 #include <malloc.h>
-#if !defined (__CIRCLE__)
+#if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 extern "C"
 {
 #include "rpi-gpio.h"
@@ -64,7 +64,7 @@ static const u8 blankD64DIRBAM[] =
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	//	0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-#if !defined(__PICO2__)
+#if !defined(__PICO2__) && !defined(ESP32)
 unsigned char DiskImage::readBuffer[READBUFFER_SIZE];
 static unsigned char compressionBuffer[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #else
@@ -89,7 +89,7 @@ static const unsigned short GCR_SECTOR_DATA_LENGTH = 325;
 
 // CRC-16-CCITT
 // CRC(x) = x^16 + x^12 + x^5 + x^0
-unsigned short DiskImage::CRC1021[256] =
+const unsigned short DiskImage::CRC1021[256] =
 {
 	0x0000,0x1021,0x2042,0x3063,0x4084,0x50a5,0x60c6,0x70e7,0x8108,0x9129,0xa14a,0xb16b,0xc18c,0xd1ad,0xe1ce,0xf1ef,
 	0x1231,0x0210,0x3273,0x2252,0x52b5,0x4294,0x72f7,0x62d6,0x9339,0x8318,0xb37b,0xa35a,0xd3bd,0xc39c,0xf3ff,0xe3de,
@@ -151,8 +151,16 @@ DiskImage::DiskImage()
 	, attachedImageSize(0)
 	, fileInfo(0)
 {
+#if defined(__PICO2__)	
 	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
 	compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
+	tracks = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH]();
+#elif defined (ESP32)
+	DiskImage::readBuffer = static_cast<unsigned char *>(ps_malloc(READBUFFER_SIZE * sizeof(unsigned char)));
+	compressionBuffer = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
+	tracks = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
+#endif
+
 	memset(tracks, 0x55, sizeof(tracks));
 	memset(trackUsed, 0, sizeof(trackUsed));
 }
@@ -177,6 +185,7 @@ void DiskImage::Close()
 			CloseNBZ();
 			memset(tracks, 0x55, sizeof(tracks));
 		break;
+#if defined (PI1581SUPPORT)		
 		case D71:
 			CloseD71();
 			memset(tracksD81, 0x55, sizeof(tracksD81));
@@ -185,6 +194,7 @@ void DiskImage::Close()
 			CloseD81();
 			memset(tracksD81, 0, sizeof(tracksD81));
 		break;
+#endif		
 		case T64:
 			CloseT64();
 			memset(tracks, 0x55, sizeof(tracks));
@@ -553,6 +563,7 @@ void DiskImage::CloseD71()
 	attachedImageSize = 0;
 }
 
+#if defined (PI1581SUPPORT)
 bool DiskImage::OpenD81(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size)
 {
 	const unsigned physicalSectors = 10;
@@ -854,7 +865,7 @@ void DiskImage::CloseD81()
 	}
 	attachedImageSize = 0;
 }
-
+#endif /* PI1581SUPPORT */
 bool DiskImage::OpenG64(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size)
 {
 	Close();

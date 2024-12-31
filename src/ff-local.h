@@ -17,7 +17,6 @@
 / by use of this software.
 /----------------------------------------------------------------------------*/
 
-
 #ifndef _FATFS
 #define _FATFS	68020	/* Revision ID */
 
@@ -26,7 +25,9 @@ extern "C" {
 #endif
 
 #include "integer.h"	/* Basic integer types */
-#include "ffconf.h"		/* FatFs configuration options */
+#if !defined(__CIRCLE__)
+#include "ffconf-local.h"		/* FatFs configuration options */
+#endif
 
 #if _FATFS != _FFCONF
 #error Wrong configuration file (ffconf.h).

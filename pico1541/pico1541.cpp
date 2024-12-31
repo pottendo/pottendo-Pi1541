@@ -38,7 +38,8 @@ void pico_set_led(bool led_on) {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
 #endif
 }
-
+#include <ff.h>
+extern void list_directory(const char *path);
 int main()
 {
     stdio_init_all();
@@ -49,10 +50,24 @@ int main()
     sleep_ms(LED_DELAY_MS);
     pico_set_led(false);
 
+    int _i = 7;
+    while (_i--)
+    {
+        printf("counting %s: - %d\n", __FUNCTION__, _i);
+        sleep_ms(1000);
+        fflush(stdout);
+    }
+    FATFS fileSystemSD;
+    FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
+    	if (FR_OK != fr) {
+        	printf("f_mount error: (%d)\n", fr);
+			return -1;
+    	}		
+		list_directory("/");
     kernel_main(0, 0, 0);
     while (true) {
         printf("Hello, world!\n");
-        sleep_ms(1000);
+        sleep_ms(10000);
     }
 }
 

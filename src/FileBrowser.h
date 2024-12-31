@@ -19,8 +19,13 @@
 #ifndef FileBrowser_H
 #define FileBrowser_H
 #include <assert.h>
-#if !defined (__CIRCLE__)
+#if !defined(__CIRCLE__)
+#if defined(__PICO2__) || defined(ESP32)
 #include "ff.h"
+#else
+#include "types.h"
+#include "ff-local.h"
+#endif
 #endif
 #include <vector>
 #include "types.h"
