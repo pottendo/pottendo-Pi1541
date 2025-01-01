@@ -231,7 +231,6 @@ IEC_Commands::IEC_Commands()
 
 void IEC_Commands::Reset(void)
 {
-printf("%s: - 1\n", __FUNCTION__);
 	receivedCommand = false;
 	receivedEOI = false;
 	secondaryAddress = 0;
@@ -239,11 +238,8 @@ printf("%s: - 1\n", __FUNCTION__);
 	atnSequence = ATN_SEQUENCE_IDLE;
 	deviceRole = DEVICE_ROLE_PASSIVE;
 	commandCode = 0;
-printf("%s: - 2\n", __FUNCTION__);
 	Error(ERROR_00_OK);
-printf("%s: - 3\n", __FUNCTION__);
 	CloseAllChannels();
-printf("%s: - 4\n", __FUNCTION__);
 }
 
 void IEC_Commands::CloseAllChannels()

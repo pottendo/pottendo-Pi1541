@@ -619,7 +619,6 @@ void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
 
 void IEC_Bus::Reset(void)
 {
-	printf("%s: 1\n", __FUNCTION__);
 	WaitUntilReset();
 
 	// VIA $1800

@@ -1350,16 +1350,12 @@ void __not_in_flash_func(emulator)(void)
 #endif
 	FileBrowser* fileBrowser;
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
-printf("%s: - 1\n", __FUNCTION__);
 
 	roms.lastManualSelectedROMIndex = 0;
 
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
-printf("%s: - 2\n", __FUNCTION__);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
-printf("%s: - 3\n", __FUNCTION__);
 	pi1541.Initialise();
-printf("%s: - 4\n", __FUNCTION__);
 
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
 	_m_IEC_Commands->Set128BootSectorName(options.Get128BootSectorName());
@@ -1369,25 +1365,19 @@ printf("%s: - 4\n", __FUNCTION__);
 	emulating = IEC_COMMANDS;
 	while (1)
 	{
-printf("%s: - 5\n", __FUNCTION__);
 		if (emulating == IEC_COMMANDS)
 		{
-printf("%s: - 6\n", __FUNCTION__);
 			IEC_Bus::VIA = 0;
 			IEC_Bus::CIA = 0;
 			IEC_Bus::port = 0;
-printf("%s: - 6aa\n", __FUNCTION__);
 
 			IEC_Bus::Reset(); // XXXXXXX FIXME!
-printf("%s: - 6a\n", __FUNCTION__);
 
 			IEC_Bus::LetSRQBePulledHigh();
 #if not defined(EXPERIMENTALZERO)
 			core0RefreshingScreen.Acquire();
 #endif
-printf("%s: - 7\n", __FUNCTION__);
 			IEC_Bus::WaitMicroSeconds(100);
-printf("%s: - 8\n", __FUNCTION__);
 
 			roms.ResetCurrentROMIndex();
 			fileBrowser->ClearScreen();
@@ -1413,7 +1403,6 @@ printf("%s: - 8\n", __FUNCTION__);
 				usb_mass_update = false;
 			}
 #endif
-printf("%s: - 9\n", __FUNCTION__);
 			if (!options.GetDisableSD2IECCommands())
 			{
 				_m_IEC_Commands->SimulateIECBegin();
@@ -2051,9 +2040,7 @@ extern "C"
 		if (esp32_initSD() != 0)
 			return;
 #endif
-printf("%s: - 3\n", __FUNCTION__);
 	_m_IEC_Commands = new IEC_Commands;
-printf("%s: - 3a\n", __FUNCTION__);
 
 #if defined(__PICO2__)
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
@@ -2063,8 +2050,6 @@ printf("%s: - 3a\n", __FUNCTION__);
     	}		
 #endif
 		LoadOptions();
-printf("%s: - 4\n", __FUNCTION__);
-
 		InitialiseHardware();
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		enable_MMU_and_IDCaches();
@@ -2073,12 +2058,9 @@ printf("%s: - 4\n", __FUNCTION__);
 #if !defined(__PICO2__) && !defined(ESP32)
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	//XXXPICO?
 #endif		
-printf("%s: - 4a\n", __FUNCTION__);
 		DisplayLogo();
-printf("%s: - 4b\n", __FUNCTION__);
 
 		InitialiseLCD();
-printf("%s: - 4c\n", __FUNCTION__);
 #if not defined(EXPERIMENTALZERO)
 		int y_pos = 184;
 		snprintf(tempBuffer, tempBufferSize, "Copyright(C) 2018 Stephen White");
@@ -2134,10 +2116,7 @@ printf("%s: - 4c\n", __FUNCTION__);
 		inputMappings = new InputMappings();
 		//USPiMouseRegisterStatusHandler(MouseHandler);
 
-printf("%s: - 4d\n", __FUNCTION__);
-
 		CheckOptions();
-printf("%s: - 4e\n", __FUNCTION__);
 
 		IEC_Bus::SetSplitIECLines(options.SplitIECLines());
 		IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());
@@ -2147,7 +2126,6 @@ printf("%s: - 4e\n", __FUNCTION__);
 		IEC_Bus::SetRotaryEncoderEnable(options.RotaryEncoderEnable());
 		//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 		IEC_Bus::SetRotaryEncoderInvert(options.RotaryEncoderInvert());
-printf("%s: - 4f\n", __FUNCTION__);
 #if not defined(EXPERIMENTALZERO)
 		if (!options.SoundOnGPIO())
 		{
@@ -2175,20 +2153,14 @@ printf("%s: - 4f\n", __FUNCTION__);
 				UpdateFirmwareToSD();
 		}
 #endif
-		f_chdir("/1541");
-printf("%s: fn = %s\n", __FUNCTION__, options.GetStarFileName() );
-		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
-printf("%s: - 5aa\n", __FUNCTION__);
 
+		f_chdir("/1541");
+		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
 		GlobalSetDeviceID(deviceID);
-printf("%s: - 5a\n", __FUNCTION__);
 
 		pi1541.drive.SetVIA(&pi1541.VIA[1]);
-printf("%s: - 5b\n", __FUNCTION__);
 		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
-printf("%s: - 5c\n", __FUNCTION__);
 		IEC_Bus::Initialise();
-printf("%s: - 6\n", __FUNCTION__);
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		if (screenLCD)
 			screenLCD->ClearInit(0);
