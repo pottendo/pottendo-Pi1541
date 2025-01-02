@@ -17,6 +17,7 @@ void reboot_now(void);
 void Reboot_Pi(void);
 void InitialiseLCD(void);
 void not_implemented(const char *fn);
+void initDiskImage(void);
 
 #define __not_in_flash_func(a) a
 #endif

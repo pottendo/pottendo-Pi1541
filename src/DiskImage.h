@@ -28,7 +28,7 @@
 #endif
 #endif
 
-#define READBUFFER_SIZE 1024 * 512 * 2 // Now need over 800K for D81s
+#define READBUFFER_SIZE 256000 // 1024 * 512 * 2 // Now need over 800K for D81s
 
 #define MAX_TRACK_LENGTH 0x2000
 #define NIB_TRACK_LENGTH 0x2000
@@ -198,17 +198,17 @@ public:
 #endif
 	static void CRC(unsigned short& runningCRC, unsigned char data);
 
-	union
-	{
+	//union
+	//{
 #if defined(EXPERIMENTALZERO)
-		unsigned char *tracks;
+		static unsigned char *tracks;
 #else
 		unsigned char tracks[HALF_TRACK_COUNT][MAX_TRACK_LENGTH];
 #endif
 #if defined(PI1581SUPPORT)
 		unsigned char tracksD81[HALF_TRACK_COUNT][2][MAX_TRACK_LENGTH];
 #endif		
-	};
+	//};
 
 	bool WriteD64(char* name = 0);
 	bool WriteG64(char* name = 0);

@@ -162,7 +162,12 @@ void Error(u8 errorCode, u8 track = 0, u8 sector = 0)
 			msg = "WRITE ERROR";
 		break;
 		case ERROR_73_DOSVERSION:
-			snprintf(ErrorMessage, sizeof(ErrorMessage)-1, "%02d,PI1541 V%02d.%02d,%02d,%02d\r", errorCode,
+#if defined(ESP32)
+#define ARCH "ESP"		
+#else
+#define ARCH "PI"
+#endif
+			snprintf(ErrorMessage, sizeof(ErrorMessage)-1, "%02d," ARCH "1541 V%02d.%02d,%02d,%02d\r", errorCode,
 						versionMajor, versionMinor, track, sector);
 			return;
 		break;
@@ -218,7 +223,7 @@ IEC_Commands::IEC_Commands()
 	usingVIC20 = false;
 	autoBootFB128 = false;
 	for (int i = 0; i < 16; i++)
-		channels[i].open = false;
+		memset(&channels[i], 0, sizeof(Channel));
 
 	Reset();
 	starFileName = 0;
@@ -365,7 +370,6 @@ bool IEC_Commands::ReadIECSerialPort(u8& byte)
 		if (CheckATN()) return true;
 	}
 	while (IEC_Bus::IsClockReleased() && !timer.Tick());
-
 	if (timer.TimedOut())
 	{
 		IEC_Bus::AssertData();
@@ -502,7 +506,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			// When specifying the filename to be written to (in the OPEN command), you must be sure that the file name does not already exist.
 			// If a file that already exists is to be to opened for writing, the file must first be deleted.
 
-			//DEBUG_LOG("%0x\r\n", commandCode);
+			DEBUG_LOG("%02x(%c)\n", commandCode, isprint(commandCode) ? commandCode : '.');
 
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
@@ -574,7 +578,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				Channel& channelCommand = channels[15];
 
-				//DEBUG_LOG("%s sa = %d\r\n", channelCommand.buffer, secondaryAddress);
+				DEBUG_LOG("%s sa = %d\n", channelCommand.buffer, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
@@ -1256,7 +1260,7 @@ void IEC_Commands::User(void)
 		// U9 (UI)
 		case 'I':
 		case '9':
-			//DEBUG_LOG("ui c=%d\r\n", channel.cursor);
+			DEBUG_LOG("ui c=%d, '%c'(%d)\r\n", channel.cursor, channel.buffer[2], channel.buffer[2]);
 			if (channel.cursor == 2)
 			{
 				// Soft reset
@@ -1330,7 +1334,7 @@ void IEC_Commands::ProcessCommand(void)
 
 	Channel& channel = channels[15];
 
-	//DEBUG_LOG("CMD %s %d\r\n", channel.buffer, channel.cursor);
+	DEBUG_LOG("CMD %s %d\r\n", channel.buffer, channel.cursor);
 
 	if (channel.cursor > 0 && channel.buffer[channel.cursor - 1] == 0x0d)
 		channel.cursor--;
@@ -1341,7 +1345,7 @@ void IEC_Commands::ProcessCommand(void)
 	}
 	else
 	{
-		//DEBUG_LOG("ProcessCommand %s", channel.buffer);
+		DEBUG_LOG("ProcessCommand %s\n", channel.buffer);
 
 		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
 		{
@@ -1794,7 +1798,6 @@ void IEC_Commands::LoadDirectory()
 
 	FileBrowser::BrowsableList::Entry entry;
 	std::vector<FileBrowser::BrowsableList::Entry> entries;
-
 	if (displayingDevices)
 	{
 		FileBrowser::RefreshDevicesEntries(entries, true);
@@ -1802,11 +1805,13 @@ void IEC_Commands::LoadDirectory()
 	else
 	{
 		res = f_opendir(&dir, ".");
+printf("%s: opendir: %d\n", __FUNCTION__, res);		
 		if (res == FR_OK)
 		{
 			do
 			{
 				res = f_readdir(&dir, &entry.filImage);
+printf("%s: readdir: %d\n", __FUNCTION__, res);		
 				ext = strrchr(entry.filImage.fname, '.');
 				if (res == FR_OK && entry.filImage.fname[0] != 0 && !(ext && strcasecmp(ext, ".png") == 0) && (entry.filImage.fname[0] != '.'))
 					entries.push_back(entry);
@@ -1816,6 +1821,7 @@ void IEC_Commands::LoadDirectory()
 			std::sort(entries.begin(), entries.end(), greater());
 		}
 	}
+printf("%s: 1\n", __FUNCTION__);
 
 	for (u32 i = 0; i < entries.size(); ++i)
 	{
@@ -1828,9 +1834,6 @@ void IEC_Commands::LoadDirectory()
 		if (filInfo->fattrib & AM_DIR) AddDirectoryEntry(channel, fileName, 0, 6);
 		else AddDirectoryEntry(channel, fileName, filInfo->fsize / 256 + 1, 2);
 	}
-
-
-
 	SendBuffer(channel, false);
 
 	memcpy(channel.buffer, DirectoryBlocksFree, sizeof(DirectoryBlocksFree));

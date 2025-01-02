@@ -109,7 +109,7 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON4 = 8,
 	PIGPIO_IN_BUTTON5 = 9,
 	PIGPIO_OUT_SOUND = GPIO_NUM_26,
-	PIGPIO_OUT_LED   = GPIO_NUM_33,
+	PIGPIO_OUT_LED   = GPIO_NUM_17,
 
 #else
 	// Original Non-split lines	
@@ -233,6 +233,7 @@ enum PIGPIOMasks
 static const unsigned ButtonPinFlags[5] = { PIGPIO_MASK_IN_BUTTON1, PIGPIO_MASK_IN_BUTTON2, PIGPIO_MASK_IN_BUTTON3, PIGPIO_MASK_IN_BUTTON4, PIGPIO_MASK_IN_BUTTON5 };
 static const unsigned ButtonPins[5] = { PIGPIO_IN_BUTTON1, PIGPIO_IN_BUTTON2, PIGPIO_IN_BUTTON3, PIGPIO_IN_BUTTON4, PIGPIO_IN_BUTTON5 };
 
+#if !defined(__PICO2__) && !defined(ESP32)
 ///////////////////////////////////////////////////////////////////////////////////////////////
 // Original Non-split lines
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +255,7 @@ static const u32 PI_OUTPUT_MASK_GPFSEL0 = ~((1 << (PIGPIO_ATN * 3)));
 //static const u32 PI_OUTPUT_MASK_GPFSEL1 = ~((1 << ((PIGPIO_OUT_SOUND - 10) * 3)) | (1 << ((PIGPIO_OUT_LED - 10) * 3)) | (1 << ((PIGPIO_CLOCK - 10) * 3)) | (1 << ((PIGPIO_DATA - 10) * 3)));
 static const u32 PI_OUTPUT_MASK_GPFSEL1 = ~((1 << ((PIGPIO_CLOCK - 10) * 3)) | (1 << ((PIGPIO_DATA - 10) * 3)));
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////
 // Pinout for those that want to split the lines (and the common ones like buttons, sound and LED)
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +364,7 @@ public:
 	{
 		volatile int index; // Force a real delay in the loop below.
 		// Clear all outputs to 0
-#if !defined(__PICO2__)	&& !defined(ESP)
+#if !defined(__PICO2__)	&& !defined(ESP32)
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
 #endif		
 		//CGPIOPin::WriteAll(0xffffffff, 0xffffffff);
@@ -372,7 +373,7 @@ public:
 			// This means that when any pin is turn to output it will output a 0 and pull lines low (ie an activation state on the IEC bus)
 			// Note: on the IEC bus you never output a 1 you simply tri state and it will be pulled up to a 1 (ie inactive state on the IEC bus) if no one else is pulling it low.
 
-#if !defined(__PICO2__)	&& !defined(ESP)
+#if !defined(__PICO2__)	&& !defined(ESP32)
 			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
 			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);
 #endif
@@ -421,22 +422,24 @@ public:
 #if defined(ESP32)
 			gpio_reset_pin((gpio_num_t)PIGPIO_ATN);
 			gpio_set_direction((gpio_num_t)PIGPIO_ATN, GPIO_MODE_INPUT);
-			gpio_set_pull_mode((gpio_num_t)PIGPIO_ATN, GPIO_PULLDOWN_ONLY);
-			gpio_reset_pin((gpio_num_t)PIGPIO_CLOCK);
-			gpio_set_direction((gpio_num_t)PIGPIO_CLOCK, GPIO_MODE_INPUT);
-			gpio_set_pull_mode((gpio_num_t)PIGPIO_CLOCK, GPIO_FLOATING);
-			gpio_reset_pin((gpio_num_t)PIGPIO_DATA);
-			gpio_set_direction((gpio_num_t)PIGPIO_DATA, GPIO_MODE_INPUT);
-			gpio_set_pull_mode((gpio_num_t)PIGPIO_DATA, GPIO_FLOATING);
+			gpio_set_pull_mode((gpio_num_t)PIGPIO_ATN, GPIO_FLOATING);
 			gpio_reset_pin((gpio_num_t)PIGPIO_RESET);
 			gpio_set_direction((gpio_num_t)PIGPIO_RESET, GPIO_MODE_INPUT);
-			gpio_set_pull_mode((gpio_num_t)PIGPIO_RESET, GPIO_PULLDOWN_ONLY);
+			//gpio_set_pull_mode((gpio_num_t)PIGPIO_RESET, GPIO_PULLDOWN_ONLY);
+
+			gpio_reset_pin((gpio_num_t)PIGPIO_CLOCK);
+			gpio_set_direction((gpio_num_t)PIGPIO_CLOCK, GPIO_MODE_INPUT_OUTPUT);
+			//gpio_set_pull_mode((gpio_num_t)PIGPIO_CLOCK, GPIO_FLOATING);
+			gpio_reset_pin((gpio_num_t)PIGPIO_DATA);
+			gpio_set_direction((gpio_num_t)PIGPIO_DATA, GPIO_MODE_INPUT_OUTPUT);
+			//gpio_set_pull_mode((gpio_num_t)PIGPIO_DATA, GPIO_FLOATING);
+
 			gpio_reset_pin((gpio_num_t)PIGPIO_OUT_LED);
 			gpio_set_direction((gpio_num_t)PIGPIO_OUT_LED, GPIO_MODE_OUTPUT);
 			gpio_reset_pin((gpio_num_t)PIGPIO_OUT_SOUND);
 			gpio_set_direction((gpio_num_t)PIGPIO_OUT_SOUND, GPIO_MODE_OUTPUT);
 #endif/* ESP32 */
-#if !defined (__PICO2__) && !defined(ESP)
+#if !defined(__PICO2__) && !defined(ESP32)
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SOUND, FS_OUTPUT);

@@ -70,6 +70,7 @@ static unsigned char compressionBuffer[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #else
 unsigned char *DiskImage::readBuffer;
 static unsigned char *compressionBuffer;
+unsigned char *DiskImage::tracks;
 #endif
 
 
@@ -145,22 +146,30 @@ unsigned DiskImage::SectorsPerTrackD64(unsigned track)
 
 int gap_match_length = 7;	// Used by gcr.cpp
 
+#if defined(__PICO2__) || defined(ESP32)
+void initDiskImage(void)
+{
+#if defined(__PICO2__)	
+	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
+	//compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
+	DiskImage::tracks = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH]();
+#elif defined (ESP32)
+	DiskImage::readBuffer = static_cast<unsigned char *>(ps_malloc(READBUFFER_SIZE * sizeof(unsigned char)));
+	//compressionBuffer = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
+	memset(DiskImage::readBuffer, 0xff, READBUFFER_SIZE);
+	esp32_showstat();
+	DiskImage::tracks = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
+	esp32_showstat();
+#endif
+}
+#endif
+
 DiskImage::DiskImage()
 	: readOnly(false)
 	, dirty(false)
 	, attachedImageSize(0)
 	, fileInfo(0)
 {
-#if defined(__PICO2__)	
-	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
-	compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
-	tracks = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH]();
-#elif defined (ESP32)
-	DiskImage::readBuffer = static_cast<unsigned char *>(ps_malloc(READBUFFER_SIZE * sizeof(unsigned char)));
-	compressionBuffer = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
-	tracks = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
-#endif
-
 	memset(tracks, 0x55, sizeof(tracks));
 	memset(trackUsed, 0, sizeof(trackUsed));
 }

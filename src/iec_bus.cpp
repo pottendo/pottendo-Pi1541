@@ -180,14 +180,14 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 	gplev0 = gpio_get_all();
 #elif defined (ESP32)
 	gplev0 = 0;
-	if (!AtnaDataSetToOut)
+	//if (!AtnaDataSetToOut)
 		gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_ATN) << PIGPIO_ATN);
 	if (!DataSetToOut)
 		gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_DATA) << PIGPIO_DATA);
 	if (!ClockSetToOut)
 		gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_CLOCK) << PIGPIO_CLOCK);
 	gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_RESET) << PIGPIO_RESET);
-	//printf("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
+	//printf("%s: - gplev0 = %08x\n", __FUNCTION__, gplev0);
 #else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
@@ -200,7 +200,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 	if (PI_Atn != ATNIn)
 	{
-		//DEBUG_LOG("ATN changed: %d", ATNIn);
+		//DEBUG_LOG("ATN changed: %d\n", ATNIn);
 		PI_Atn = ATNIn;
 	}
 
@@ -209,7 +209,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
 		if (PI_Data != DATAIn)
 		{
-			//DEBUG_LOG("DATAIn changed: %d", DATAIn);
+			//DEBUG_LOG("DATAIn changed: %d\n", DATAIn);
 			PI_Data = DATAIn;
 		}
 	}
@@ -223,7 +223,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK  : 0);
 		if (PI_Clock != CLOCKIn)
 		{
-			//DEBUG_LOG("CLOCKIn changed: %d", CLOCKIn);
+			//DEBUG_LOG("CLOCKIn changed: %d\n", CLOCKIn);
 			PI_Clock = CLOCKIn;
 		}
 	}
@@ -252,7 +252,7 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 	if (!ClockSetToOut)
 		gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_CLOCK) << PIGPIO_CLOCK);
 	gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_RESET) << PIGPIO_RESET);
-	printf("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
+	//printf("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
 #else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);

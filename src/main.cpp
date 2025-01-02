@@ -773,9 +773,8 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
-printf("%s: - 1\n", __FUNCTION__);
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-printf("%s: - 2\n", __FUNCTION__);
+	DEBUG_LOG("%s: name = %s\n", __FUNCTION__, diskImage->GetName());
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -870,8 +869,12 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
 	bool oldLED = false;
+#if defined(ESP32)
+	uint64_t ctBefore = 0, ctAfter = 0;
+#else
 	unsigned ctBefore = 0;
 	unsigned ctAfter = 0;
+#endif	
 	int cycleCount = 0;
 	unsigned caddyIndex;
 	int headSoundCounter = 0;
@@ -948,7 +951,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 #elif defined(__PICO2__)
 	ctBefore = time_us_32();
 #elif defined(ESP32)
-#warning "some get_tick() needed XXXXXXXXXXXXXX"
+	ctBefore = get_ticks();
 #else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1056,7 +1059,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 #elif defined(__PICO2__)
 			ctAfter = time_us_32();
 #elif defined(ESP32)			
-#warning "some get_tick() needed XXXXXXXXXXXXXX"
+			ctAfter = get_ticks();
 #else
 			ctAfter = read32(ARM_SYSTIMER_CLO);
 #endif	
@@ -1371,7 +1374,7 @@ void __not_in_flash_func(emulator)(void)
 			IEC_Bus::CIA = 0;
 			IEC_Bus::port = 0;
 
-			IEC_Bus::Reset(); // XXXXXXX FIXME!
+			IEC_Bus::Reset();
 
 			IEC_Bus::LetSRQBePulledHigh();
 #if not defined(EXPERIMENTALZERO)
@@ -1494,7 +1497,6 @@ void __not_in_flash_func(emulator)(void)
 			}
 			else
 			{
-printf("%s: - 10\n", __FUNCTION__);
 				while (emulating == IEC_COMMANDS)
 				{
 					fileBrowser->Update();
@@ -1618,7 +1620,6 @@ static void LoadOptions()
 	FRESULT res;
 
 	res = f_open(&fp, "options.txt", FA_READ);
-printf("%s: 2 - res = %d\n", __FUNCTION__, res);
 	if (res == FR_OK)
 	{
 		UINT bytesRead;
@@ -1631,6 +1632,8 @@ printf("%s: 2 - res = %d\n", __FUNCTION__, res);
 
 		screenWidth = options.ScreenWidth();
 		screenHeight = options.ScreenHeight();
+	} else {
+		DEBUG_LOG("%s: couldn't load options.txt - %d\n", __FUNCTION__, res);
 	}
 }
 
@@ -2037,12 +2040,15 @@ extern "C"
 		f_mount(&fileSystemSD, "SD:", 1);
 #endif
 #if defined(ESP32)
+		initDiskImage();
 		if (esp32_initSD() != 0)
 			return;
+		esp32_showstat();
 #endif
 	_m_IEC_Commands = new IEC_Commands;
 
 #if defined(__PICO2__)
+		initDiskImage();
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
         	printf("f_mount error: (%d)\n", fr);
