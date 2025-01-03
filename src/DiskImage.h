@@ -30,7 +30,7 @@
 #endif
 
 #if defined(__PICO2__) || defined(ESP32)
-#define READBUFFER_SIZE 256000 // 1024 * 512 * 2 // Now need over 800K for D81s
+#define READBUFFER_SIZE 1024 * 512 * 1 // Now need over 800K for D81s
 #else
 #define READBUFFER_SIZE 1024 * 512 * 2 // Now need over 800K for D81s
 #endif

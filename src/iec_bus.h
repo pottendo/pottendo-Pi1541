@@ -109,7 +109,7 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON4 = 8,
 	PIGPIO_IN_BUTTON5 = 9,
 	PIGPIO_OUT_SOUND = GPIO_NUM_26,
-	PIGPIO_OUT_LED   = GPIO_NUM_17,
+	PIGPIO_OUT_LED   = GPIO_NUM_14,
 
 #else
 	// Original Non-split lines	
@@ -510,7 +510,6 @@ public:
 		write32(PWM_CTL, PWM_USEF2 + PWM_PWEN2 + PWM_USEF1 + PWM_PWEN1 + PWM_CLRF1);
 #endif		
 #endif
-
 		for (index = 0; index < buttonCount; ++index)
 		{
 			InputButton[index] = false;

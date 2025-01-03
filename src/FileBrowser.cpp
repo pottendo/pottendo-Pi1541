@@ -545,7 +545,6 @@ FileBrowser::FileBrowser(InputMappings* inputMappings, DiskCaddy* diskCaddy, ROM
 	, scrollHighlightRate(scrollHighlightRate)
 	, displayingDevices(false)
 {
-
 	folder.scrollHighlightRate = scrollHighlightRate;
 
 #if not defined(EXPERIMENTALZERO)
@@ -575,8 +574,7 @@ FileBrowser::FileBrowser(InputMappings* inputMappings, DiskCaddy* diskCaddy, ROM
 
 		folder.AddView(screenLCD, inputMappings, columns, rows, positionX, positionY, true);
 	}
-
-	f_chdir("/1541");
+	//f_chdir("/1541");
 	RefreshFolderEntries();
 }
 
@@ -666,22 +664,18 @@ void FileBrowser::RefreshFolderEntries()
 		res = f_opendir(&dir, ".");
 		if (res == FR_OK)
 		{
-printf("%s: 1\n", __FUNCTION__);			
 			do
 			{
 				res = f_readdir(&dir, &entry.filImage);
-printf("%s: 2 - res = %d, '%s'\n", __FUNCTION__, res, entry.filImage.fname);			
 				ext = strrchr(entry.filImage.fname, '.');
 				if (res == FR_OK && entry.filImage.fname[0] != 0 && !(ext && strcasecmp(ext, ".png") == 0) && (entry.filImage.fname[0] != '.'))
 					folder.entries.push_back(entry);
 			} while (res == FR_OK && entry.filImage.fname[0] != 0);
 			f_closedir(&dir);
-printf("%s: 2a\n", __FUNCTION__);			
 
 			// Now check for icons
 			res = f_opendir(&dir, ".");
-printf("%s: 3 - res = %d\n", __FUNCTION__, res);			
-			if (0 && res == FR_OK)/* XXX Fixme */
+			if (res == FR_OK)/* XXX Fixme */
 			{
 				do
 				{

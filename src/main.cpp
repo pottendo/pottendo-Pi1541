@@ -1355,7 +1355,6 @@ void __not_in_flash_func(emulator)(void)
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
 
 	roms.lastManualSelectedROMIndex = 0;
-
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
 	pi1541.Initialise();
@@ -1995,6 +1994,8 @@ void list_directory(const char *path) {
     FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
+	FileBrowser::BrowsableList::Entry entry;
+	FileBrowser::BrowsableList list;
 
     // Open the directory
     fr = f_opendir(&dir, path);
@@ -2007,20 +2008,31 @@ void list_directory(const char *path) {
 
     while (1) {
         // Read a directory item
-        fr = f_readdir(&dir, &fno);
-        if (fr != FR_OK || fno.fname[0] == 0) break; // Break on error or end of dir
-
-        if (fno.fattrib & AM_DIR) {
-            printf("[DIR]  %s\n", fno.fname);
+        fr = f_readdir(&dir, &entry.filImage);
+        if (fr != FR_OK || entry.filImage.fname[0] == 0) break; // Break on error or end of dir
+		list.entries.push_back(entry);
+#if 0		
+        if (entry.filImage.fattrib & AM_DIR) {
+            printf("[DIR]  %s\n", entry.filImage.fname);
         } else {
-            printf("[FILE] %s\t(%lu bytes)\n", fno.fname, (unsigned long)fno.fsize);
+            printf("[FILE] %s\t(%lu bytes)\n", entry.filImage.fname, (unsigned long)entry.filImage.fsize);
         }
+#endif		
     }
 
     // Close the directory
     f_closedir(&dir);
+	for (auto it : list.entries)
+	{
+	        if (it.filImage.fattrib & AM_DIR) {
+            printf("[DIR]  %s\n", it.filImage.fname);
+        } else {
+            printf("[FILE] %s\t(%lu bytes)\n", it.filImage.fname, (unsigned long)it.filImage.fsize);
+        }
+	}
     printf("%s: done\n", __FUNCTION__);
 }
+
 extern "C"
 {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
@@ -2044,6 +2056,7 @@ extern "C"
 		if (esp32_initSD() != 0)
 			return;
 		esp32_showstat();
+		list_directory("/");
 #endif
 	_m_IEC_Commands = new IEC_Commands;
 
@@ -2159,7 +2172,6 @@ extern "C"
 				UpdateFirmwareToSD();
 		}
 #endif
-
 		f_chdir("/1541");
 		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
 		GlobalSetDeviceID(deviceID);
@@ -2167,6 +2179,7 @@ extern "C"
 		pi1541.drive.SetVIA(&pi1541.VIA[1]);
 		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
 		IEC_Bus::Initialise();
+
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		if (screenLCD)
 			screenLCD->ClearInit(0);

@@ -26,7 +26,7 @@ void esp32_showstat(void)
 void esp32_setup(void)
 {
     Serial.begin(115200);
-    printf("Chip model: %s, %dMHz, %d cores\n", ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getChipCores());
+    printf("\n\n\nXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nChip model: %s, %dMHz, %d cores\n", ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getChipCores());
     printf("Free heap: %d/%d %d max block\n", ESP.getFreeHeap(), ESP.getHeapSize(),ESP.getMaxAllocHeap());
     printf("Free PSRAM: %d/%d %d max block\n",ESP.getFreePsram(), ESP.getPsramSize(),ESP.getMaxAllocPsram());
     myLED.begin( LED_GPIO, 1 );         // initialze the myLED object. Here we have 1 LED attached to the LED_GPIO pin
@@ -99,7 +99,6 @@ int esp32_initSD(void)
         return -2;
     }
     printf("%s: sucessfully initialized SD card!\n", __FUNCTION__);
-    list_directory("/");
     strcpy(cwd, "/");
     return 0;
 }
@@ -175,7 +174,7 @@ FRESULT _f_open (FIL* fp, const TCHAR* path, BYTE mode)
 {
     if (!path)
         return FR_EXIST;
-    char xpath[MAX_PATH + 1];
+    static char xpath[MAX_PATH + 1];
     xpath[0] = '\0';
     if (path[0] != '/')
     {
