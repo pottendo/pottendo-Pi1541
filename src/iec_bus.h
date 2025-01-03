@@ -661,6 +661,7 @@ public:
 #elif defined(ESP32)
 			gplev0 = (gpio_get_level((gpio_num_t)PIGPIO_RESET) << PIGPIO_RESET);
 #else
+			gplev0 = read32(ARM_GPIO_GPLEV0);
 #endif	
 			Resetting = !ignoreReset && 
 						((gplev0 & PIGPIO_MASK_IN_RESET) == 

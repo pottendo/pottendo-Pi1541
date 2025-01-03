@@ -73,5 +73,9 @@
 #define TEST3_MASK   (1 << TEST3_PIN)
 #endif
 
+#if !defined(__CIRCLE__) && defined(__cplusplus)
+extern "C" void usDelay(unsigned nMicroSeconds);
+#endif
+
 #endif
 #endif /* __PICO2__ */

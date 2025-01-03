@@ -18,6 +18,7 @@
 
 #ifndef DISKIMAGE_H
 #define DISKIMAGE_H
+#include "defs.h"
 #include "types.h"
 #if !defined (__CIRCLE__)
 #if defined(__PICO2__) || defined(ESP32)
@@ -28,7 +29,11 @@
 #endif
 #endif
 
+#if defined(__PICO2__) || defined(ESP32)
 #define READBUFFER_SIZE 256000 // 1024 * 512 * 2 // Now need over 800K for D81s
+#else
+#define READBUFFER_SIZE 1024 * 512 * 2 // Now need over 800K for D81s
+#endif
 
 #define MAX_TRACK_LENGTH 0x2000
 #define NIB_TRACK_LENGTH 0x2000
@@ -68,6 +73,7 @@ public:
 	};
 
 	DiskImage();
+	~DiskImage();
 
 	static unsigned CreateNewDiskInRAM(const char* filenameNew, const char* ID, unsigned char* destBuffer = 0);
 
@@ -92,7 +98,6 @@ public:
 		return tracks[track][byte];
 #endif
 	}
-
 
 	inline bool GetNextBit(u32 track, u32 byte, u32 bit)
 	{
@@ -189,17 +194,13 @@ public:
 	void SetReadOnly(bool readOnly) { this->readOnly = readOnly; }
 
 	unsigned LastTrackUsed();
-
+	static void CRC(unsigned short& runningCRC, unsigned char data);
 	bool IsDirty() const { return dirty; }
+
 #if !defined(__PICO2__) && !defined(ESP32)
 	static unsigned char readBuffer[READBUFFER_SIZE];
-#else
-	static unsigned char *readBuffer;
-#endif
-	static void CRC(unsigned short& runningCRC, unsigned char data);
-
-	//union
-	//{
+	union
+	{
 #if defined(EXPERIMENTALZERO)
 		static unsigned char *tracks;
 #else
@@ -208,7 +209,11 @@ public:
 #if defined(PI1581SUPPORT)
 		unsigned char tracksD81[HALF_TRACK_COUNT][2][MAX_TRACK_LENGTH];
 #endif		
-	//};
+	};
+#else	/* for small mem-footprint allocate these dynamically */
+	static unsigned char *readBuffer;
+	unsigned char *tracks;
+#endif
 
 	bool WriteD64(char* name = 0);
 	bool WriteG64(char* name = 0);

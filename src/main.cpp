@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <strings.h>
+#include "defs.h"
 #if defined(__CIRCLE__) 
 #include "circle-kernel.h"
 #if RASPPI <= 3
@@ -32,7 +33,6 @@
 // XXX ESP32 specifics
 #include "esp32.h"
 #else
-#include "defs.h"
 #include "Timer.h"
 #include "SpinLock.h"
 #endif

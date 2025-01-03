@@ -23,6 +23,7 @@
 //*=R	selects relative files
 //*=U	selects user-files
 
+#include "defs.h"
 #include "iec_commands.h"
 #include "iec_bus.h"
 #include "DiskImage.h"

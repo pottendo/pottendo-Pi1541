@@ -16,10 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
-#include "DiskCaddy.h"
-#include "debug.h"
 #include <string.h>
 #include <stdlib.h>
+#include "defs.h"
+#include "DiskCaddy.h"
+#include "debug.h"
 #if !defined(__CIRCLE__)
 #if defined(__PICO2__) || defined(ESP32)
 #include "ff.h"
