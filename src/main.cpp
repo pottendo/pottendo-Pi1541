@@ -865,6 +865,8 @@ void CheckAutoMountImage(EXIT_TYPE reset_reason , FileBrowser* fileBrowser)
 	}
 }
 
+void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour, u32 backgroundColour);
+
 EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
@@ -940,8 +942,9 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 		cycleCount++;
 	}
-
 	// Self test code done. Begin realtime emulation.
+	while (exitReason == EXIT_UNKNOWN)
+	{
 
 #if defined(RPI2)
 	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
@@ -957,8 +960,6 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 #endif	
 #endif
 
-	while (exitReason == EXIT_UNKNOWN)
-	{
 		if (refreshOutsAfterCPUStep)
 			IEC_Bus::ReadEmulationMode1541();
 
@@ -1068,7 +1069,9 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			{
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				//DEBUG_LOG("! ct = %d", ct);
+				//DEBUG_LOG("! ct = %d\n", ct);
+				//sprintf(tempBuffer, "-%d-", ct);
+				//DisplayMessage(0, 20, true, tempBuffer, RGBA(255, 255, 255, 255), RGBA(0,0,0,0));
 			}
 		} while (ctAfter == ctBefore);
 #endif

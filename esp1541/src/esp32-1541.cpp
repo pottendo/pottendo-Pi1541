@@ -77,8 +77,7 @@ void InitialiseLCD(void)
 }
 uint64_t get_ticks(void)
 {
-    TickType_t res = xTaskGetTickCount();
-    return res / (portTICK_RATE_MS);
+    return micros();
 }
 
 extern void list_directory(const char *p);

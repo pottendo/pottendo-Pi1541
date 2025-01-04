@@ -457,7 +457,8 @@ void __not_in_flash_func(IEC_Bus::RefreshOuts1541)(void)
 	if (OutputSound)
 		set |= PIGPIO_MASK_OUT_SOUND;
 	gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
-#elif defined(ESP32)	
+#elif defined(ESP32)
+	//DEBUG_LOG("%s: ATN: %d, Data: %d, Clock: %d\n", __FUNCTION__, AtnaDataSetToOut, DataSetToOut, ClockSetToOut);
 	if (!splitIECLines)
 	{
 		if (AtnaDataSetToOut || DataSetToOut) {

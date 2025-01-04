@@ -202,7 +202,7 @@ public:
 	union
 	{
 #if defined(EXPERIMENTALZERO)
-		static unsigned char *tracks;
+		unsigned char tracks[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #else
 		unsigned char tracks[HALF_TRACK_COUNT][MAX_TRACK_LENGTH];
 #endif
