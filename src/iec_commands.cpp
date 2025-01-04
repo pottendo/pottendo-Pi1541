@@ -507,7 +507,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			// When specifying the filename to be written to (in the OPEN command), you must be sure that the file name does not already exist.
 			// If a file that already exists is to be to opened for writing, the file must first be deleted.
 
-			DEBUG_LOG("%02x(%c)\n", commandCode, isprint(commandCode) ? commandCode : '.');
+			//DEBUG_LOG("%s: %02x(%c)", __FUNCTION__, commandCode, isprint(commandCode) ? commandCode : '.');
 
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
