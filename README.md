@@ -11,7 +11,7 @@ Credits to Stephen (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [
 
 Status
 ------
-The following is supposed to work no the the circle based _V1.24c_, as I've tested those functions a bit:
+The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
 - LCD Display SSD1306
 - Rotary Input
@@ -41,6 +41,12 @@ The floppy emulation is entirely untouched, so it's as good as it was/is in V1.2
 
 <p>
 
+Other uController support has been added:
+- Raspberry Pico 2 W (see directory _pico1541_)
+- ESP32 (PSRAM) (see directory _esp1541_)
+
+However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handel Pi1541 hard realtime requirements.
+
 **Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work lates at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=70`.
 
 TODOs
@@ -56,6 +62,7 @@ What will not come
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
 - Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working. It requires the circle-development branch as some optimized GPIO functions aren't released yet.
+- Pico2/ESP32 support
   
 Additional Options in `options.txt`
 -----------------------------------
