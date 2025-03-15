@@ -15,7 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
-
+#include "defs.h"
 #include "ROMs.h"
 #include "debug.h"
 #include <strings.h>
@@ -23,7 +23,6 @@
 void ROMs::ResetCurrentROMIndex()
 {
 	currentROMIndex = lastManualSelectedROMIndex;
-
 	DEBUG_LOG("Reset ROM back to %d %s\r\n", currentROMIndex, ROMNames[currentROMIndex]);
 }
 

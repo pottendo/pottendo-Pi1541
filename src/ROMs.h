@@ -47,8 +47,10 @@ public:
 	static const int ROM1581_SIZE = 16384 * 2;
 	unsigned char ROMImage1581[ROM1581_SIZE];
 	char ROMName1581[256];
-#endif	
+	static const int MAX_ROMS = 7;
+#else
 	static const int MAX_ROMS = 1;
+#endif
 
 	unsigned char ROMImages[MAX_ROMS][ROM_SIZE];
 	char ROMNames[MAX_ROMS][256];
