@@ -30,7 +30,7 @@
 # use RASPPI = 3 for Raspberry Pi Zero 2W or Raspberry Pi 3
 # use V = 1 optionally for verbose build
 # e.g.
-# 	make RASPPI=1BPlus V=1
+# 	make RASPPI=1BPlus V=1 legacy
 #
 # if you switch from legacy build to circle build 'make clean' is mandatory
 #
