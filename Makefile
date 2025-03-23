@@ -92,9 +92,12 @@ endif
 TARGET ?= kernel
 .PHONY: all $(LIBS)
 
-all: $(TARGET_CIRCLE)
+all: webcontent $(TARGET_CIRCLE)
 
 legacy: $(TARGET)
+
+webcontent:
+	$(MAKE) -C $(SRCDIR)/webcontent all
 
 version: 
 	@echo "#define PPI1541VERSION \"`git describe --tags`\"" > /tmp/__version_cmp
@@ -117,4 +120,6 @@ clean:
 	$(Q)$(RM) $(OBJS_LEGACY) $(OBJS_CIRCLE) $(TARGET).elf $(TARGET).map $(TARGET).lst $(TARGET).img $(TARGET_CIRCLE) *.img
 	$(MAKE) -C uspi clean
 	$(MAKE) -C $(SRCDIR) -f Makefile.circle clean
+	$(MAKE) -C $(SRCDIR)/webcontent -f Makefile clean
+
 
