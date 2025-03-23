@@ -44,6 +44,7 @@ public:
 
 private:
 	CActLED *m_pActLED;
+	unsigned m_nMaxMultipartSize;
 };
 
 #endif

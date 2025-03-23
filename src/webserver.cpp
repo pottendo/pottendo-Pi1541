@@ -49,9 +49,10 @@ static const u8 s_logo[] =
 static const char FromWebServer[] = "webserver";
 
 CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket)
-:	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE),
+:	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
 	m_pActLED (pActLED)
 {
+	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
 }
 
 CWebServer::~CWebServer (void)
