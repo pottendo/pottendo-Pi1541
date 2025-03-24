@@ -28,7 +28,7 @@
 	<meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
 	<meta name="theme-color" content="#ffffff" -->
 
-	<title>Sidekick64 Web-Interface</title>
+	<title>Pi1541 Web-Interface</title>
 </head>
 
 <body>
@@ -39,12 +39,14 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<p>Automounted image: %s</p>
+			<h1 style="text-align:center">pottendo-Pi1541 Web-Interface</h1>
+			<p style="text-align:center"> by pottendo</p>
+			<p>%s</p>
 
 			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
 					<div class="custom-file">
-						<input type="file" class="custom-file-input" id="skUploadFile" name="kernelimg">
+						<input type="file" class="custom-file-input" id="skUploadFile" name="diskimage">
 						<label class="custom-file-label" for="skUploadFile">Choose file</label>
 					</div>
 					<br /><br />

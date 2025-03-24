@@ -25,6 +25,7 @@
 #include "circle-kernel.h"
 #include "options.h"
 extern Options options;
+
 #define MAX_CONTENT_SIZE	1000000
 
 // our content
@@ -75,8 +76,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	assert (pPath != 0);
 	assert (ppContentType != 0);
 	assert (m_pActLED != 0);
-	Kernel.log("%s: %s, fdata = '%s', fn = %s", __FUNCTION__, pPath, pFormData, options.GetAutoMountImageName());
-
 	CString String;
 	const u8 *pContent = 0;
 	unsigned nLength = 0;
@@ -84,6 +83,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		strcmp (pPath, "/index.html") == 0)
 	{
 		assert (pFormData != 0);
+		char msg[1024];
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
@@ -96,7 +96,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 		bool noFormParts = true;
 		bool textFileTransfer = false;
-		
+		snprintf(msg, 1023, "Automount image: %s", options.GetAutoMountImageName());
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
@@ -124,16 +124,53 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					exl++;
 				}
 				extension[exl] = '\0';
-				Kernel.log("found filename: '%s' %i", filename, strlen(filename));
-				Kernel.log("found extension: '%s' %i", extension, strlen(extension));
+				//Kernel.log("found filename: '%s' %i", filename, strlen(filename));
+				//Kernel.log("found extension: '%s' %i", extension, strlen(extension));
 			}
 			if ((strstr(pPartHeader, "name=\"diskimage\"") != 0) &&
 				(nPartLength > 0))
 			{
-				Kernel.log("%s: uploading...\n", __FUNCTION__);
+				snprintf(msg, 1023, "file operation failed!");
+				Kernel.log("%s: uploading...", __FUNCTION__);
+				if ((strcmp(extension, "d64") == 0))
+				{
+					Kernel.log("%s: received %d bytes.", __FUNCTION__, nPartLength);
+					char fn[256];
+					FILINFO fi;
+					UINT bw;
+					snprintf(fn, 255, "SD:/1541/%s", options.GetAutoMountImageName());
+					if (f_stat(fn, &fi) == FR_OK)
+					{
+						if (f_unlink(fn) != FR_OK)
+							Kernel.log("%s: unlink of '%s' failed", __FUNCTION__, fn);
+					}
+					else
+						Kernel.log("%s: failed to find default file '%s'.", __FUNCTION__, fn);
+					FIL fp;
+					if (f_open(&fp, fn, FA_CREATE_NEW | FA_WRITE) != FR_OK)
+						Kernel.log("%s: open of '%s' failed", __FUNCTION__, fn);
+					else if (f_write(&fp, pPartData, nPartLength, &bw) != FR_OK)
+						Kernel.log("%s: write of '%s' failed", __FUNCTION__, fn);
+					else
+					{
+						Kernel.log("%s: write of '%s', %d/%d bytes successful.", __FUNCTION__, fn, nPartLength, bw);
+						snprintf(msg, 1023, "successfully wrote: %s", fn);
+					}
+					f_close(&fp);
+				}
+				else
+				{
+					Kernel.log("%s: invalid filetype: '.%s'...\n", __FUNCTION__, extension);
+					snprintf(msg, 1023, "invalid image extension!");
+				}
+			}
+			else
+			{
+				Kernel.log("%s: upload failed due to unkown reasons...\n", __FUNCTION__);
+				snprintf(msg, 1023, "upload failed!");
 			}
 		}
-		String.Format (s_Index, options.GetAutoMountImageName(), options.GetAutoMountImageName());
+		String.Format(s_Index, msg);
 
 		pContent = (const u8 *) (const char *) String;
 		nLength = String.GetLength ();
@@ -162,7 +199,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		return HTTPNotFound;
 	}
 
-	Kernel.log("%s: pLength = %d, nLength = %d\n", __FUNCTION__, *pLength, nLength);
 	assert (pLength != 0);
 	if (*pLength < nLength)
 	{
