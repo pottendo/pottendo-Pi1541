@@ -2,8 +2,11 @@
 
 This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of Jan. 2024, Version 45.3.1).
 
-As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. Some ideas:
-- Webserver to download images
+As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
+A rudimentary web-server which allows upload of images to the SDCard has been implemented. One still has to refresh the file-browser to see the freshly uploaded images on the LCD display.
+
+Some further ideas:
+- Enhance webserver to support target directory browsing to manage the images via webclient
 - Make options changeable via a WebGUI
 - ...
 
@@ -19,7 +22,7 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - Buzzer sound output
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
-- Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, Webserver runs, but one can only control the led so far
+- Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs
 
 Note that Option B hardware (split IECLines) of Pi1541 is not tested (I don't have the necessay hardware). The code uses `<somePin>.SetMode(GPIOModeInput)` method. This should neither activate _PullUp_ nor _PullDown_ for any of the respective input pins.
 <p>
@@ -51,7 +54,6 @@ However, the code compiles and runs in principle on those platforms; due to the 
 
 TODOs
 -----
-- Make the webserver useful
 - Allow static IP Adresses for faster startup, to be configured in `options.txt`
 - Make execution more efficient wrt. CPU usage to keep temperature lower, use throtteling to protect the Pi.
 - Provide a helper script to collect all files to make Pi1541 sdcard build easy

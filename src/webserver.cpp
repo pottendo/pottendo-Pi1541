@@ -96,7 +96,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 		bool noFormParts = true;
 		bool textFileTransfer = false;
-		snprintf(msg, 1023, "Automount image: %s", options.GetAutoMountImageName());
+		snprintf(msg, 1023, "Automount image-name: %s, path-prefix SD:/1541/", options.GetAutoMountImageName());
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
@@ -127,6 +127,19 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				//Kernel.log("found filename: '%s' %i", filename, strlen(filename));
 				//Kernel.log("found extension: '%s' %i", extension, strlen(extension));
 			}
+			const char *pPartHeaderCB;
+			const u8 *pPartDataCB;
+			unsigned nPartLengthCB;
+			const char *targetfn = filename;
+			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
+			{
+				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
+					(pPartDataCB[0] == '1'))
+				{
+					Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
+					targetfn = options.GetAutoMountImageName();
+				}
+			}
 			if ((strstr(pPartHeader, "name=\"diskimage\"") != 0) &&
 				(nPartLength > 0))
 			{
@@ -138,14 +151,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					char fn[256];
 					FILINFO fi;
 					UINT bw;
-					snprintf(fn, 255, "SD:/1541/%s", options.GetAutoMountImageName());
+					snprintf(fn, 255, "SD:/1541/%s", targetfn);
 					if (f_stat(fn, &fi) == FR_OK)
 					{
+						Kernel.log("%s: file exists '%s', unlinking", __FUNCTION__, fn);
 						if (f_unlink(fn) != FR_OK)
 							Kernel.log("%s: unlink of '%s' failed", __FUNCTION__, fn);
 					}
 					else
-						Kernel.log("%s: failed to find default file '%s'.", __FUNCTION__, fn);
+						Kernel.log("%s: '%s' doesn't exist", __FUNCTION__, fn);
 					FIL fp;
 					if (f_open(&fp, fn, FA_CREATE_NEW | FA_WRITE) != FR_OK)
 						Kernel.log("%s: open of '%s' failed", __FUNCTION__, fn);
@@ -172,11 +186,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		String.Format(s_Index, msg);
 
-		pContent = (const u8 *) (const char *) String;
-		nLength = String.GetLength ();
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
-	else if (strcmp (pPath, "/style.css") == 0)
+	else if (strcmp(pPath, "/style.css") == 0)
 	{
 		pContent = s_Style;
 		nLength = sizeof s_Style-1;
