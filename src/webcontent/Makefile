@@ -29,3 +29,6 @@ $(CONTENT): converttool
 converttool: converttool.c
 	@echo "  TOOL  $@"
 	@gcc -o converttool converttool.c
+
+clean:
+	rm -f $(CONTENT) converttool
