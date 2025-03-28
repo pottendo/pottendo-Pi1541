@@ -3,7 +3,7 @@
 This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of Jan. 2024, Version 45.3.1).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
-A rudimentary web-server which allows upload of images to the SDCard has been implemented. One still has to refresh the file-browser to see the freshly uploaded images on the LCD display.
+A simple web-server which allows upload of images to the SDCard has been implemented. Optionally the default automount image can be overriden and is automounted after upload. One has to refresh the file-browser to see the freshly uploaded images on the LCD display. Currently the destination folder is hardcoded to _SD:/1541_.
 
 Some further ideas:
 - Enhance webserver to support target directory browsing to manage the images via webclient
@@ -29,7 +29,9 @@ Note that Option B hardware (split IECLines) of Pi1541 is not tested (I don't ha
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
+<p>
 
+The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. 
 <p>
 
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
@@ -41,7 +43,6 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Stephen!**
-
 <p>
 
 Other uController support has been added:

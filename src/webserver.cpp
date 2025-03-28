@@ -25,6 +25,7 @@
 #include "circle-kernel.h"
 #include "options.h"
 extern Options options;
+bool webserver_upload = false;
 
 #define MAX_CONTENT_SIZE	1000000
 
@@ -131,6 +132,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
 			const char *targetfn = filename;
+			bool do_remount = false;
 			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 			{
 				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
@@ -138,6 +140,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				{
 					Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
 					targetfn = options.GetAutoMountImageName();
+					do_remount = true;
 				}
 			}
 			if ((strstr(pPartHeader, "name=\"diskimage\"") != 0) &&
@@ -169,6 +172,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						Kernel.log("%s: write of '%s', %d/%d bytes successful.", __FUNCTION__, fn, nPartLength, bw);
 						snprintf(msg, 1023, "successfully wrote: %s", fn);
+						if (do_remount)
+							webserver_upload = true;	// this re-mounts the automount image
 					}
 					f_close(&fp);
 				}

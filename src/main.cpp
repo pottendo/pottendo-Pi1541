@@ -1036,7 +1036,15 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			resetCount++;
 		else
 			resetCount = 0;
-
+#if defined(__CIRCLE__)
+extern bool webserver_upload;
+		if (webserver_upload)
+		{
+			DEBUG_LOG("%s: webserver upload done.", __FUNCTION__);
+			webserver_upload = false;
+			exitDoAutoLoad = true;
+		}
+#endif		
 		if ((emulating == IEC_COMMANDS) || (resetCount > 10) || exitEmulation || exitDoAutoLoad)
 		{
 			if (reset)
@@ -1046,7 +1054,6 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			if (exitDoAutoLoad)
 				exitReason = EXIT_AUTOLOAD;
 		}
-
 #if defined(RPI2)
 		do  // Sync to the 1MHz clock
 		{
