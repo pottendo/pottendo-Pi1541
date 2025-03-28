@@ -24,8 +24,15 @@
 #include <assert.h>
 #include "circle-kernel.h"
 #include "options.h"
+#include <string>
+#include <vector>
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
 extern Options options;
 bool webserver_upload = false;
+static string def_prefix = "SD:/1541/";
 
 #define MAX_CONTENT_SIZE	1000000
 
@@ -67,6 +74,114 @@ CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pS
 	return new CWebServer (pNetSubSystem, m_pActLED, pSocket);
 }
 
+static std::string urlEncode(const std::string& value) {
+    std::ostringstream encoded;
+    for (unsigned char c : value) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            encoded << c;  // Keep safe characters as they are
+        } else {
+            encoded << '%' << std::uppercase << std::hex << int(c);
+        }
+    }
+    return encoded.str();
+}
+
+static std::string urlDecode(const std::string& value) {
+    std::ostringstream decoded;
+    size_t len = value.length();
+
+    for (size_t i = 0; i < len; i++) {
+        if (value[i] == '%' && i + 2 < len) {
+            // Convert %XX to character
+            int hexValue;
+            std::istringstream(value.substr(i + 1, 2)) >> std::hex >> hexValue;
+            decoded << static_cast<char>(hexValue);
+            i += 2;  // Skip the next two hex digits
+        } else if (value[i] == '+') {
+            decoded << ' ';  // Convert '+' to space
+        } else {
+            decoded << value[i];  // Keep normal characters
+        }
+    }
+
+    return decoded.str();
+}
+
+static string print_human_readable_time(WORD ftime) {
+	char tmp[256];
+    int year   = ((ftime >> 9) & 0x7F) + 1980;
+    int month  = (ftime >> 5) & 0x0F;
+    int day    = ftime & 0x1F;
+    int hour   = (ftime >> 11) & 0x1F;
+    int minute = (ftime >> 5) & 0x3F;
+    int second = (ftime & 0x1F) * 2;
+
+    snprintf(tmp, 255, "%04d-%02d-%02d %02d:%02d:%02d\n",
+           		year, month, day, hour, minute, second);
+	return string(tmp);
+}
+
+static void direntry_table(string &res, string &path, int type_filter)
+{
+	res = "<table>\
+		<tr>\
+    		<th>Name</th>\
+    		<th>Type</th>\
+    		<th>Date</th>\
+  		</tr>";
+   	FRESULT fr;              // Result code
+    FILINFO fno;             // File information structure
+    DIR dir;                 // Directory object
+	vector<FILINFO> list;
+    // Open the directory
+	
+	const char *x = (def_prefix + path).c_str();
+    fr = f_opendir(&dir, x);
+    if (fr != FR_OK) {
+        DEBUG_LOG("Failed to open directory '%s': %d", x, fr);
+        return;
+    }
+    while (1) {
+        // Read a directory item
+        fr = f_readdir(&dir, &fno);
+        if (fr != FR_OK || fno.fname[0] == 0) break; // Break on error or end of dir
+		list.push_back(fno);
+    }
+    f_closedir(&dir);
+
+	string sep;
+	if (path != "")
+	{
+		sep = '/';
+		size_t pos = path.find_last_of('/');
+		if (pos == string::npos) pos = 0;
+		res += "<tr><td>" + 
+						string("<a href=index.html?") + path.substr(0, pos) + ">..</a>" +
+					"</td>" +
+					"<td>[DIR]</td>" +
+					"<td>" + "--" + "</td>" +
+				"</tr>";
+	}
+	for (auto it : list)
+	{
+	    if (it.fattrib & AM_DIR) {
+            DEBUG_LOG("[DIR]  %s", (path + sep + it.fname).c_str());
+			res += 	"<tr><td>" + 
+						string("<a href=index.html?") + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
+					"</td>" +
+					"<td>[DIR]</td>" +
+					"<td>" + print_human_readable_time(it.fdate) + "</td>" +
+					"</tr>";
+        } else {
+			/* file*/
+            //DEBUG_LOG("[FILE] %s\t(%lu bytes)", it.fname, (unsigned long)it.fsize);
+        }
+	}
+
+	res += "</table>";
+
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -88,6 +203,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
+		string curr_dir;
+		string curr_path = urlDecode(pParams);
 		
 		char filename[255];
 		char extension[10];
@@ -97,7 +214,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 		bool noFormParts = true;
 		bool textFileTransfer = false;
-		snprintf(msg, 1023, "Automount image-name: %s, path-prefix SD:/1541/", options.GetAutoMountImageName());
+		snprintf(msg, 1023, "Automount image-name: %s, path-prefix: %s", options.GetAutoMountImageName(), def_prefix.c_str());
+		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		direntry_table(curr_dir, curr_path, AM_DIR);
+
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
@@ -133,6 +253,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			unsigned nPartLengthCB;
 			const char *targetfn = filename;
 			bool do_remount = false;
+
 			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 			{
 				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
@@ -143,18 +264,33 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					do_remount = true;
 				}
 			}
+
+			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
+			{
+				if (strstr(pPartHeaderCB, "name=\"xpath\"") != 0)
+				{
+					char tmp[256];
+					memcpy(tmp, pPartDataCB, nPartLengthCB);
+					tmp[nPartLengthCB] = '\0';
+					curr_path = string(tmp);
+					direntry_table(curr_dir, curr_path, AM_DIR);
+				}
+			}			
+
 			if ((strstr(pPartHeader, "name=\"diskimage\"") != 0) &&
 				(nPartLength > 0))
 			{
 				snprintf(msg, 1023, "file operation failed!");
-				Kernel.log("%s: uploading...", __FUNCTION__);
 				if ((strcmp(extension, "d64") == 0))
 				{
 					Kernel.log("%s: received %d bytes.", __FUNCTION__, nPartLength);
-					char fn[256];
+					const char *fn;
 					FILINFO fi;
 					UINT bw;
-					snprintf(fn, 255, "SD:/1541/%s", targetfn);
+					string sep="";
+					if (curr_path != "") sep = "/";
+					string _x = string(def_prefix + curr_path + sep + targetfn);
+					fn = _x.c_str();
 					if (f_stat(fn, &fi) == FR_OK)
 					{
 						Kernel.log("%s: file exists '%s', unlinking", __FUNCTION__, fn);
@@ -189,7 +325,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg, 1023, "upload failed!");
 			}
 		}
-		String.Format(s_Index, msg);
+
+		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + curr_path).c_str(), curr_dir.c_str());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();

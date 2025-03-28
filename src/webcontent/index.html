@@ -2,6 +2,24 @@
 <html lang="en">
 
 <head>
+	<style>
+		table {
+		  border-collapse: collapse;
+		  width: 100%;
+		}
+		th, td {
+		  text-align: left;
+		  padding: 4px;
+		  border-bottom: 1px solid #DDD;				
+		}
+		tr:nth-child(even) {
+		  background-color: #525c5c;
+		}
+		tr:nth-child(odd) {
+		  background-color: #657272;
+		}
+		tr:hover {background-color: #6a7575;}
+		</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.5.2/darkly/bootstrap.min.css"
@@ -53,10 +71,16 @@
 					<div class="custom-checkbox">
 						<input type="checkbox" checked id="am-cb1" name="am-cb1" value="1">
 						<label for="am-cb1">Automount-image</label>
+					</div>					
+					<br /><br />
+					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload" />
+					<input type="hidden" id="xpath" name="xpath" value="%s">
+					<br /><br />
+					<div>
+						SDCard %s
+						<br /><br />
+						%s
 					</div>
-					<br /><br />
-					<input type="submit" class="btn btn-success" value="Upload" />
-					<br /><br />
 				</div>
 			</form>
 		</div>
