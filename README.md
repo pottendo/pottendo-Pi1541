@@ -3,10 +3,10 @@
 This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of Jan. 2024, Version 45.3.1).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
-A simple web-server which allows upload of images to the SDCard has been implemented. Optionally the default automount image can be overriden and is automounted after upload. One has to refresh the file-browser to see the freshly uploaded images on the LCD display. Currently the destination folder is hardcoded to _SD:/1541_.
+A simple web-server which allows upload of images to the SDCard has been implemented. Optionally the default automount image can be overriden and is automounted after upload. One has to refresh the file-browser to see the freshly uploaded images on the LCD display. Currently the destination folder is hardcoded to root from _SD:/1541_, change to USB is not supported.
 
 Some further ideas:
-- Enhance webserver to support target directory browsing to manage the images via webclient
+- Enhance webserver to support target directory browsing and image administration (copy, move, delete, rename, etc.)
 - Make options changeable via a WebGUI
 - ...
 
@@ -31,7 +31,7 @@ If enabled (see below), network is activated in the background. For Wifi it may 
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
 <p>
 
-The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. 
+The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 <p>
 
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
