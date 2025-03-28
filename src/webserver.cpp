@@ -28,6 +28,7 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 using namespace std;
 
 extern Options options;
@@ -145,10 +146,15 @@ static void direntry_table(string &res, string &path, int type_filter)
         // Read a directory item
         fr = f_readdir(&dir, &fno);
         if (fr != FR_OK || fno.fname[0] == 0) break; // Break on error or end of dir
-		list.push_back(fno);
+		if (fno.fattrib & type_filter)
+			list.push_back(fno);
     }
     f_closedir(&dir);
-
+	
+	sort(list.begin(), list.end(), 
+		[](const FILINFO &a, const FILINFO &b) {
+			return (string(a.fname) < string(b.fname));
+		});
 	string sep;
 	if (path != "")
 	{
@@ -164,7 +170,7 @@ static void direntry_table(string &res, string &path, int type_filter)
 	}
 	for (auto it : list)
 	{
-	    if (it.fattrib & AM_DIR) {
+	    if (it.fattrib & type_filter) {
             DEBUG_LOG("[DIR]  %s", (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
 						string("<a href=index.html?") + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
