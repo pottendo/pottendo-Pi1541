@@ -70,7 +70,7 @@ CKernel::CKernel(void) :
 	boolean serialOK;
 	
 	serialOK = mSerial.Initialize (115200);
-	screen_failed = mScreen.Initialize ();
+	screen_failed = !mScreen.Initialize ();
 	CDevice *pTarget = m_DeviceNameService.GetDevice (mOptions.GetLogDevice (), FALSE);
 	if (pTarget == 0)
 	{
@@ -82,6 +82,7 @@ CKernel::CKernel(void) :
 			m_ActLED.Blink(5); // we're screwed for logging, tell the user by blinking
 	}
 	mLogger.Initialize (pTarget);
+	log("%s: screen failed = %d, pTarte = %p, width = %dx%d", __FUNCTION__, screen_failed, pTarget, mOptions.GetWidth(), mOptions.GetHeight());
 	
 	if (screen_failed)
 		log("screen initialization failed...  trying headless");
@@ -185,16 +186,17 @@ void CKernel::log(const char *fmt, ...)
 boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDepth, u32 &width, u32 &height, u32 &bpp, u32 &pitch, u8** framebuffer)
 {
 	if (screen_failed) return false;
-	Kernel.log("init_screen for %dx%dx%d", widthDesired, heightDesired, colourDepth);
+	Kernel.log("init_screen desired for %dx%dx%d", widthDesired, heightDesired, colourDepth);
 	width = mScreen.GetWidth();
 	height = mScreen.GetHeight();
-	Kernel.log("screen %dx%d", width, height);
+	Kernel.log("HW screen reports %dx%d", width, height);
 	if (mScreen.GetFrameBuffer() == nullptr)
 		return false;
 	*framebuffer = (u8 *)(mScreen.GetFrameBuffer());
 	bpp = mScreen.GetFrameBuffer()->GetDepth();
 	pitch = mScreen.GetFrameBuffer()->GetPitch();
 	Kernel.log("bpp=%d, pitch=%d, fb=%p", bpp, pitch, *framebuffer);
+	if (!pitch) return false;
 	return true;
 }
 
