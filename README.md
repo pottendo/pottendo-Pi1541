@@ -1,6 +1,6 @@
 # Pi1541 - Circle ported, ready for new features
 
-This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of March 2024, Version 49).
+This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of March 2025, Version 49.0).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A simple web-server which allows upload of images to the SDCard has been implemented. Optionally the default automount image can be overriden and is automounted after upload. One has to refresh the file-browser to see the freshly uploaded images on the LCD display. Currently the destination folder is hardcoded to root from _SD:/1541_, change to USB is not supported.
