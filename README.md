@@ -120,9 +120,9 @@ cd circle-stdlib
 # ./configure -r 5 -p aarch64-none-elf-
 
 # Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
-
+# circle version may need adaptation of the patch
 cd libs/circle
-patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle.diff 
+patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-VXX.Y.diff 
 cd ../..
 
 # build circle-lib
