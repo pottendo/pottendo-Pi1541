@@ -608,7 +608,7 @@ void FileBrowser::RefreshDevicesEntries(std::vector<FileBrowser::BrowsableList::
 	f_getlabel("SD:", label, &vsn);
 
 	if (strlen(label) > 0)
-		sprintf(entry.filImage.fname, "SD: %s", label);
+		snprintf(entry.filImage.fname, 255, "SD: %s", label);
 	else
 		sprintf(entry.filImage.fname, "SD:");
 	if (toLower)
@@ -630,7 +630,7 @@ void FileBrowser::RefreshDevicesEntries(std::vector<FileBrowser::BrowsableList::
 		f_getlabel(USBDriveId, label, &vsn);
 
 		if (strlen(label) > 0)
-			sprintf(entry.filImage.fname, "%s %s", USBDriveId, label);
+			snprintf(entry.filImage.fname, 255, "%s %s", USBDriveId, label);
 		else
 			strcpy(entry.filImage.fname, USBDriveId);
 
