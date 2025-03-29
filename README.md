@@ -33,6 +33,11 @@ The IP address is briefly shown on the LCD, once received. One can check the IP 
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 <p>
+Note: the checking the _Automount Image_ checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
+
+![](docs/Image-upload.png)
+
+<p>
 
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
 - LED/Buzzer work again as in 1.23
@@ -70,11 +75,11 @@ What will not come
 Additional Options in `options.txt`
 -----------------------------------
 The following options control new functions available:
-| Option | Value | Purpose |
-|--------|-------|---------|
-| netEthernet | 0 or 1 | disable/enable Ethernet network|
-| netWifi | 0 or 1 | disable/enable Wifi network|
-| headLess | 0 or 1 | disable/enable headless (no HDMI output)|
+| Option      | Value  | Purpose                                  |
+| ----------- | ------ | ---------------------------------------- |
+| netEthernet | 0 or 1 | disable/enable Ethernet network          |
+| netWifi     | 0 or 1 | disable/enable Wifi network              |
+| headLess    | 0 or 1 | disable/enable headless (no HDMI output) |
 
 Know Bugs
 ---------
@@ -87,10 +92,10 @@ Checkout & Build
 One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/works with gcc > 10.x).
 The following compiler suites were used for development:
 
-| Compiler | Package name | Link | Arch |
-| ---------|--------------|------|------|
-| GCC | AArch32 bare-metal target (arm-none-eabi) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz) | 32 bit |
-| GCC | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf.tar.xz)| 64 bit (RPi4 only) |
+| Compiler | Package name                                     | Link                                                                                                                                          | Arch               |
+| -------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| GCC      | AArch32 bare-metal target (arm-none-eabi)        | [download](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz)    | 32 bit             |
+| GCC      | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf.tar.xz) | 64 bit (RPi4 only) |
 
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
@@ -129,13 +134,13 @@ make
 
 ```
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
-| Model | Version | build cmd | Image Name | Note
-|----------|-----------|----------- |----------------|-------|
-| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` ||
-| 3 | circle build | `make` | `kernel8-32.img` ||
-| Pi Zero 2W | circle build | `make` | `kernel8-32.img` | PWM Sound not upported |
-| Pi 4 | circle build | `make` | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) ||
-| Pi 5 | circle build | `make` | `kernel_2712.img` | broken, PWM Sound not (yet) supported |
+| Model                 | Version      | build cmd                                         | Image Name                                         | Note                                  |
+| --------------------- | ------------ | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------- |
+| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img`                                       |                                       |
+| 3                     | circle build | `make`                                            | `kernel8-32.img`                                   |                                       |
+| Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img`                                   | PWM Sound not upported                |
+| Pi 4                  | circle build | `make`                                            | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) |                                       |
+| Pi 5                  | circle build | `make`                                            | `kernel_2712.img`                                  | broken, PWM Sound not (yet) supported |
 
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
