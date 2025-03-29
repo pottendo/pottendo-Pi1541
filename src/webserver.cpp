@@ -153,7 +153,11 @@ static void direntry_table(string &res, string &path, int type_filter)
 	
 	sort(list.begin(), list.end(), 
 		[](const FILINFO &a, const FILINFO &b) {
-			return (string(a.fname) < string(b.fname));
+			string sa = string(a.fname);
+			string sb = string(b.fname);
+			transform(sa.begin(), sa.end(), sa.begin(), ::tolower);
+			transform(sb.begin(), sb.end(), sb.begin(), ::tolower);
+			return sa < sb;
 		});
 	string sep;
 	if (path != "")
@@ -171,7 +175,7 @@ static void direntry_table(string &res, string &path, int type_filter)
 	for (auto it : list)
 	{
 	    if (it.fattrib & type_filter) {
-            DEBUG_LOG("[DIR]  %s", (path + sep + it.fname).c_str());
+            //DEBUG_LOG("[DIR]  %s", (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
 						string("<a href=index.html?") + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
