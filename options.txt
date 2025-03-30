@@ -19,16 +19,16 @@
 // By default Pi1541 will search the root of the SD card for a ROM file and use this for ROM1.
 // The first file found with either of the following names will be used; d1541.rom, dos1541, d1541II, Jiffy.bin
 // You can override the default ROM1 by specifying it here
-//ROM1 = YourDefaultRom
+ROM1 = Jiffy.bin
 // You can specify additional ROMS here (up to 7)
 // You can then use the function keys (F1-F7) on the keyboard to change which one you would like to use (only in browse mode and not in emulation mode)
 // You can also use the buttons to swap ROMs by holding down button 1 and pressing one other buttons 2-5
 // .LST files can also specify one of these ROMS that will automatically be selected when the LST file is loaded.
-//ROM2 = Jiffy.bin
+ROM2 = dos1541
 //ROM3 = d1541II
 
 // Reference you 1581 ROM here
-//ROM1581 = 1581-rom.318045-02.bin
+ROM1581 = 1581-rom.318045-02.bin
 //ROM1581 = JiffyDOS_1581.bin
 
 // The rate (in seconds) a long selection is scrolled
@@ -37,15 +37,15 @@ scrollHighlightRate = 0.07
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1
 
-//ChargenFont = chargen		// 8 bit font file
+ChargenFont = chargen		// 8 bit font file
 
 // If using CBMFileBrowser then it is best to specify this option. When the computer resets the Pi will always revert back to the root folder ready to load CBMFileBrowser again.
 OnResetChangeToStartingFolder = 1
 
 // If you use FB64 (CBMFileBrowser) and want to use a fast loader cartridge (AR6, EFL, FC3) to load it then use this option to automatically mount it. 
-//AutoMountImage = fb.d64 // You MUST have a disk image in \1541 with this filename
+AutoMountImage = fb.d64 // You MUST have a disk image in \1541 with this filename
 // If you use FB64 (CBMFileBrowser) and want Pi1541 to send all file names as lower case.
-//LowercaseBrowseModeFilenames = 1
+LowercaseBrowseModeFilenames = 1
 
 // If you are using a FB128 in 128 mode you can get FB128 to auto boot using this option
 //AutoBootFB128 = 1
@@ -61,9 +61,9 @@ OnResetChangeToStartingFolder = 1
 GraphIEC = 1
 
 // If you have hardware with a peizo buzzer (the type without a generator) then you can use this option to hear the head step
-//SoundOnGPIO = 1
-//SoundOnGPIODuration = 100 // Length of buzz in micro seconds
-//SoundOnGPIOFreq = 200 // Frequency of buzz in Hz
+SoundOnGPIO = 1
+SoundOnGPIODuration = 1000 // Length of buzz in micro seconds
+SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
 
 // You can create 320x200 PNG files with the same name as your disk images. With this option turned on they will be displayed on the Pi's screen.
 //DisplayPNGIcons = 1
@@ -80,7 +80,7 @@ GraphIEC = 1
 //NewDiskType = g64
 
 // If you are using a LCD screen then specify it here
-//LCDName = ssd1306_128x64
+LCDName = ssd1306_128x64
 //LCDName = ssd1306_128x32
 //LCDName = sh1106_128x64
 // If you are using a LCD screen and you would like PageUp and PageDown keys to work with it (rather than the HDMI screen) then specify this option
@@ -88,18 +88,18 @@ GraphIEC = 1
 
 // change startup logo on oled - 1541ii or 1541classic
 //LcdLogoName = 1541ii
-//LcdLogoName = 1541classic
+LcdLogoName = 1541classic
 //LcdLogoName = customfile.raw
 
 // If you are using I2C LCD you can optionally change what pins it is connected to.
 // (defaults to 0 for non-split lines (Option A) or 1 for split lines (Option B))
 //i2cBusMaster = 0 //SDA - pin 27 SCL - pin 28
-//i2cBusMaster = 1 //SDA - pin 3 SCL - pin 5
-//i2cLcdAddress = 60	// I2C display address in decimal and shifted. 60 == 0x78, 61 == 0x7A
+i2cBusMaster = 1 //SDA - pin 3 SCL - pin 5
+i2cLcdAddress = 60	// I2C display address in decimal and shifted. 60 == 0x78, 61 == 0x7A
 //i2cLcdFlip = 1 // Rotate i2c LCD screen 180 degrees
-//i2cLcdOnContrast = 127 // Allows you to adjust the contrast on your i2c LCD screen
-//i2cScan = 1 // scan i2c bus and display addresses on screen
-//i2cLcdUseCBMChar = 0 // set it to 1 to use CBM font on LCD. Small but fun !
+i2cLcdOnContrast = 127 // Allows you to adjust the contrast on your i2c LCD screen
+i2cScan = 1 // scan i2c bus and display addresses on screen
+//i2cLcdUseCBMChar = 1 // set it to 1 to use CBM font on LCD. Small but fun !
 
 //QuickBoot = 0		// faster startup
 //ShowOptions = 0	// display some options on startup screen 
@@ -132,13 +132,15 @@ GraphIEC = 1
 //
 //    Please see dmRotary.h for full implementation details.
 //
-//    Updated to address issue #185 and allow for inversion of rotary operation
-//    for certain encoders. - 08/13/2020 by Geo...
-//
 //RotaryEncoderEnable = 1
-//RotaryEncoderInvert = 1
 
 // This option will display the temperature of the Pi's CPU.
-// It should be about 52ï¿½C anything above 65ï¿½C is bad and there is something wrong with your hardware
-//DisplayTemperature = 1
+// It should be about 52°C anything above 65°C is bad and there is something wrong with your hardware
+DisplayTemperature = 1
+
+//netWifi = 1
+netEthernet = 1
+
+// On Pi3s/Zero2s this may save some temperature to not show the screen
+headLess = 1
 
