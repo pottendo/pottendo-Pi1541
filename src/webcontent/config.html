@@ -50,6 +50,16 @@
 					<br /> <br />
 					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Kernel" />
 				</div>
+			</form>			
+			<form action="options.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
+				<div class="form-group">
+					<div class="custom-file">
+						<input type="file" class="custom-file-input" id="UploadOptions" name="options">
+						<label class="custom-file-label" for="UploadOptions">Choose file</label>
+					</div>
+					<br /> <br />
+					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload options.txt" />
+				</div>
 			</form>
 			<form action="index.html" method="post" name="config_form" enctype="multipart/form-data">
 				<div class="form-group">
@@ -76,6 +86,11 @@
 			$(document).ready(function () {
 				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
 					var fileName = document.getElementById("UploadKernel").files[0].name;
+					var nextSibling = e.target.nextElementSibling;
+					nextSibling.innerText = fileName;
+				});
+				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadOptions").files[0].name;
 					var nextSibling = e.target.nextElementSibling;
 					nextSibling.innerText = fileName;
 				});

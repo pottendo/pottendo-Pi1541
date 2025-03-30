@@ -276,6 +276,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	filename[0] = '\0';
 	extension[0] = '\0';
 
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -438,6 +439,41 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";		
+	}
+	else if (strcmp(pPath, "/options.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+		string msg = "unknown error!";
+		string dfnoptions = "options.txt";
+		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+		{
+			DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
+
+			extract_filename(pPartHeader, filename, extension);
+			if (string(filename) != string("options.txt"))
+			{
+				DEBUG_LOG("upload filename mismatch: options.txt != %s", filename);
+				msg = string("Filename mismatch: <i>options.txt</i> != " + string(filename) + ", refusing to upload!");
+			}
+			else
+			{
+				string dfn = string("SD:/") + dfnoptions;
+				if (write_file(dfn.c_str(), pPartData, nPartLength))
+					msg = string("Successfully wrote <i>") + dfn + "</i>";
+				else
+					msg = string("Failed to write <i>") + dfn + "</i>";
+			}
+			String.Format(s_config, msg.c_str());
+			pContent = (const u8 *)(const char *)String;
+			nLength = String.GetLength();
+			*ppContentType = "text/html; charset=iso-8859-1";
+		}
+		else
+		{
+			//msg = (modelstr + ", Kernelname = <i>" + kernelname + "</i>");
+		}
 	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
