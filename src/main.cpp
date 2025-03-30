@@ -310,7 +310,7 @@ void InitialiseHardware()
 #endif
 	{
 		screen = new ScreenHeadLess();
-		DEBUG_LOG("running headless\r\n");
+		DEBUG_LOG("running headless");
 	}
 #if !defined(__PICO2__)	&& !defined(ESP32)
 	screen->Open(screenWidth, screenHeight, 16);

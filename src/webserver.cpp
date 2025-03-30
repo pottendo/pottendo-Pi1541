@@ -24,6 +24,7 @@
 #include <assert.h>
 #include "circle-kernel.h"
 #include "options.h"
+#include <cstring>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -35,11 +36,15 @@ extern Options options;
 bool webserver_upload = false;
 static string def_prefix = "SD:/1541/";
 
-#define MAX_CONTENT_SIZE	1000000
+#define MAX_CONTENT_SIZE	4000000
 
 // our content
 static const char s_Index[] =
 #include "webcontent/index.h"
+;
+
+static const char s_config[] =
+#include "webcontent/config.h"
 ;
 
 static const u8 s_Style[] =
@@ -192,6 +197,67 @@ static void direntry_table(string &res, string &path, int type_filter)
 
 }
 
+static char *extract_filename(const char *pPartHeader, char *filename, char *extension)
+{
+	assert(pPartHeader != 0);
+	char *startpos = strstr(pPartHeader, "filename=\"");
+	if (startpos != 0)
+	{
+		startpos += 10;
+		u16 fnl = 0;
+		u16 exl = 0;
+		u16 extensionStart = 0;
+		while ((startpos[fnl] != '\"') && (fnl < 254))
+		{
+			filename[fnl] = startpos[fnl];
+			if (filename[fnl] == '.')
+				extensionStart = fnl + 1;
+			fnl++;
+		}
+		filename[fnl] = '\0';
+		while (extensionStart > 0 && extensionStart < fnl && exl < 9)
+		{
+			u8 tmp = filename[extensionStart + exl];
+			if (tmp >= 65 && tmp <= 90)
+				tmp += 32; // strtolower
+			extension[exl] = tmp;
+			exl++;
+		}
+		extension[exl] = '\0';
+		Kernel.log("found filename: '%s' %i", filename, strlen(filename));
+		Kernel.log("found extension: '%s' %i", extension, strlen(extension));
+	}
+	return filename;
+}
+
+static bool write_file(const char *fn, const u8 *pPartData, unsigned nPartLength)
+{
+	FILINFO fi;
+	UINT bw;
+	bool ret = false;
+
+	if (f_stat(fn, &fi) == FR_OK)
+	{
+		DEBUG_LOG("%s: file exists '%s', unlinking", __FUNCTION__, fn);
+		if (f_unlink(fn) != FR_OK)
+			DEBUG_LOG("%s: unlink of '%s' failed", __FUNCTION__, fn);
+	}
+	else
+		DEBUG_LOG("%s: '%s' doesn't exist", __FUNCTION__, fn);
+	FIL fp;
+	if (f_open(&fp, fn, FA_CREATE_NEW | FA_WRITE) != FR_OK)
+		DEBUG_LOG("%s: open of '%s' failed", __FUNCTION__, fn);
+	else if (f_write(&fp, pPartData, nPartLength, &bw) != FR_OK)
+		DEBUG_LOG("%s: write of '%s' failed", __FUNCTION__, fn);
+	else
+	{
+		DEBUG_LOG("%s: write of '%s', %d/%d bytes successful.", __FUNCTION__, fn, nPartLength, bw);
+		ret = true;
+	}
+	f_close(&fp);
+	return ret;
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -205,6 +271,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	CString String;
 	const u8 *pContent = 0;
 	unsigned nLength = 0;
+	char filename[255];
+	char extension[10];
+	filename[0] = '\0';
+	extension[0] = '\0';
+
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -215,15 +286,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned nPartLength;
 		string curr_dir;
 		string curr_path = urlDecode(pParams);
-		
-		char filename[255];
-		char extension[10];
-		u8 startChar = 0;
-		filename[0] = '\0';
-		extension[0] = '\0';
 
 		bool noFormParts = true;
-		bool textFileTransfer = false;
 		snprintf(msg, 1023, "Automount image-name: %s, path-prefix: %s", options.GetAutoMountImageName(), def_prefix.c_str());
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		direntry_table(curr_dir, curr_path, AM_DIR);
@@ -231,33 +295,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
-			assert (pPartHeader != 0);
-			char * startpos = strstr (pPartHeader, "filename=\"");
-			if ( startpos != 0)
-			{
-				startpos += 10;
-				u16 fnl = 0;
-				u16 exl = 0;
-				u16 extensionStart = 0;
-				while ( (startpos[fnl] != '\"') && (fnl < 254) )
-				{
-					filename[fnl] = startpos[fnl];
-					if ( filename[fnl] == '.' )
-						extensionStart = fnl+1;
-					fnl++;
-				}
-				filename[fnl] = '\0';
-				while ( extensionStart > 0 && extensionStart < fnl && exl < 9)
-				{
-					u8 tmp = filename[extensionStart + exl];
-					if (tmp >=65 && tmp <=90) tmp+=32; //strtolower
-					extension[exl] = tmp;
-					exl++;
-				}
-				extension[exl] = '\0';
-				//Kernel.log("found filename: '%s' %i", filename, strlen(filename));
-				//Kernel.log("found extension: '%s' %i", extension, strlen(extension));
-			}
+			extract_filename(pPartHeader, filename, extension);
 			const char *pPartHeaderCB;
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
@@ -269,9 +307,18 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
 					(pPartDataCB[0] == '1'))
 				{
-					Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
-					targetfn = options.GetAutoMountImageName();
-					do_remount = true;
+					const char *_t = options.GetAutoMountImageName();
+					if (_t && (_t = strrchr(_t, '.')) && (strcasecmp(_t + 1, extension) == 0))
+					{
+						Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
+						targetfn = options.GetAutoMountImageName();
+						do_remount = true;
+					}
+					else
+					{
+						DEBUG_LOG("%s: automount image extension doesn't match '%s' vs. '.%s'", __FUNCTION__, _t, extension);
+						targetfn = filename;
+					}
 				}
 			}
 
@@ -291,37 +338,25 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				(nPartLength > 0))
 			{
 				snprintf(msg, 1023, "file operation failed!");
-				if ((strcmp(extension, "d64") == 0))
+				if ((strcmp(extension, "d64") == 0) ||
+					(strcmp(extension, "g64") == 0) ||
+					(strcmp(extension, "prg") == 0))
 				{
-					Kernel.log("%s: received %d bytes.", __FUNCTION__, nPartLength);
+					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
 					const char *fn;
 					FILINFO fi;
 					UINT bw;
 					string sep="";
 					if (curr_path != "") sep = "/";
 					string _x = string(def_prefix + curr_path + sep + targetfn);
-					fn = _x.c_str();
-					if (f_stat(fn, &fi) == FR_OK)
+					if (write_file(_x.c_str(), pPartData, nPartLength))
 					{
-						Kernel.log("%s: file exists '%s', unlinking", __FUNCTION__, fn);
-						if (f_unlink(fn) != FR_OK)
-							Kernel.log("%s: unlink of '%s' failed", __FUNCTION__, fn);
-					}
-					else
-						Kernel.log("%s: '%s' doesn't exist", __FUNCTION__, fn);
-					FIL fp;
-					if (f_open(&fp, fn, FA_CREATE_NEW | FA_WRITE) != FR_OK)
-						Kernel.log("%s: open of '%s' failed", __FUNCTION__, fn);
-					else if (f_write(&fp, pPartData, nPartLength, &bw) != FR_OK)
-						Kernel.log("%s: write of '%s' failed", __FUNCTION__, fn);
-					else
-					{
-						Kernel.log("%s: write of '%s', %d/%d bytes successful.", __FUNCTION__, fn, nPartLength, bw);
-						snprintf(msg, 1023, "successfully wrote: %s", fn);
+						snprintf(msg, 1023, "successfully wrote: %s", _x.c_str());
 						if (do_remount)
 							webserver_upload = true;	// this re-mounts the automount image
 					}
-					f_close(&fp);
+					else
+						snprintf(msg, 255, "file operation failed.");
 				}
 				else
 				{
@@ -341,6 +376,68 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/config.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+
+		string kernelname = "Unknown";
+		string modelstr = "Unknown";
+		string msg = "unknown error";
+
+		CMachineInfo *mi = CMachineInfo::Get();
+		if (mi)
+		{
+			TMachineModel model = mi->GetMachineModel();
+			switch (model) {
+				case MachineModelZero2W:
+				case MachineModel3B:
+				case MachineModel3BPlus:
+					modelstr = "Model Pi3B,3B+ or Zero2W";
+					kernelname = "kernel8-32.img";
+					break;
+				case MachineModel4B:
+				modelstr = "Model Pi4";
+#if AARCH == 32
+					kernelname = "kernel7l.img";
+#else
+					kernelname = "kernel8-rpi4.img";
+#endif	
+					break;
+				case MachineModel5:
+					kernelname = "kernel_2712.img";
+				default:
+					break;
+			}
+		}
+
+		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+		{
+			extract_filename(pPartHeader, filename, extension);
+			if (kernelname != string(filename))
+			{
+				DEBUG_LOG("upload filename mismatch: %s != %s", kernelname.c_str(), filename);
+				msg = string("Filename mismatch: <i>" + kernelname + "</i> != " + string(filename) + ", refusing to upload!");
+			}
+			else
+			{
+				string dfn = string("SD:/") + kernelname;
+				if (write_file(dfn.c_str(), pPartData, nPartLength))
+					msg = string("Successfully wrote <i>") + dfn + "</i>";
+				else
+					msg = string("Failed to write <i>") + dfn + "</i>";
+			}
+		}
+		else
+		{
+			msg = (modelstr + ", Kernelname = <i>" + kernelname + "</i>");
+		}
+		String.Format(s_config, msg.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";		
 	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
