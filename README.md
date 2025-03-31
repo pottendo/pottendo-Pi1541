@@ -41,7 +41,7 @@ Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the de
 
 ![](docs/Image-upload.png)
 <p>
-Updates of Pi1541 kernel images or _options.txt_ require the correct filenames and enforce those. Once the filename is correct the those are overridden on the SDCard, no backup is made!
+Updates of Pi1541 kernel images or <i>options.txt</i> require the correct filenames and enforce those. Once the filename is correct the those are overridden on the SDCard, no backup is made!
 
 ![](docs/Update.png)
 
