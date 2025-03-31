@@ -28,7 +28,7 @@ include $(CIRCLEHOME)/Rules.mk
 
 ADDONINC = -I$(CIRCLEHOME)/addon/linux
 
-CFLAGS += -D__CIRCLE__ -I. -I./Circle -I "$(NEWLIBDIR)/include" \
+CFLAGS += -O3 -D__CIRCLE__ -I. -I./Circle -I "$(NEWLIBDIR)/include" \
        	  -I $(STDDEF_INCPATH) -I $(CIRCLEBASE)/include $(ADDONINC) \
 	  -Wno-psabi -Wno-write-strings -Wno-unused-variable -Wno-unused-but-set-variable -Wno-address \
 	  -Wno-format-truncation -Wno-stringop-truncation \

@@ -420,7 +420,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (kernelname != string(filename))
 			{
 				DEBUG_LOG("upload filename mismatch: %s != %s", kernelname.c_str(), filename);
-				msg = string("Filename mismatch: <i>" + kernelname + "</i> != " + string(filename) + ", refusing to upload!");
+				msg = string("Filename mismatch: <i>" + kernelname + "</i> != <i>" + string(filename) + "</i>, refusing to upload!");
 			}
 			else
 			{

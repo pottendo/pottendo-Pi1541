@@ -135,11 +135,11 @@ i2cScan = 1 // scan i2c bus and display addresses on screen
 //RotaryEncoderEnable = 1
 
 // This option will display the temperature of the Pi's CPU.
-// It should be about 52°C anything above 65°C is bad and there is something wrong with your hardware
+// It should be about 52ï¿½C anything above 65ï¿½C is bad and there is something wrong with your hardware
 DisplayTemperature = 1
 
-//netWifi = 1
-netEthernet = 1
+netWifi = 1
+//netEthernet = 1
 
 // On Pi3s/Zero2s this may save some temperature to not show the screen
 headLess = 1
