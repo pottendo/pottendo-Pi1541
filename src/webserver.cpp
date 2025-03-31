@@ -455,7 +455,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (string(filename) != string("options.txt"))
 			{
 				DEBUG_LOG("upload filename mismatch: options.txt != %s", filename);
-				msg = string("Filename mismatch: <i>options.txt</i> != " + string(filename) + ", refusing to upload!");
+				msg = string("Filename mismatch: <i>options.txt</i> != <i>" + string(filename) + "</i>, refusing to upload!");
 			}
 			else
 			{
@@ -465,16 +465,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				else
 					msg = string("Failed to write <i>") + dfn + "</i>";
 			}
-			String.Format(s_config, msg.c_str());
-			pContent = (const u8 *)(const char *)String;
-			nLength = String.GetLength();
-			*ppContentType = "text/html; charset=iso-8859-1";
 		}
-		else
-		{
-			//msg = (modelstr + ", Kernelname = <i>" + kernelname + "</i>");
-		}
-	}
+		String.Format(s_config, msg.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
 		pContent = s_Style;

@@ -3,10 +3,13 @@
 This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of March 2025, Version 49.0).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
-A simple web-server which allows upload of images to the SDCard has been implemented. Optionally the default automount image can be overriden and is automounted after upload. One has to refresh the file-browser to see the freshly uploaded images on the LCD display. Currently the destination folder is hardcoded to root from _SD:/1541_, change to USB is not supported.
+A simple web-server features
+- upload of images to the SDCard
+- upload of a Pi1541 kernel image
+- upload of Pi1541 _options.txt_ file
 
 Some further ideas:
-- Enhance webserver to support target directory browsing and image administration (copy, move, delete, rename, etc.)
+- Enhance webserver to support image administration (copy, move, delete, rename, etc.)
 - Make options changeable via a WebGUI
 - ...
 
@@ -19,12 +22,13 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - LCD Display SSD1306
 - Rotary Input
 - Option A HW Support 
+- Option B HW Support 
 - Buzzer sound output
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs
 
-Note that Option B hardware (split IECLines) of Pi1541 is not tested (I don't have the necessay hardware). The code uses `<somePin>.SetMode(GPIOModeInput)` method. This should neither activate _PullUp_ nor _PullDown_ for any of the respective input pins.
+Credits to @znarf in F64, who kindly tested Option B HW.
 <p>
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
@@ -34,6 +38,8 @@ The IP address is briefly shown on the LCD, once received. One can check the IP 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 <p>
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
+<p>
+Updates of Pi1541 kernel images or _options.txt_ require the correct filenames and enforce those. Once the filename is correct the those are overridden on the SDCard, no backup is made!
 
 ![](docs/Image-upload.png)
 
@@ -56,7 +62,7 @@ Other uController support has been added:
 
 However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handel Pi1541 hard realtime requirements.
 
-**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work lates at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=70`.
+**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work lates at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=75`.
 
 TODOs
 -----
