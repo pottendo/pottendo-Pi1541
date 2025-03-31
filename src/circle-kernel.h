@@ -104,7 +104,7 @@ public:
 	void playsound(void);
 	inline bool screen_available(void) { return screen_failed; }
 	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
-	
+	char *get_version(void) { return pPi1541Version; }
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;
@@ -132,6 +132,7 @@ private:
 	Pi1541Cores		 	m_MCores;
 	char ip_address[32];
 	bool new_ip, screen_failed, no_pwm;
+	char pPi1541Version[128];
 };
 
 extern CKernel Kernel;

@@ -372,7 +372,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 		}
 
-		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + curr_path).c_str(), curr_dir.c_str());
+		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -435,7 +435,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			msg = (modelstr + ", Kernelname = <i>" + kernelname + "</i>");
 		}
-		String.Format(s_config, msg.c_str());
+		String.Format(s_config, msg.c_str(), Kernel.get_version());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";		
@@ -466,7 +466,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					msg = string("Failed to write <i>") + dfn + "</i>";
 			}
 		}
-		String.Format(s_config, msg.c_str());
+		String.Format(s_config, msg.c_str(), Kernel.get_version());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

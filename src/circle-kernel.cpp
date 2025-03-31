@@ -87,6 +87,7 @@ CKernel::CKernel(void) :
 	if (screen_failed)
 		log("screen initialization failed...  trying headless");
 	strcpy(ip_address, "<n/a>");
+	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
 }
 
 boolean CKernel::Initialize (void) 
@@ -142,8 +143,8 @@ TShutdownMode CKernel::Run (void)
 		}
 		extern unsigned versionMajor;
 		extern unsigned versionMinor;
-
-		log("pottendo-Pi1541 (%s) on %s, Pi1541 V%d.%02d", PPI1541VERSION, mi->GetMachineName(), versionMajor, versionMinor);
+		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s) on %s, Pi1541 V%d.%02d", PPI1541VERSION, mi->GetMachineName(), versionMajor, versionMinor);
+		log(pPi1541Version);
 	} else {
 		log("GetMachinModel failed - halting system"); 
 		return ShutdownHalt;
