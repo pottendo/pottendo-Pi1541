@@ -187,6 +187,7 @@ void CKernel::log(const char *fmt, ...)
 boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDepth, u32 &width, u32 &height, u32 &bpp, u32 &pitch, u8** framebuffer)
 {
 	if (screen_failed) return false;
+#if RASPPI < 5	
 	Kernel.log("init_screen desired for %dx%dx%d", widthDesired, heightDesired, colourDepth);
 	width = mScreen.GetWidth();
 	height = mScreen.GetHeight();
@@ -198,6 +199,7 @@ boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDept
 	pitch = mScreen.GetFrameBuffer()->GetPitch();
 	Kernel.log("bpp=%d, pitch=%d, fb=%p", bpp, pitch, *framebuffer);
 	if (!pitch) return false;
+#endif	
 	return true;
 }
 
