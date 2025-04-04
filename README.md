@@ -77,7 +77,7 @@ What will not come
 ------------------
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
-- Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working. It requires the circle-development branch as some optimized GPIO functions aren't released yet.
+- Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working; maybe never will.
 - Pico2/ESP32 support
   
 Additional Options in `options.txt`
@@ -124,13 +124,13 @@ cd circle-stdlib
 # ./configure -r 4
 # or even Pi4 64 bit
 # ./configure -r 4 -p aarch64-none-elf-
-# or even Pi5 64 bit, requires circle development branch as of now
-# ./configure -r 5 -p aarch64-none-elf-
+# or even Pi5 64 bit
+# ./configure -r 5 -p aarch64-none-elf- -o SERIAL_DEVICE_DEFAULT=0 -o SCREEN_HEADLESS 
 
 # Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
 # circle version may need adaptation of the patch
 cd libs/circle
-patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-VXX.Y.diff 
+patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V49.0.diff 
 cd ../..
 # this enforces full compiler optimization
 sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
@@ -212,7 +212,7 @@ kernel_address=0x80000
 kernel=kernel_2712.img
 ```
 
-Uart console on pins *14(TX)/15(RX)* gives useful log information.
+Uart console on pins *14(TX)/15(RX)* gives useful log information. You may need to add `console=serial0,115200 logdev=ttyS1 socmaxtemp=78` to your `cmdline.txt` (if you have other options, put all options in one line).
 
 Networking
 ----------
