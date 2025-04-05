@@ -82,8 +82,7 @@ CKernel::CKernel(void) :
 			m_ActLED.Blink(5); // we're screwed for logging, tell the user by blinking
 	}
 	mLogger.Initialize (pTarget);
-	log("%s: screen failed = %d, pTarte = %p, width = %dx%d", __FUNCTION__, screen_failed, pTarget, mOptions.GetWidth(), mOptions.GetHeight());
-	
+		
 	if (screen_failed)
 		log("screen initialization failed...  trying headless");
 	strcpy(ip_address, "<n/a>");
