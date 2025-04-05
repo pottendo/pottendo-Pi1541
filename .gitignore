@@ -8,6 +8,7 @@
 *.d
 *~
 pico1541/lib
+pico1541/pico-sdk
 src/version.h
 .vscode/settings.json
 src/webcontent/converttool
