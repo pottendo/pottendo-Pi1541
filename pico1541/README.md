@@ -9,9 +9,10 @@ As there's the need to have some files being read from an SDCard, one needs the 
 In order to build, you have to checkout the driver library before.
 ```
 $ cd <...checkout-path...>/pottendo-Pi1541/pico1541
-$ mkdir lib ; cd lib
+$ mkdir lib build; cd lib
 $ git clone --recurse-submodules https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFs/
-$ cd ..
+$ cd ../build
+$ cmake -G Ninja ..
 $ code .
 ```
 you should now be able to build and run.
