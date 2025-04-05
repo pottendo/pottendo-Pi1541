@@ -6,8 +6,8 @@ As almost all Pi model specific bindings which have a counterparts in Circle hav
 A simple web-server features
 - upload of images to the SDCard
 - upload of a Pi1541 kernel image
-- upload of Pi1541 files like <i>options.txt</i>, <i>config.txt</i>
-- edit of <i>options.txt</i> and <i>config.txt</i>
+- upload of Pi1541 files like _options.txt_, _config.txt_
+- edit of _options.txt_ and _config.txt_
 
 Some further ideas:
 - Enhance webserver to support image administration (copy, move, delete, rename, etc.)
@@ -29,28 +29,28 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs
 
-Credits to @znarf in F64, who kindly tested Option B HW.
-<p>
+Credits to @znarF on F64, who kindly tested Option B HW.
+<br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
-<p>
+<br />
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 
-![](docs/Image-upload.png)
-<p>
+![](docs/Update.png)
+<br />
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
-![](docs/Update.png)
-<p>
+![](docs/Image-upload.png)
+<br />
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
 
 ![](docs/Edit-config.png)
-<p>
-A simple text-entry form based configuration editor is provided. Once uloaded the exist files on the SDCard are renamed to `options.txt.BAK` or `config.txt.BAK` respectively and then uploaded as edited. Be careful, no sanity checks are made. Wrong configuration entires may stop Pi1541 from working.
+<br />
+A simple text-entry form based configuration editor is provided. Once uloaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
 
-<p>
+<br />
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
 - LED/Buzzer work again as in 1.23
 - some bugfixes to avoid crash (missing initializer)
@@ -60,7 +60,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
-<p>
+<br />
 
 Other uController support has been added:
 - Raspberry Pico 2 W (see directory _pico1541_)
