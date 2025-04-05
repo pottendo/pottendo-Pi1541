@@ -47,6 +47,10 @@ static const char s_config[] =
 #include "webcontent/config.h"
 ;
 
+static const char s_edit_config[] =
+#include "webcontent/edit-config.h"
+;
+
 static const u8 s_Style[] =
 #include "webcontent/style.h"
 ;
@@ -197,13 +201,13 @@ static void direntry_table(string &res, string &path, int type_filter)
 
 }
 
-static char *extract_filename(const char *pPartHeader, char *filename, char *extension)
+static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension)
 {
 	assert(pPartHeader != 0);
-	char *startpos = strstr(pPartHeader, "filename=\"");
+	char *startpos = strstr(pPartHeader, field);
 	if (startpos != 0)
 	{
-		startpos += 10;
+		startpos += strlen(field);
 		u16 fnl = 0;
 		u16 exl = 0;
 		u16 extensionStart = 0;
@@ -258,6 +262,46 @@ static bool write_file(const char *fn, const u8 *pPartData, unsigned nPartLength
 	return ret;
 }
 
+static bool read_file(string &dfn, string &msg, string &fcontent)
+{
+	FIL fp;
+	FILINFO fi;
+	if (f_stat(dfn.c_str(), &fi) != FR_OK) 
+	{
+		msg = "Can't stat <i>" + dfn + "</i>";
+		return false;
+
+	}
+	if (f_open(&fp, dfn.c_str(), FA_READ) != FR_OK)
+	{
+		msg = "Can't open <i>" + dfn + "</i>";
+		return false;
+	}
+	UINT br, fl = 0;
+	char buf[1025];
+	buf[1024] = '\0';
+	do {
+		if (f_read(&fp, buf, 1024, &br) != FR_OK)
+			break;
+		buf[br] = '\0';
+		fcontent += string(buf);
+		fl += br;
+	} while(fl < fi.fsize);
+	bool ret = false;
+	if (fl != fi.fsize)
+	{
+		msg = "Read error reading <i>" + dfn + "</i>";
+		DEBUG_LOG("%s: read %dbytes, expected %dbytes", __FUNCTION__, fl, fi.fsize);
+	}
+	else
+	{
+		msg = "Successfully read <i>" + dfn + "</i>";
+		ret = true;
+	}
+	f_close(&fp);
+	return ret;
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -296,7 +340,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
-			extract_filename(pPartHeader, filename, extension);
+			extract_field("filename=\"", pPartHeader, filename, extension);
 			const char *pPartHeaderCB;
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
@@ -416,7 +460,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
-			extract_filename(pPartHeader, filename, extension);
+			extract_field("filename=\"", pPartHeader, filename, extension);
 			if (kernelname != string(filename))
 			{
 				DEBUG_LOG("upload filename mismatch: %s != %s", kernelname.c_str(), filename);
@@ -446,20 +490,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const u8 *pPartData;
 		unsigned nPartLength;
 		string msg = "unknown error!";
-		string dfnoptions = "options.txt";
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
-			DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
-
-			extract_filename(pPartHeader, filename, extension);
-			if (string(filename) != string("options.txt"))
+			if (!extract_field("filename=\"", pPartHeader, filename, extension))
 			{
-				DEBUG_LOG("upload filename mismatch: options.txt != %s", filename);
-				msg = string("Filename mismatch: <i>options.txt</i> != <i>" + string(filename) + "</i>, refusing to upload!");
+				DEBUG_LOG("%s: can't find filename in header '%s'", __FUNCTION__, pPartHeader);
+				msg = string("internal error filename in header not found");
 			}
 			else
 			{
-				string dfn = string("SD:/") + dfnoptions;
+				string dfn = string("SD:/") + filename;
 				if (write_file(dfn.c_str(), pPartData, nPartLength))
 					msg = string("Successfully wrote <i>") + dfn + "</i>";
 				else
@@ -470,7 +510,39 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
-}
+	}
+	else if (strcmp(pPath, "/edit-config.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+		string msg = "", msg2 = "";
+		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+		{
+			DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
+			extract_field("name=\"", pPartHeader, filename, extension);
+			string dfn = string("SD:/") + filename;			
+
+			f_unlink((dfn + ".BAK").c_str());	// unconditionally remove backup
+			f_rename(dfn.c_str(), (dfn + ".BAK").c_str());
+			if (write_file(dfn.c_str(), pPartData, nPartLength))
+				msg = string("Successfully wrote <i>") + dfn + "</i>, ";
+			else
+				msg = string("Failed to write <i>") + dfn + "</i>, ";
+		}
+		string options = "";
+		string config = "";
+		string dfn = "SD:/options.txt";
+		read_file(dfn, msg2, options);
+		msg += msg2 + ", ";
+		dfn = "SD:/config.txt";
+		read_file(dfn, msg2, config);
+		msg += msg2;
+		String.Format(s_edit_config, msg.c_str(), options.c_str(), config.c_str(), Kernel.get_version());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
 		pContent = s_Style;

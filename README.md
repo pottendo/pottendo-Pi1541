@@ -6,11 +6,12 @@ As almost all Pi model specific bindings which have a counterparts in Circle hav
 A simple web-server features
 - upload of images to the SDCard
 - upload of a Pi1541 kernel image
-- upload of Pi1541 _options.txt_ file
+- upload of Pi1541 files like <i>options.txt</i>, <i>config.txt</i>
+- edit of <i>options.txt</i> and <i>config.txt</i>
 
 Some further ideas:
 - Enhance webserver to support image administration (copy, move, delete, rename, etc.)
-- Make options changeable via a WebGUI
+- Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - ...
 
 Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages!
@@ -36,17 +37,20 @@ The IP address is briefly shown on the LCD, once received. One can check the IP 
 <p>
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
-<p>
-Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
 ![](docs/Image-upload.png)
 <p>
-Updates of Pi1541 kernel images or <i>options.txt</i> require the correct filenames and enforce those. Once the filename is correct the those are overridden on the SDCard, no backup is made!
+Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
 ![](docs/Update.png)
+<p>
+Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
+
+![](docs/Edit-config.png)
+<p>
+A simple text-entry form based configuration editor is provided. Once uloaded the exist files on the SDCard are renamed to `options.txt.BAK` or `config.txt.BAK` respectively and then uploaded as edited. Be careful, no sanity checks are made. Wrong configuration entires may stop Pi1541 from working.
 
 <p>
-
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
 - LED/Buzzer work again as in 1.23
 - some bugfixes to avoid crash (missing initializer)

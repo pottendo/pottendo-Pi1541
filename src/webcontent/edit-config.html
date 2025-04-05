@@ -26,7 +26,7 @@
 		integrity="sha512-8lE+UgnY2CgbE+WDsGwSwAiMOswuRYm11jXYV5KWH6XfSDAzrdRMbPQDpCwzVjJbe9quHrNNPV6N/llRKnw5Hg=="
 		crossorigin="anonymous" />
 	<link rel="icon" href="/favicon.ico" type="image/x-icon">
-	<title>Pi1541 Web-Interface</title>
+	<title>Pi1541 Web-Interface Configuration & Update</title>
 </head>
 
 <body>
@@ -37,43 +37,38 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<h1 style="text-align:center">Pi1541 Image upload</h1>
+			<h1 style="text-align:center">Pi1541 Edit Configuration</h1>
 			<p style="text-align:center"> by pottendo</p>
 			<p>%s</p>
-
-			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8" enctype="multipart/form-data">
+			<form action="/edit-config.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input" id="UploadFile" name="diskimage">
-						<label class="custom-file-label" for="UploadFile">Choose file</label>
-					</div>
-					<br /> <br />
-					<div class="custom-checkbox">
-						<input type="checkbox" checked id="am-cb1" name="am-cb1" value="1">
-						<label for="am-cb1">Automount-image</label>
-					</div>					
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
-					<input type="hidden" id="xpath" name="xpath" value="%s">
-					<br /><br />
-					<div>
-						SDCard %s
-						<br /><br />
-						%s
-					</div>
+					<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+					<h4 style="text-align:left"><i>options.txt</i></h2>
+					<label for="textarea_options">Edit configuration file SD:/options.txt</label>
+		    		<textarea class="form-control" name="options.txt" id="textarea_options" rows="10" 
+							  style="background-color: #4d4d4d; font-family: monospace; color: #ECFFDC;">%s</textarea>
+					<br/>
+					<input type="submit" class="btn btn-success" value="Update options.txt" />
 				</div>
 			</form>
-			<form action="config.html" method="post" name="config_form" enctype="multipart/form-data">
-				<div class="form-group">
-					<input type="submit" class="btn btn-success" value="Upload Pi1541 Files" />
+			<form action="/edit-config.html" method="post" name="config-form" accept-charset="UTF-8" enctype="multipart/form-data">
+					<div class="form-group">
+					<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+					<h4 style="text-align:left"><i>config.txt</i></h2>
+					<label for="textarea_config">Edit configuration file SD:/config.txt</label>
+		    		<textarea class="form-control" name="config.txt" id="textarea_config" rows="10" 
+							  style="background-color: #4d4d4d; font-family: monospace; color: #ECFFDC;">%s</textarea>
+					<br/>
+					<input type="submit" class="btn btn-success" value="Update config.txt" />
 				</div>
 			</form>
-			<form action="edit-config.html" method="post" name="edit_form" enctype="multipart/form-data">
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<form action="index.html" method="post" name="back-button" enctype="multipart/form-data">
 				<div class="form-group">
-					<input type="submit" class="btn btn-success" value="Change Configuration" />
+					<input type="submit" class="btn btn-success" value="Back to main page" />
 					<br/><br/>
 				</div>
 			</form>
-			
 		</div>
 		<p class="small">%s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
@@ -92,8 +87,13 @@
 
 		<script>
 			$(document).ready(function () {
-				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadFile").files[0].name;
+				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadKernel").files[0].name;
+					var nextSibling = e.target.nextElementSibling;
+					nextSibling.innerText = fileName;
+				});
+				document.querySelector('.custom-file-input2').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadOptions").files[0].name;
 					var nextSibling = e.target.nextElementSibling;
 					nextSibling.innerText = fileName;
 				});
