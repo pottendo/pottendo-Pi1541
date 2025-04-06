@@ -449,16 +449,16 @@ public:
 		else
 		{
 #if defined(__CIRCLE__)			
-			IEC_Bus::IO_IN_BUTTON4.AssignPin(PIGPIO_IN_BUTTON4); IEC_Bus::IO_IN_BUTTON4.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON5.AssignPin(PIGPIO_IN_BUTTON5); IEC_Bus::IO_IN_BUTTON5.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON4.AssignPin(PIGPIO_IN_BUTTON4); IEC_Bus::IO_IN_BUTTON4.SetMode(GPIOModeInputPullUp, true);
+			IEC_Bus::IO_IN_BUTTON5.AssignPin(PIGPIO_IN_BUTTON5); IEC_Bus::IO_IN_BUTTON5.SetMode(GPIOModeInputPullUp, true);
 			IEC_Bus::IO_IN_RESET.AssignPin(PIGPIO_IN_RESET); IEC_Bus::IO_IN_RESET.SetMode(GPIOModeInput);
 			IEC_Bus::IO_IN_SRQ.AssignPin(PIGPIO_IN_SRQ); IEC_Bus::IO_IN_SRQ.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON2.AssignPin(PIGPIO_IN_BUTTON2); IEC_Bus::IO_IN_BUTTON2.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON3.AssignPin(PIGPIO_IN_BUTTON3); IEC_Bus::IO_IN_BUTTON3.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON2.AssignPin(PIGPIO_IN_BUTTON2); IEC_Bus::IO_IN_BUTTON2.SetMode(GPIOModeInputPullUp, true);
+			IEC_Bus::IO_IN_BUTTON3.AssignPin(PIGPIO_IN_BUTTON3); IEC_Bus::IO_IN_BUTTON3.SetMode(GPIOModeInputPullUp, true);
 			IEC_Bus::IO_IN_ATN.AssignPin(PIGPIO_IN_ATN); IEC_Bus::IO_IN_ATN.SetMode(GPIOModeInput);
 			IEC_Bus::IO_IN_DATA.AssignPin(PIGPIO_IN_DATA); IEC_Bus::IO_IN_DATA.SetMode(GPIOModeInput);
 			IEC_Bus::IO_IN_CLOCK.AssignPin(PIGPIO_IN_CLOCK); IEC_Bus::IO_IN_CLOCK.SetMode(GPIOModeInput);
-			IEC_Bus::IO_IN_BUTTON1.AssignPin(PIGPIO_IN_BUTTON1); IEC_Bus::IO_IN_BUTTON1.SetMode(GPIOModeInput);
+			IEC_Bus::IO_IN_BUTTON1.AssignPin(PIGPIO_IN_BUTTON1); IEC_Bus::IO_IN_BUTTON1.SetMode(GPIOModeInputPullUp, true);
 
 			//IO_OUT_RESET.AssignPin(PIGPIO_OUT_RESET); IEC_Bus::IO_OUT_RESET.SetMode(GPIOModeOutput);
 			IEC_Bus::IO_OUT_SPI0_RS.AssignPin(PIGPIO_OUT_SPI0_RS); IEC_Bus::IO_OUT_SPI0_RS.SetMode(GPIOModeOutput);
