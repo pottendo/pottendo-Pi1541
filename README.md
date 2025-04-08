@@ -23,13 +23,15 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - LCD Display SSD1306
 - Rotary Input
 - Option A HW Support 
-- Option B HW Support 
+- Option B HW Support *)
 - Buzzer sound output
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs
 
-Credits to @znarF on F64, who kindly tested Option B HW.
+Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
+<br />
+_*) there's still a report that Option B HW isn't properly mounting diskimages_
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
