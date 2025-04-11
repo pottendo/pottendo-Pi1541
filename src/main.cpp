@@ -21,7 +21,7 @@
 #include "defs.h"
 #if defined(__CIRCLE__) 
 #include "circle-kernel.h"
-#if RASPPI <= 3
+#if RASPPI <= 3 && AARCH == 32
 #include "SpinLock.h"
 #else
 #define SpinLock CSpinLock

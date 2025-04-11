@@ -142,7 +142,13 @@ TShutdownMode CKernel::Run (void)
 		}
 		extern unsigned versionMajor;
 		extern unsigned versionMinor;
-		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s) on %s, Pi1541 V%d.%02d", PPI1541VERSION, mi->GetMachineName(), versionMajor, versionMinor);
+#if AARCH == 32		
+		char *arch = "32bit"
+#else
+		char *arch = "64bit";
+#endif		
+		int rev = mi->GetModelRevision();
+		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %srev%d", PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev);
 		log(pPi1541Version);
 	} else {
 		log("GetMachinModel failed - halting system"); 

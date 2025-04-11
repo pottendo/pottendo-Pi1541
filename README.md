@@ -126,6 +126,8 @@ git clone --recursive https://github.com/smuehlst/circle-stdlib.git
 cd circle-stdlib
 # configure for Pi3 and Pi Zero 2 W:
 ./configure -r 3
+# or even Pi3 64 bit
+# ./configure -r 3 -p aarch64-none-elf-
 # alternatively configure for Pi4 32 bit
 # ./configure -r 4
 # or even Pi4 64 bit
@@ -153,8 +155,8 @@ make
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | Model                 | Version      | build cmd                                         | Image Name                                         | Note                                  |
 | --------------------- | ------------ | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------- |
-| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img`                                       |                                       |
-| 3                     | circle build | `make`                                            | `kernel8-32.img`                                   |                                       |
+| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img`                                      |                                       |
+| 3                     | circle build | `make`                                            | `kernel8-32.img` (32bit), `kernel8.img`(64bit)                                   |                                       |
 | Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img`                                   | PWM Sound not upported                |
 | Pi 4                  | circle build | `make`                                            | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) |                                       |
 | Pi 5                  | circle build | `make`                                            | `kernel_2712.img`                                  | broken, PWM Sound not (yet) supported |
@@ -171,9 +173,6 @@ sdram_over_voltage=1
 force_turbo=1
 boot_delay=1
 
-# Run in 32-bit mode, 64-bit won't work
-arm_64bit=0
-
 enable_uart=1
 #gpu_mem=16  # If activated you need start_cd.elf, fixup_cd.dat (Pi3 and Zero 2W) in your root directory
 
@@ -183,8 +182,12 @@ hdmi_mode=16
 
 # uncomment as needed for your model/kernel
 
-# Pi 3 & Pi Zero 2W
+# Run in 32-bit mode
+arm_64bit=0
+# Pi 3 & Pi Zero 2W, 32bit
 kernel=kernel8-32.img
+# Pi 3 & Pi Zero 2W, 64bit
+#kernel=kernel8.img
 
 # Legacy kernal all models
 #kernel_address=0x1f00000
