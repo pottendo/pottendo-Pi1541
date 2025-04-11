@@ -143,7 +143,7 @@ TShutdownMode CKernel::Run (void)
 		extern unsigned versionMajor;
 		extern unsigned versionMinor;
 #if AARCH == 32		
-		char *arch = "32bit"
+		char *arch = "32bit";
 #else
 		char *arch = "64bit";
 #endif		
