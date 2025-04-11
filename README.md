@@ -31,7 +31,7 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 
 Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 <br />
-_*) there's still a report that Option B HW isn't properly mounting diskimages_
+_*) now validated with at least 2 setups - credits to @ILAH and @znarF on F64!
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
@@ -182,7 +182,7 @@ hdmi_mode=16
 
 # uncomment as needed for your model/kernel
 
-# Run in 32-bit mode
+# select 32- or 64-bit mode
 arm_64bit=0
 # Pi 3 & Pi Zero 2W, 32bit
 kernel=kernel8-32.img
@@ -200,13 +200,17 @@ Model 4 - `config.txt`
 ```
 # some generic Pi4 configs can remain
 
-# Run in 32-bit mode or set to 1 if 64 bit mode was chosen
-arm_64bit=0
 #force_turbo=1    # not needed for RPi4's, it's fast enough
 
 [all]
 enable_uart=1   # in case you have Pin 14/15 connected via TTL cable
+
+# select 32- or 64-bit mode
+arm_64bit=0
+# Pi 4, 32bit
 kernel=kernel7l.img
+# Pi 4, 64bit
+#kernel8-rpi4.img
 ```
 
 Model 5 - `config.txt` (boots, but won't run Pi1541 properly)
@@ -271,6 +275,27 @@ network={
     key_mgmt=WPA-PSK
 }
 ```
+Windo$e users may look [here](https://github.com/RPi-Distro/firmware-nonfree/raw/f713a6054746bc61ece1c8696dce91a7b7e22dd9/brcm).
+
+Pi Bootfiles
+------------
+It sometimes is a hassle to get the right files for a successful boot populated on your SDCard boot partition.
+Circle offers a convenient way to download those files for all Pi architectures. These have been used to test Circle.
+
+```
+cd ${BUILDDIR}/circle-stdlib/libs/circle/boot
+make
+```
+the populated directory looks like this:
+```
+armstub                   bcm2711-rpi-4-b.dtb  bcm2712d0-rpi-5-b.dtb  bcm2712-rpi-cm5-cm5io.dtb   config32.txt   fixup4cd.dat  fixup.dat         README        start_cd.elf
+bcm2710-rpi-zero-2-w.dtb  bcm2711-rpi-cm4.dtb  bcm2712-rpi-500.dtb    bcm2712-rpi-cm5l-cm5io.dtb  config64.txt   fixup4.dat    LICENCE.broadcom  start4cd.elf  start.elf
+bcm2711-rpi-400.dtb       bcm2712d0.dtbo       bcm2712-rpi-5-b.dtb    bootcode.bin                COPYING.linux  fixup_cd.dat  Makefile          start4.elf
+```
+One can copy all those files to the boot partition to be on the safe side for booting, even if for one particular architecture, only a subset is needed.
+As one can see, no config.txt is provided but templates. Merge intelligently with the info from above.
+
+Windo$e users may look [here](https://github.com/raspberrypi/firmware/blob/4bb9d889a9d48c7335ebe53c0b8be83285ea54b1/boot).
 
 # Disclaimer
 
