@@ -543,6 +543,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
+	else if (strcmp(pPath, "/reset.html") == 0)
+	{
+		DEBUG_LOG("%s: reset requested.", __FUNCTION__);
+		reboot_now();
+	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
 		pContent = s_Style;

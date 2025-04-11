@@ -148,7 +148,7 @@ TShutdownMode CKernel::Run (void)
 		char *arch = "64bit";
 #endif		
 		int rev = mi->GetModelRevision();
-		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %srev%d", PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev);
+		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %s/Rev%d", PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev);
 		log(pPi1541Version);
 	} else {
 		log("GetMachinModel failed - halting system"); 
@@ -422,8 +422,13 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	int i = 0;
 	switch (core) {
 	case 1:
+	{
 		Kernel.log("launching emulator on core %d", core);
+		const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
+		Kernel.append2version(pi1541HWOption);
+		DEBUG_LOG("%s: launchung emulation on %s", __FUNCTION__, Kernel.get_version());
 		emulator();
+	}
 		break;
 	case 2:
 #if RASPPI >= 3
