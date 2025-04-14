@@ -54,6 +54,7 @@ A simple text-entry form based configuration editor is provided. Once uloaded po
 
 <br />
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
+
 - LED/Buzzer work again as in 1.23
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
@@ -210,7 +211,7 @@ arm_64bit=0
 # Pi 4, 32bit
 kernel=kernel7l.img
 # Pi 4, 64bit
-#kernel8-rpi4.img
+#kernel=kernel8-rpi4.img
 ```
 
 Model 5 - `config.txt` (boots, but won't run Pi1541 properly)

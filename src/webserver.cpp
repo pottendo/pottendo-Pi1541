@@ -385,6 +385,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg, 1023, "file operation failed!");
 				if ((strcmp(extension, "d64") == 0) ||
 					(strcmp(extension, "g64") == 0) ||
+					(strcmp(extension, "d81") == 0) ||
 					(strcmp(extension, "prg") == 0))
 				{
 					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
