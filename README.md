@@ -59,6 +59,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
+- new option `noHealthMonitor`, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
@@ -95,6 +96,7 @@ The following options control new functions available:
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |
 | netWifi     | 0 or 1 | disable/enable Wifi network              |
 | headLess    | 0 or 1 | disable/enable headless (no HDMI output) |
+| noHealthMonitor    | 0 or 1 | enable/disable Healthmonitor |
 
 Know Bugs
 ---------

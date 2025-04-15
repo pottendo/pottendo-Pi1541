@@ -172,10 +172,8 @@ TShutdownMode CKernel::Run (void)
 	} 
 	else 
 	{
-		log("running headless...");
-		while (true) {
-			MsDelay(1000 * 3600);
-		}
+		log("running headless... halting core 0");
+		halt();
 	}
 	return ShutdownHalt;
 }
@@ -458,14 +456,20 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 	out:
 #endif	
-		Kernel.log("disabling network support");
+		Kernel.log("disabling network support on core %d", core);
 		break;
 	case 3:	/* health monitoring */
-		Kernel.log("launching system monitoring on core %d", core);
-		Kernel.run_tempmonitor();
+		if (options.GetHealthMonitor() == 1)
+			Kernel.log("disabling health monitoring on core %d", core);
+		else
+		{
+			Kernel.log("launching system monitoring on core %d", core);
+			Kernel.run_tempmonitor();
+		}
 		break;
 	default:
 		break;
 	}
+	halt();	// whenever a core function returns, we halt the core.
 }
 

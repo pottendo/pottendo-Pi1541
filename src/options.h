@@ -111,6 +111,7 @@ public:
 	inline unsigned int GetNetWifi() const { return netWifi; }
 	inline unsigned int GetNetEthernet() const { return netEthernet; }
 	inline unsigned int GetHeadLess() const { return headLess; }
+	inline unsigned int GetHealthMonitor() const { return noHealthMonitor; }
 	inline void SetHeadLess(unsigned int h) { headLess = h; }
 
 	// Page up and down will jump a different amount based on the maximum number rows displayed.
@@ -197,11 +198,14 @@ private:
 	//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 	unsigned int rotaryEncoderInvert;
 
-	// WiFi
+	// WiFi & Networking
 	unsigned int netWifi;
 	unsigned int netEthernet;
 
 	// headless
 	unsigned int headLess;
+
+	// Healthmonitor Console, default is off
+	unsigned int noHealthMonitor;
 };
 #endif

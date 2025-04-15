@@ -163,6 +163,7 @@ Options::Options(void)
 	, netWifi(0)
 	, netEthernet(0)
 	, headLess(0)
+	, noHealthMonitor(1)
 {
 	autoMountImageName[0] = 0;
 	strcpy(ROMFontName, "chargen");
@@ -258,6 +259,7 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(netWifi)
 		ELSE_CHECK_DECIMAL_OPTION(netEthernet)
 		ELSE_CHECK_DECIMAL_OPTION(headLess)
+		ELSE_CHECK_DECIMAL_OPTION(noHealthMonitor)
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{
 			strncpy(autoBaseName, pValue, 255);
