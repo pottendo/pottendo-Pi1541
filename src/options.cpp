@@ -164,6 +164,7 @@ Options::Options(void)
 	, netEthernet(0)
 	, headLess(0)
 	, noHealthMonitor(1)
+	, useDHCP(1)
 {
 	autoMountImageName[0] = 0;
 	strcpy(ROMFontName, "chargen");
@@ -260,6 +261,7 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(netEthernet)
 		ELSE_CHECK_DECIMAL_OPTION(headLess)
 		ELSE_CHECK_DECIMAL_OPTION(noHealthMonitor)
+		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{
 			strncpy(autoBaseName, pValue, 255);
@@ -326,6 +328,24 @@ void Options::Process(char* buffer)
 		{
 			strncpy(newDiskType, pValue, 31);
 		}
+#if defined(__CIRCLE__)
+		else if (strcasecmp(pOption, "IPAdress") == 0)
+		{
+			setIP(pValue);
+		}
+		else if (strcasecmp(pOption, "NetMask") == 0)
+		{
+			setNM(pValue);
+		}
+		else if (strcasecmp(pOption, "DefaultGateway") == 0)
+		{
+			setGW(pValue);
+		}
+		else if (strcasecmp(pOption, "DNSServer") == 0)
+		{
+			setDNS(pValue);
+		}
+#endif
 	}
 
 	if (!SplitIECLines())

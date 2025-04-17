@@ -40,6 +40,10 @@ void _enable_unaligned_access(void);
 void enable_MMU_and_IDCaches(void);
 void emulator(void);
 void PlaySoundDMA(void);
+void setIP(const char *ip);
+void setNM(const char *nm);
+void setGW(const char *gw);
+void setDNS(const char *dns);
 
 extern "C" {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);

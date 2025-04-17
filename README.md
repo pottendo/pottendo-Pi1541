@@ -60,6 +60,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
 - new option `noHealthMonitor`, see below
+- new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
@@ -76,8 +77,6 @@ However, the code compiles and runs in principle on those platforms; due to the 
 
 TODOs
 -----
-- Allow static IP Adresses for faster startup, to be configured in `options.txt`
-- Make execution more efficient wrt. CPU usage to keep temperature lower, use throtteling to protect the Pi.
 - Provide a helper script to collect all files to make Pi1541 sdcard build easy
 - Test more sophisticated loaders (RT behavior)
 
@@ -95,9 +94,29 @@ The following options control new functions available:
 | ----------- | ------ | ---------------------------------------- |
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |
 | netWifi     | 0 or 1 | disable/enable Wifi network              |
+| IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          |
+| NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          |
+| DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          |
+| DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          |
 | headLess    | 0 or 1 | disable/enable headless (no HDMI output) |
 | noHealthMonitor    | 0 or 1 | enable/disable Healthmonitor |
 
+Here a snippet one can add to his `options.txt`:
+```
+// this turns on/off HDMI output, healthMonitor on serial console, to save CPU load
+headLess = 1  // no HDMI output
+noHealthMonitor = 1  // No healthmonitor on serial console
+
+// Network configuration
+netWifi = 0
+netEthernet = 1
+// Static network config, to avoid slow DHCP - not much sanity is done, so write properly
+useDHCP = 1 // get network config automatically, else uncomment and define static network config
+//IPAdress = 192.168.1.31
+//NetMask = 192.168.1.0
+//DefaultGateway = 192.168.1.1
+//DNSServer = 192.168.1.1
+```
 Know Bugs
 ---------
 

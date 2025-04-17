@@ -106,7 +106,7 @@ public:
 	inline bool screen_available(void) { return screen_failed; }
 	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
 	char *get_version(void) { return pPi1541Version; }
-	void append2version(const char *a) { char tmp[256]; snprintf(tmp, 255, "%s/%s", pPi1541Version, a); strcpy(pPi1541Version, tmp); } 
+	void append2version(const char *a) { char tmp[256]; snprintf(tmp, 255, "%s/%s", pPi1541Version, a); strcpy(pPi1541Version, tmp); }
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;

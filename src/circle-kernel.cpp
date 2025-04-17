@@ -27,6 +27,7 @@
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 #include <iostream>
+#include <sstream>
 #include <circle/usb/usbmassdevice.h>
 #include "options.h"
 #include "webserver.h"
@@ -36,17 +37,47 @@
 #define _FIRMWARE_PATH	_DRIVE "/firmware/"		// firmware files must be provided here
 #define _CONFIG_FILE	_DRIVE "/wpa_supplicant.conf"
 
-#define USE_DHCP
-#ifndef USE_DHCP
-static const u8 IPAddress[]      = {192, 168, 188, 31};
-static const u8 NetMask[]        = {255, 255, 255, 0};
-static const u8 DefaultGateway[] = {192, 168, 188, 1};
-static const u8 DNSServer[]      = {192, 168, 188, 1};
-#endif
 
 CCPUThrottle CPUThrottle;
 extern CKernel Kernel;
 extern Options options;
+
+static u8 IPAddress[]      = {192, 168, 188, 31};
+static u8 NetMask[]        = {255, 255, 255, 0};
+static u8 DefaultGateway[] = {192, 168, 188, 1};
+static u8 DNSServer[]      = {192, 168, 188, 1};
+void parse_netaddr(const char *ip, u8 &a1, u8 &b1, u8 &c1, u8 &d1)
+{
+	std::stringstream s(ip);
+	char ch; //to temporarily store the '.'
+	int a, b, c, d;
+	s >> a >> ch >> b >> ch >> c >> ch >> d;
+	a1 = a; b1 = b; c1 = c; d1 = d;
+}
+
+void setIP(const char *ip)
+{
+	DEBUG_LOG("%s: static IP = %s", __FUNCTION__, ip);
+	parse_netaddr(ip, IPAddress[0], IPAddress[1], IPAddress[2], IPAddress[3]);
+}
+
+void setNM(const char *nm)
+{
+	DEBUG_LOG("%s: static NetMask = %s", __FUNCTION__, nm);
+	parse_netaddr(nm, NetMask[0], NetMask[1], NetMask[2], NetMask[3]);
+}
+
+void setGW(const char *gw)
+{
+	DEBUG_LOG("%s: static DefaultGateway = %s", __FUNCTION__, gw);
+	parse_netaddr(gw, DefaultGateway[0], DefaultGateway[1], DefaultGateway[2], DefaultGateway[3]);
+}
+
+void setDNS(const char *dns)
+{
+	DEBUG_LOG("%s: static DNSServer = %s", __FUNCTION__, dns);
+	parse_netaddr(dns, DNSServer[0], DNSServer[1], DNSServer[2], DNSServer[3]);
+}
 
 CKernel::CKernel(void) :
 	mScreen (mOptions.GetWidth (), mOptions.GetHeight ()),
@@ -216,11 +247,10 @@ bool CKernel::run_ethernet(void)
 		delete m_Net;
 	}
 	Kernel.log("Initializing ethernet network");
-#ifndef USE_DHCP
-	m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
-#else
-	m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
-#endif
+	if (!options.GetDHCP())
+		m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
+	else
+		m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeEthernet);
 	bOK = m_Net->Initialize(FALSE);
 	if (!bOK) {
 		log("couldn't start ethernet network...waiting 1s"); 
@@ -240,11 +270,10 @@ bool CKernel::run_wifi(void)
 		log("%s: cleaning up network stack...", __FUNCTION__);
 		delete m_Net; m_Net = nullptr;
 	}
-#ifndef USE_DHCP
-	m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
-#else
-	m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
-#endif
+	if (!options.GetDHCP())
+		m_Net = new CNetSubSystem(IPAddress, NetMask, DefaultGateway, DNSServer, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
+	else
+		m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
 	if (!m_Net) return false;
 	bool bOK = true;
 	if (bOK) bOK = m_Net->Initialize(FALSE);
@@ -375,8 +404,12 @@ void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
 	}
 }
 
+#include "ScreenLCD.h"
+extern ScreenLCD *screenLCD;
+
 void CKernel::run_tempmonitor(void)
 {
+	unsigned temp = 0;
     unsigned tmask = SystemStateUnderVoltageOccurred | SystemStateFrequencyCappingOccurred |
 					 SystemStateThrottlingOccurred | SystemStateSoftTempLimitOccurred;
 	CPUThrottle.RegisterSystemThrottledHandler(tmask, monitorhandler, nullptr);
@@ -389,11 +422,20 @@ void CKernel::run_tempmonitor(void)
 		if (!CPUThrottle.Update())
 			log("CPUThrottle Update failed");
 		log("Temp %dC (max=%dC), dynamic adaption%spossible, current freq = %dMHz (max=%dMHz)", 
-			CPUThrottle.GetTemperature(),
+			(temp = CPUThrottle.GetTemperature()),
 			CPUThrottle.GetMaxTemperature(), 
 			CPUThrottle.IsDynamic() ? " " : " not ",
 			CPUThrottle.GetClockRate() / 1000000L, 
 			CPUThrottle.GetMaxClockRate() / 1000000L);
+		if (options.DisplayTemperature())
+		{
+			RGBA BkColour = RGBA(0, 0, 0, 0xFF);
+			RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
+			char buf[128];
+			sprintf(buf, " %dC", temp);
+			screenLCD->PrintText(false, 8*12, 0, buf, TextColour, BkColour);
+			screenLCD->SwapBuffers();
+		}
 	}
 }
 
@@ -430,6 +472,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		break;
 	case 2:
 #if RASPPI >= 3
+		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
 		if (options.GetNetEthernet()) // cable network has priority over Wifi
 		{
@@ -470,6 +513,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	default:
 		break;
 	}
+	Kernel.log("%s: halting core %d", __FUNCTION__, core);
 	halt();	// whenever a core function returns, we halt the core.
 }
 

@@ -333,7 +333,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 
 		bool noFormParts = true;
-		snprintf(msg, 1023, "Automount image-name: %s, path-prefix: %s", options.GetAutoMountImageName(), def_prefix.c_str());
+		unsigned int temp;
+		GetTemperature(temp);
+		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC</i>", 
+			options.GetAutoMountImageName(),
+			def_prefix.c_str(), 
+			temp / 1000);
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		direntry_table(curr_dir, curr_path, AM_DIR);
 
@@ -441,11 +446,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				case MachineModelZero2W:
 				case MachineModel3B:
 				case MachineModel3BPlus:
-					modelstr = "Model Pi3B,3B+ or Zero2W";
 					kernelname = "kernel8-32.img";
 					break;
 				case MachineModel4B:
-				modelstr = "Model Pi4";
 #if AARCH == 32
 					kernelname = "kernel7l.img";
 #else
@@ -458,7 +461,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					break;
 			}
 		}
-
+		modelstr = string("Version & Model: <i>") + Kernel.get_version() + "</i>";
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
 			extract_field("filename=\"", pPartHeader, filename, extension);
@@ -478,7 +481,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		else
 		{
-			msg = (modelstr + ", Kernelname = <i>" + kernelname + "</i>");
+			msg = (modelstr + "<br />Kernelname: <i>" + kernelname + "</i>");
 		}
 		String.Format(s_config, msg.c_str(), Kernel.get_version());
 		pContent = (const u8 *)(const char *)String;
@@ -527,15 +530,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			f_unlink((dfn + ".BAK").c_str());	// unconditionally remove backup
 			f_rename(dfn.c_str(), (dfn + ".BAK").c_str());
 			if (write_file(dfn.c_str(), pPartData, nPartLength))
-				msg = string("Successfully wrote <i>") + dfn + "</i>, ";
+				msg = string("Successfully wrote <i>") + dfn + "</i><br />";
 			else
-				msg = string("Failed to write <i>") + dfn + "</i>, ";
+				msg = string("Failed to write <i>") + dfn + "</i><br />";
 		}
 		string options = "";
 		string config = "";
 		string dfn = "SD:/options.txt";
 		read_file(dfn, msg2, options);
-		msg += msg2 + ", ";
+		msg += msg2 + "<br />";
 		dfn = "SD:/config.txt";
 		read_file(dfn, msg2, config);
 		msg += msg2;
