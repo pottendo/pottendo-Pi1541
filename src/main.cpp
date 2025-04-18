@@ -21,11 +21,6 @@
 #include "defs.h"
 #if defined(__CIRCLE__) 
 #include "circle-kernel.h"
-#if RASPPI <= 3 && AARCH == 32
-#include "SpinLock.h"
-#else
-#define SpinLock CSpinLock
-#endif
 #elif defined(__PICO2__)
 // XXX PICO specific includes here
 #include "pico2.h"

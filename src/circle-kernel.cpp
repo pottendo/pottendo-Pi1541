@@ -146,6 +146,11 @@ boolean CKernel::Initialize (void)
 	return bOK;
 }
 
+#include "DiskCaddy.h"
+#include "ScreenLCD.h"
+extern ScreenLCD *screenLCD;
+extern DiskCaddy diskCaddy;
+extern CSpinLock core0RefreshingScreen;
 TShutdownMode CKernel::Run (void)
 {
 	CMachineInfo *mi = CMachineInfo::Get();
@@ -203,8 +208,25 @@ TShutdownMode CKernel::Run (void)
 	} 
 	else 
 	{
-		log("running headless... halting core 0");
-		halt();
+		unsigned temp = 0;
+		log("running headless...0");
+		while (1)
+		{
+			if (options.DisplayTemperature())
+			{
+				RGBA BkColour = RGBA(0, 0, 0, 0xFF);
+				RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
+				char buf[128];
+				GetTemperature(temp);
+				sprintf(buf, " %dC", temp / 1000);
+				core0RefreshingScreen.Acquire();				
+				screenLCD->PrintText(false, 8*12, 0, buf, TextColour, BkColour);
+				screenLCD->SwapBuffers();
+				core0RefreshingScreen.Release();
+			}
+			diskCaddy.Update();
+			MsDelay(250);
+		}
 	}
 	return ShutdownHalt;
 }
@@ -404,12 +426,8 @@ void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
 	}
 }
 
-#include "ScreenLCD.h"
-extern ScreenLCD *screenLCD;
-
 void CKernel::run_tempmonitor(void)
 {
-	unsigned temp = 0;
     unsigned tmask = SystemStateUnderVoltageOccurred | SystemStateFrequencyCappingOccurred |
 					 SystemStateThrottlingOccurred | SystemStateSoftTempLimitOccurred;
 	CPUThrottle.RegisterSystemThrottledHandler(tmask, monitorhandler, nullptr);
@@ -422,20 +440,11 @@ void CKernel::run_tempmonitor(void)
 		if (!CPUThrottle.Update())
 			log("CPUThrottle Update failed");
 		log("Temp %dC (max=%dC), dynamic adaption%spossible, current freq = %dMHz (max=%dMHz)", 
-			(temp = CPUThrottle.GetTemperature()),
+			CPUThrottle.GetTemperature(),
 			CPUThrottle.GetMaxTemperature(), 
 			CPUThrottle.IsDynamic() ? " " : " not ",
 			CPUThrottle.GetClockRate() / 1000000L, 
 			CPUThrottle.GetMaxClockRate() / 1000000L);
-		if (options.DisplayTemperature())
-		{
-			RGBA BkColour = RGBA(0, 0, 0, 0xFF);
-			RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
-			char buf[128];
-			sprintf(buf, " %dC", temp);
-			screenLCD->PrintText(false, 8*12, 0, buf, TextColour, BkColour);
-			screenLCD->SwapBuffers();
-		}
 	}
 }
 

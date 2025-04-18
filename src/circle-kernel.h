@@ -25,9 +25,6 @@
 #include <circle/serial.h>
 #include <circle/exceptionhandler.h>
 #include <circle/interrupt.h>
-#if RASPPI <= 3
-#include <circle/spinlock.h>
-#endif
 #include <circle/memio.h>
 #include <circle/timer.h>
 #include <circle/logger.h>
@@ -45,7 +42,11 @@
 #include <circle/net/netsubsystem.h>
 #include <stdio.h>
 #include <cstring>
-
+#if RASPPI <= 3 && AARCH == 32
+#include "SpinLock.h"
+#else
+#define SpinLock CSpinLock
+#endif
 enum TShutdownMode
 {
 	ShutdownNone,
