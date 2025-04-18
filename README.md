@@ -247,7 +247,7 @@ kernel_address=0x80000
 kernel=kernel_2712.img
 ```
 
-Uart console on pins *14(TX)/15(RX)* gives useful log information. You may need to add `console=serial0,115200 logdev=ttyS1 socmaxtemp=78` to your `cmdline.txt` (if you have other options, put all options in one line).
+Uart console on pins *14(TX)/15(RX)* gives useful log information. You may need to add `console=serial0,115200 logdev=ttyS1 socmaxtemp=78 loglevel=2` to your `cmdline.txt` (if you have other options, put all options in one line, put loglevel=4 if you want to see the full developer debug log).
 
 Networking
 ----------
