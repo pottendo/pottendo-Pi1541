@@ -209,6 +209,7 @@ TShutdownMode CKernel::Run (void)
 	else 
 	{
 		unsigned temp = 0;
+		extern volatile EmulatingMode emulating;
 		log("running headless...0");
 		while (1)
 		{
@@ -224,7 +225,8 @@ TShutdownMode CKernel::Run (void)
 				screenLCD->SwapBuffers();
 				core0RefreshingScreen.Release();
 			}
-			diskCaddy.Update();
+			if (emulating != IEC_COMMANDS)
+				diskCaddy.Update();
 			MsDelay(250);
 		}
 	}

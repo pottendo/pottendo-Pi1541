@@ -40,6 +40,13 @@ typedef enum {
 	EXIT_AUTOLOAD
 } EXIT_TYPE;
 
+enum EmulatingMode
+{
+	IEC_COMMANDS,
+	EMULATING_1541,
+	EMULATING_1581
+};
+
 #ifndef Max
 #define Max(a,b)	(((a) > (b)) ? (a) : (b))
 #endif

@@ -34,7 +34,7 @@ Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 _*) now validated with at least 2 setups - credits to @ILAH and @znarF on F64!
 <br />
 
-If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP.
+If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. On can chose a static network configuration for faster startup, see below.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
 <br />
 
@@ -59,7 +59,6 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
-- new option `noHealthMonitor`, see below
 - new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 
@@ -99,19 +98,17 @@ The following options control new functions available:
 | DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          |
 | DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          |
 | headLess    | 0 or 1 | disable/enable headless (no HDMI output) |
-| noHealthMonitor    | 0 or 1 | enable/disable Healthmonitor |
 
 Here a snippet one can add to his `options.txt`:
 ```
-// this turns on/off HDMI output, healthMonitor on serial console, to save CPU load
+// this turns on/off HDMI output
 headLess = 1  // no HDMI output
-noHealthMonitor = 1  // No healthmonitor on serial console
 
 // Network configuration
 netWifi = 0
 netEthernet = 1
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
-useDHCP = 1 // get network config automatically, else uncomment and define static network config
+useDHCP = 1 // get network config automatically, else uncomment and define static network config below
 //IPAdress = 192.168.1.31
 //NetMask = 192.168.1.0
 //DefaultGateway = 192.168.1.1
