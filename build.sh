@@ -11,11 +11,11 @@ tag="none"
 archs="pi3-32 pi3-64 pi4-32 pi4-64"
 while [ ! x"${opts}" = x"break" ] ; do
     case "$1" in 
-        -t)
+    -t)
 	    shift
-            tag="$1"
-            shift
-            ;;
+        tag="$1"
+        shift
+        ;;
 	-a) shift
 	    archs="$1"
 	    shift
@@ -29,14 +29,41 @@ while [ ! x"${opts}" = x"break" ] ; do
 	    shift
 	    exit 0
 	    ;;
-        *)
-            opts="break"
-            ;;
+    *)
+        opts="break"
+        ;;
     esac
 done
 
 CIRCLE=${base}/../circle-stdlib
 PPI1541=${base}
+ROMS="dos1581-318045-02.bin dos1541ii-251968-03.bin dos1541-325302-01%2B901229-05.bin"
+
+# if a tag is given, it's pottendos release build, user shouldn't bother
+if [ x${tag} != "xnone" ] ; then
+    cd ${PPI1541}
+    git pull
+    if git tag -l |grep ${tag} >/dev/null ; then
+	    echo "Tag already set: ${tag}"
+    else
+	    echo "No tag set, refusing"
+	    exit 1
+    fi
+    RELEASE=${base}/../${tag}
+    mkdir ${RELEASE} 2>/dev/null
+    # Check if legacy build still works
+    cd ${PPI1541}
+    if make RASPPI=0 legacy > make-PiZero.log; then
+	    echo "successully built for PiZero, legacy code base"
+	    cp kernel.img ${RELEASE}
+    else
+	    echo "failed to build legacy codebase"
+	    exit 1
+    fi
+else
+    # install in builddir, where the checkouts have been done
+    RELEASE=${base}/..
+fi
 
 if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
@@ -44,33 +71,29 @@ if [ x${checkout} = "xyes" ] ; then
     git clone --recursive https://github.com/smuehlst/circle-stdlib.git
     cd ${CIRCLE}/libs/circle
     patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V49.0.diff
-    exit
-fi
-
-# if a tag is given, it's pottendos release build, user shouldn't bother
-if [ x${tag} != "xnone" ] ; then
-    cd ${PPI1541}
-    git pull
-    if git tag -l |grep ${tag} >/dev/null ; then
-	echo "Tag already set: ${tag}"
-    else
-	echo "No tag set, refusing"
-	exit 1
-    fi
-    RELEASE=${base}/../${tag}
-    mkdir ${RELEASE} 2>/dev/null
-    # Check if legacy build still works
-    cd ${PPI1541}
-    if make RASPPI=0 legacy > make-PiZero.log; then
-	echo "successully built for PiZero, legacy code base"
-	cp kernel.img ${RELEASE}
-    else
-	echo "failed to build legacy codebase"
-	exit 1
-    fi
-else
-    # install in builddir, where the checkouts have been done
-    RELEASE=${base}/..
+    mkdir ${RELEASE}/Pi-Bootpart 2>/dev/null
+    # fetch bootfiles for RPis
+    cd ${CIRCLE}/libs/circle/boot
+    make
+    cp bootcode.bin fixup* start* bcm2711-rpi-4-b.dtb ${RELEASE}/Pi-Bootpart
+    # fetch WiFi firmware
+    cd ${CIRCLE}/libs/circle/addon/wlan/firmware
+    make
+    cd ..
+    cp -r firmware ${RELEASE}/Pi-Bootpart
+    echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/Pi-Bootpart/cmdline.txt
+    echo "fetching roms..."
+    cd ${RELEASE}/Pi-Bootpart
+    rm dos*.bin
+    wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1541-325302-01%2B901229-05.bin?format=raw -O dos1541
+    wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1541ii-251968-03.bin?format=raw -O dos1541ii
+    wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1581-318045-02.bin?format=raw -O dos1581
+    rm chargen-906143-02.bin
+    wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/C64/chargen-906143-02.bin?format=raw -O chargen
+    # finally populate options.txt and config.txt
+    cd ${base}
+    cp options.txt config.txt ${RELEASE}/Pi-Bootpart
+    exit 0
 fi
 
 echo "building pottendo-Pi1541 for ${archs}"
@@ -99,21 +122,23 @@ for a in ${archs} ; do
     esac
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
-    ./configure $opts
+    ./configure $opts >make-${a}.log
     sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
     sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
-    if make -j12 >make-${a}.log; then
-	echo "success fully built circle: ${a} ${opts}"
+    echo "building circle-stdlib, may take a while..."
+    if make -j12 2>&1 >>make-${a}.log; then
+	    echo "success fully built circle: ${a} ${opts}"
     else
-	echo "fail for ${a}"
-	exit 1
+	    echo "fail for ${a}"
+	    exit 1
     fi
     cd ${PPI1541}
     make clean 2>&1 > /dev/null
+    echo "building pottendo-Pi1541..."
     if make -j12 >>make-${a}.log; then
-	echo "success fully built pottendo-Pi1541: ${a} ${opts}"
+	    echo "success fully built pottendo-Pi1541: ${a} ${opts}"
     else
-	echo "fail for ${a}"
+	    echo "fail for ${a}"
 	exit 1
     fi
     cp kernel*.img ${RELEASE}

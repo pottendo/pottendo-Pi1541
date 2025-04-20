@@ -1,0 +1,64 @@
+[pi0]
+arm_freq=1100
+over_voltage=8
+sdram_freq=500
+sdram_over_voltage=2
+force_turbo=1
+boot_delay=1
+arm_64bit=0
+kernel_address=0x1f00000
+kernel=kernel-1.24.img
+
+[p02]
+arm_freq=1300
+over_voltage=4
+sdram_freq=500
+sdram_over_voltage=1
+force_turbo=1
+boot_delay=1
+gpu_mem=16
+hdmi_group=2
+hdmi_mode=16
+# select 32- or 64-bit mode
+arm_64bit=1
+# Pi 3 & Pi Zero 2W, 32bit
+#kernel=kernel8-32.img
+# Pi 3 & Pi Zero 2W, 64bit
+kernel=kernel8.img
+
+[pi3]
+arm_freq=1300
+over_voltage=4
+sdram_freq=500
+sdram_over_voltage=1
+force_turbo=1
+boot_delay=1
+gpu_mem=16
+hdmi_group=2
+hdmi_mode=16
+# select 32- or 64-bit mode
+arm_64bit=1
+# Pi 3 & Pi Zero 2W, 32bit
+#kernel=kernel8-32.img
+# Pi 3 & Pi Zero 2W, 64bit
+kernel=kernel8.img
+# Pi3 legacy 32bit kernel
+#kernel_address=0x1f00000
+#kernel=kernel-1.23.img
+
+[pi4]
+hdmi_force_hotplug=1   # Force HDMI output even if no monitor detected
+hdmi_group=2           # Set display mode to DMT (monitor)
+hdmi_mode=82           # Set resolution to 1920x1080 @ 60Hz
+max_framebuffers=2
+# select 32- or 64-bit mode
+arm_64bit=1
+# Pi 4, 32bit
+#kernel=kernel7l.img
+# Pi 4, 64bit
+kernel=kernel8-rpi4.img
+
+[all]
+enable_uart=1
+# Disable compensation for displays with overscan
+disable_overscan=1

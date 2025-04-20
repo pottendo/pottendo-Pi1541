@@ -1,9 +1,5 @@
 // Sample options.txt configuration file for Pi1541
-
-
-
-// If you would like to change the drive number then specify it here (8 is the default)
-//deviceID = 9
+////////////////////////// HW Section
 
 // If you are using the split line hardware option (ie Option B) then you need to specify this option
 //splitIECLines = 1
@@ -15,69 +11,6 @@
 // If you are using the Pi's composite video out then these options allow you to experiment with the display resolution
 //ScreenWidth = 512
 //ScreenHeight = 384
-
-// By default Pi1541 will search the root of the SD card for a ROM file and use this for ROM1.
-// The first file found with either of the following names will be used; d1541.rom, dos1541, d1541II, Jiffy.bin
-// You can override the default ROM1 by specifying it here
-ROM1 = Jiffy.bin
-// You can specify additional ROMS here (up to 7)
-// You can then use the function keys (F1-F7) on the keyboard to change which one you would like to use (only in browse mode and not in emulation mode)
-// You can also use the buttons to swap ROMs by holding down button 1 and pressing one other buttons 2-5
-// .LST files can also specify one of these ROMS that will automatically be selected when the LST file is loaded.
-ROM2 = dos1541
-//ROM3 = d1541II
-
-// Reference you 1581 ROM here
-ROM1581 = 1581-rom.318045-02.bin
-//ROM1581 = JiffyDOS_1581.bin
-
-// The rate (in seconds) a long selection is scrolled
-scrollHighlightRate = 0.07
-
-// Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
-//RAMBOard = 1
-
-ChargenFont = chargen		// 8 bit font file
-
-// If using CBMFileBrowser then it is best to specify this option. When the computer resets the Pi will always revert back to the root folder ready to load CBMFileBrowser again.
-OnResetChangeToStartingFolder = 1
-
-// If you use FB64 (CBMFileBrowser) and want to use a fast loader cartridge (AR6, EFL, FC3) to load it then use this option to automatically mount it. 
-AutoMountImage = fb.d64 // You MUST have a disk image in \1541 with this filename
-// If you use FB64 (CBMFileBrowser) and want Pi1541 to send all file names as lower case.
-LowercaseBrowseModeFilenames = 1
-
-// If you are using a FB128 in 128 mode you can get FB128 to auto boot using this option
-//AutoBootFB128 = 1
-
-// If you are using a 128 you can auto boot anything using this option
-// This over-rides AutoBootFB128
-//128BootSectorName = bootsect.128
-
-// If you would ever like to disable browse mode completely you can do so here
-//DisableSD2IECCommands = 1
-
-// This option displays the IEC bus activity on the bottom of the Pi's screen
-GraphIEC = 1
-
-// If you have hardware with a peizo buzzer (the type without a generator) then you can use this option to hear the head step
-SoundOnGPIO = 1
-SoundOnGPIODuration = 1000 // Length of buzz in micro seconds
-SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
-
-// You can create 320x200 PNG files with the same name as your disk images. With this option turned on they will be displayed on the Pi's screen.
-//DisplayPNGIcons = 1
-
-// If you would like to specify what file will be loaded by LOAD"*" in browse mode then specify it here
-//StarFileName = somefile
-
-// Alt-N creates a new disk image.
-// Names are formed automatically as autoname001.d64, autoname002.d64 etc...
-// change the base of the filename here
-//AutoBaseName = autoname
-// By default Alt-N creates a new D64 disk image.
-// If you rather it create a G64 then use this option.
-//NewDiskType = g64
 
 // If you are using a LCD screen then specify it here
 LCDName = ssd1306_128x64
@@ -101,9 +34,10 @@ i2cLcdOnContrast = 127 // Allows you to adjust the contrast on your i2c LCD scre
 i2cScan = 1 // scan i2c bus and display addresses on screen
 //i2cLcdUseCBMChar = 1 // set it to 1 to use CBM font on LCD. Small but fun !
 
-//QuickBoot = 0		// faster startup
-//ShowOptions = 0	// display some options on startup screen 
-//IgnoreReset = 0
+// If you have hardware with a peizo buzzer (the type without a generator) then you can use this option to hear the head step
+SoundOnGPIO = 1
+SoundOnGPIODuration = 1000 // Length of buzz in micro seconds
+SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
 
 // You can remap the physical button functions
 // numbers correspond to the standard board layout
@@ -134,13 +68,88 @@ i2cScan = 1 // scan i2c bus and display addresses on screen
 //
 //RotaryEncoderEnable = 1
 
+////////////////////////// Emultion Section 
+
+// If you would like to change the drive number then specify it here (8 is the default)
+//deviceID = 9
+
+// By default Pi1541 will search the root of the SD card for a ROM file and use this for ROM1.
+// The first file found with either of the following names will be used; d1541.rom, dos1541, d1541II, Jiffy.bin
+// You can override the default ROM1 by specifying it here
+ROM1 = Jiffy.bin
+// You can specify additional ROMS here (up to 7)
+// You can then use the function keys (F1-F7) on the keyboard to change which one you would like to use (only in browse mode and not in emulation mode)
+// You can also use the buttons to swap ROMs by holding down button 1 and pressing one other buttons 2-5
+// .LST files can also specify one of these ROMS that will automatically be selected when the LST file is loaded.
+ROM2 = dos1541ii
+ROM3 = dos1541
+
+// Reference you 1581 ROM here
+ROM1581 = dos1581
+//ROM1581 = JiffyDOS_1581.bin
+
+// Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
+//RAMBOard = 1
+
+ChargenFont = chargen		// 8 bit font file
+
+///////////////////////////////// Pi1541 Behavior
+// The rate (in seconds) a long selection is scrolled
+scrollHighlightRate = 0.07
+
+// If using CBMFileBrowser then it is best to specify this option. When the computer resets the Pi will always revert back to the root folder ready to load CBMFileBrowser again.
+OnResetChangeToStartingFolder = 1
+
+// If you use FB64 (CBMFileBrowser) and want to use a fast loader cartridge (AR6, EFL, FC3) to load it then use this option to automatically mount it. 
+AutoMountImage = fb.d64 // You MUST have a disk image in \1541 with this filename
+// If you use FB64 (CBMFileBrowser) and want Pi1541 to send all file names as lower case.
+LowercaseBrowseModeFilenames = 1
+
+// If you are using a FB128 in 128 mode you can get FB128 to auto boot using this option
+//AutoBootFB128 = 1
+
+// If you are using a 128 you can auto boot anything using this option
+// This over-rides AutoBootFB128
+//128BootSectorName = bootsect.128
+
+// If you would ever like to disable browse mode completely you can do so here
+//DisableSD2IECCommands = 1
+
+// This option displays the IEC bus activity on the bottom of the Pi's screen
+GraphIEC = 1
+
+// You can create 320x200 PNG files with the same name as your disk images. With this option turned on they will be displayed on the Pi's screen.
+//DisplayPNGIcons = 1
+
+// If you would like to specify what file will be loaded by LOAD"*" in browse mode then specify it here
+//StarFileName = somefile
+
+// Alt-N creates a new disk image.
+// Names are formed automatically as autoname001.d64, autoname002.d64 etc...
+// change the base of the filename here
+//AutoBaseName = autoname
+// By default Alt-N creates a new D64 disk image.
+// If you rather it create a G64 then use this option.
+//NewDiskType = g64
+
+//QuickBoot = 0		// faster startup
+//ShowOptions = 0	// display some options on startup screen 
+//IgnoreReset = 0
+
 // This option will display the temperature of the Pi's CPU.
-// It should be about 52�C anything above 65�C is bad and there is something wrong with your hardware
-DisplayTemperature = 1
+// It should be about 52C anything above 75C is bad and there is something wrong with your hardware
+DisplayTemperature = 0
 
+/////////////////////////////// pottendo Pi1541 Options
+// this turns on/off HDMI output
+headLess = 1  // no HDMI output
+
+// Network configuration
 netWifi = 1
-//netEthernet = 1
-
-// On Pi3s/Zero2s this may save some temperature to not show the screen
-headLess = 1
-
+netEthernet = 0
+// Static network config, to avoid slow DHCP - not much sanity is done, so write properly
+useDHCP = 1 // get network config automatically, else uncomment and define static network config below
+//IPAdress = 192.168.1.31
+//NetMask = 192.168.1.0
+//DefaultGateway = 192.168.1.1
+//DNSServer = 192.168.1.1

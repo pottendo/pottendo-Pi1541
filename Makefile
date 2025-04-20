@@ -122,4 +122,5 @@ clean:
 	$(MAKE) -C $(SRCDIR) -f Makefile.circle clean
 	$(MAKE) -C $(SRCDIR)/webcontent -f Makefile clean
 
-
+distclean: clean
+	rm *.log
