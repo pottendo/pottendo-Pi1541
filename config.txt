@@ -7,8 +7,9 @@ force_turbo=1
 boot_delay=1
 arm_64bit=0
 kernel_address=0x1f00000
-kernel=kernel-1.24.img
+kernel=kernel.img
 
+# this is for the PiZero 2 W
 [p02]
 arm_freq=1300
 over_voltage=4
@@ -26,6 +27,7 @@ arm_64bit=1
 # Pi 3 & Pi Zero 2W, 64bit
 kernel=kernel8.img
 
+# all Pi3 variants
 [pi3]
 arm_freq=1300
 over_voltage=4
@@ -46,6 +48,7 @@ kernel=kernel8.img
 #kernel_address=0x1f00000
 #kernel=kernel-1.23.img
 
+# all Pi4 variants
 [pi4]
 hdmi_force_hotplug=1   # Force HDMI output even if no monitor detected
 hdmi_group=2           # Set display mode to DMT (monitor)

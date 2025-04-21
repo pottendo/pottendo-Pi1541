@@ -18,7 +18,12 @@ Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi
 
 Some discussions, announcements one can find in the Forum64 thread, [here](https://www.forum64.de/index.php?thread/155126-new-release-pottendo-pi1541-webserver-for-upload-images-updates/&postID=2276999#post2276999).
 
-Status
+# Installation
+
+For your convencience a fully populated Pi1541 is prepared for easy setup. 
+Copy the content of the release bundle to your boot partition of your Pi1541 SDCard. Make sure you adapt `options.txt` to your Pi1541 hardware setup (_Option A_ or _Option B_). Option B hardware is default. If you want to use networking (Wifi or Ethernet), see below how to activate.
+
+# Status
 ------
 The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
@@ -33,29 +38,34 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 
 Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 <br />
-*) now validated with at least 2 setups - credits to @ILAH and @znarF on F64!
+
+*) _now validated with at least 2 setups_ - credits to @ILAH and @znarF on F64!
 
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. On can chose a static network configuration for faster startup, see below.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
+
 <br />
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 
 ![](docs/Update.png)
 <br />
+
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
 ![](docs/Image-upload.png)
 <br />
+
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
 
 ![](docs/Edit-config.png)
 <br />
-A simple text-entry form based configuration editor is provided. Once uloaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
 
+A simple text-entry form based configuration editor is provided. Once uloaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
 <br />
+
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
 
 - LED/Buzzer work again as in 1.23
@@ -69,6 +79,7 @@ Still the legacy code can be built with support for all supported hardware varia
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
 <br />
 
+## Misc
 Other uController support has been added:
 - Raspberry Pico 2 W (see directory _pico1541_)
 - ESP32 (PSRAM) (see directory _esp1541_)
@@ -77,20 +88,19 @@ However, the code compiles and runs in principle on those platforms; due to the 
 
 **Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=78`.
 
-TODOs
------
-- Provide a helper script to collect all files to make Pi1541 sdcard build easy
-- Test more sophisticated loaders (RT behavior)
+## TODOs
 
-What will not come
-------------------
+- You tell me!
+
+## What will not come
+
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
 - Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working; maybe never will.
 - Pico2/ESP32 support
   
-Additional Options in `options.txt`
------------------------------------
+# Additional Options in `options.txt`
+
 The following options control new functions available:
 | Option      | Value  | Purpose                                  |
 | ----------- | ------ | ---------------------------------------- |
@@ -117,15 +127,13 @@ useDHCP = 1 // get network config automatically, else uncomment and define stati
 //DefaultGateway = 192.168.1.1
 //DNSServer = 192.168.1.1
 ```
-Know Bugs
----------
+# Know Bugs
 
 - Pluging in a USB stick _after_ booting, won't show files on the USB mounted drive and display remains dark. Unplugging/re-plugging works as expected if USB is plugged in at startup
 - Pi5 not yet working
 
-Checkout & Build
-----------------
-One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/works with gcc > 10.x).
+# Checkout & Build
+
 The following compiler suites were used for development:
 
 | Compiler | Package name                                     | Link                                                                                                                                          | Arch               |
@@ -135,43 +143,24 @@ The following compiler suites were used for development:
 
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
-The project is built by:
+For building the project needs certain developer tools installed. Depending on your Linux installation these may be needed to be installed:
+_make, wget, unzip, git, sed, patch_.
 
+My development machine is an x86_64 based ArchLinux box.
+Checkout & build
 ```
 BUILDDIR=build-pottendo-Pi1541
 mkdir $BUILDDIR
 cd ${BUILDDIR}
 git clone https://github.com/pottendo/pottendo-Pi1541.git
 
-# Checkout (circle-stdlib)[https://github.com/smuehlst/circle-stdlib]:
-git clone --recursive https://github.com/smuehlst/circle-stdlib.git
-cd circle-stdlib
-# configure for Pi3 and Pi Zero 2 W:
-./configure -r 3
-# or even Pi3 64 bit
-# ./configure -r 3 -p aarch64-none-elf-
-# alternatively configure for Pi4 32 bit
-# ./configure -r 4
-# or even Pi4 64 bit
-# ./configure -r 4 -p aarch64-none-elf-
-# or even Pi5 64 bit
-# ./configure -r 5 -p aarch64-none-elf- -o SERIAL_DEVICE_DEFAULT=0 -o SCREEN_HEADLESS 
-
-# Patch Circle sysconfigh on ffconf.h to adapt to Pi1541 needs
-# circle version may need adaptation of the patch
-cd libs/circle
-patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V49.0.diff 
-cd ../..
-# this enforces full compiler optimization
-sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
-sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
-
-# build circle-lib
-make
-
-# now build Pi1541 based on circle
+# now checkout circle-stdlib and populate a Pi1541 root
 cd ${BUILDDIR}/pottendo-Pi1541
-make
+build.sh -c   # this clones circle-stdlib in ${BUILDDIR} and populates a Pi-bootpartition here: ${BUILDDIR}/Pi-Bootpart
+# if all goes well, you're ready to build
+build.sh      # kernels for Pi3/32bit Pi3/64bit Pi4/32bit Pi4/64bit are built and finally moved to ${BUILDDIR}
+# to build for a single architecture, one can use 'build.sh -a pi3-32'
+# subsequently you can build just using 'make' this uses circle-stdlib as used with the previous 'build.sh' run
 
 ```
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
@@ -185,100 +174,95 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
-Now copy the kernel image to your Pi1541 SDCard. Make sure you have set the respective lines `config.txt` on your Pi1541 SDcard:
-Model 3 and earlier - `config.txt`
+Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
+The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
+In case you want to run the legacy version (_kernel.img_) you may reuse the [pi0] section at the top; and remove all other sections.
+(for some reason my PiZero doesn't filter during boot, so I have to remove all other sections).
+Hint remove the line _[pi0]_, if not running on a Pi0, otherwise boot will disregard the lines below.
+
+Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendi-Pi1541:
+
 ```
+[pi0]
+arm_freq=1100
+over_voltage=8
+sdram_freq=500
+sdram_over_voltage=2
+force_turbo=1
+boot_delay=1
+arm_64bit=0
+kernel_address=0x1f00000
+kernel=kernel.img
+
+# this is for the PiZero 2 W
+[p02]
 arm_freq=1300
 over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
 force_turbo=1
 boot_delay=1
-
-enable_uart=1
-#gpu_mem=16  # If activated you need start_cd.elf, fixup_cd.dat (Pi3 and Zero 2W) in your root directory
-
+gpu_mem=16
 hdmi_group=2
-#hdmi_mode=4
 hdmi_mode=16
-
-# uncomment as needed for your model/kernel
-
 # select 32- or 64-bit mode
-arm_64bit=0
+arm_64bit=1
 # Pi 3 & Pi Zero 2W, 32bit
-kernel=kernel8-32.img
+#kernel=kernel8-32.img
 # Pi 3 & Pi Zero 2W, 64bit
-#kernel=kernel8.img
+kernel=kernel8.img
 
-# Legacy kernal all models
-#kernel_address=0x1f00000
-#kernel=kernel.img
-
-```
-in case you use legacy build `kernel.img` you also have to uncomment the line `kernel_address=0x1f00000`!
-
-Model 4 - `config.txt`
-```
-# some generic Pi4 configs can remain
-
-#force_turbo=1    # not needed for RPi4's, it's fast enough
-
-[all]
-enable_uart=1   # in case you have Pin 14/15 connected via TTL cable
-
+# all Pi3 variants
+[pi3]
+arm_freq=1300
+over_voltage=4
+sdram_freq=500
+sdram_over_voltage=1
+force_turbo=1
+boot_delay=1
+gpu_mem=16
+hdmi_group=2
+hdmi_mode=16
 # select 32- or 64-bit mode
-arm_64bit=0
+arm_64bit=1
+# Pi 3 & Pi Zero 2W, 32bit
+#kernel=kernel8-32.img
+# Pi 3 & Pi Zero 2W, 64bit
+kernel=kernel8.img
+# Pi3 legacy 32bit kernel
+#kernel_address=0x1f00000
+#kernel=kernel-1.23.img
+
+# all Pi4 variants
+[pi4]
+hdmi_force_hotplug=1   # Force HDMI output even if no monitor detected
+hdmi_group=2           # Set display mode to DMT (monitor)
+hdmi_mode=82           # Set resolution to 1920x1080 @ 60Hz
+max_framebuffers=2
+# select 32- or 64-bit mode
+arm_64bit=1
 # Pi 4, 32bit
-kernel=kernel7l.img
+#kernel=kernel7l.img
 # Pi 4, 64bit
-#kernel=kernel8-rpi4.img
-```
-
-Model 5 - `config.txt` (boots, but won't run Pi1541 properly)
-```
-# some generic Pi5 configs can remain
-
-# Run in 64-bit mode
-arm_64bit=1     # must be 64 bit mode
+kernel=kernel8-rpi4.img
 
 [all]
-kernel_address=0x80000
-kernel=kernel_2712.img
+enable_uart=1
+# Disable compensation for displays with overscan
+disable_overscan=1
 ```
 
-Uart console on pins *14(TX)/15(RX)* gives useful log information. You may need to add `console=serial0,115200 logdev=ttyS1 socmaxtemp=78 loglevel=2` to your `cmdline.txt` (if you have other options, put all options in one line, put loglevel=4 if you want to see the full developer debug log).
+Uart console on pins *14(TX)/15(RX)* gives useful log information. A sample _cmdline.txt_ with `console=serial0,115200 logdev=ttyS1 socmaxtemp=78` is provided. If you have other options, put all options in one line, put _loglevel=4_ if you want to see the full developer debug log.
 
-Networking
-----------
-If enabled, WiFi needs the drivers on the flash card. You can download like this:
-```
-cd ${BUILDDIR}/circle-stdlib/libs/circle/addon/wlan/firmware
-make
-```
-this downloads the necessary files in the current directory.
-copy the content to you Pi1541 SDCard in the directory 
-  `firmware/`
-it should look like this:
-```
-brcmfmac43430-sdio.bin
-brcmfmac43430-sdio.txt
-brcmfmac43436-sdio.bin
-brcmfmac43436-sdio.clm_blob
-brcmfmac43436-sdio.txt
-brcmfmac43455-sdio.bin
-brcmfmac43455-sdio.clm_blob
-brcmfmac43455-sdio.raspberrypi,5-model-b.bin
-brcmfmac43455-sdio.raspberrypi,5-model-b.clm_blob
-brcmfmac43455-sdio.raspberrypi,5-model-b.txt
-brcmfmac43455-sdio.txt
-brcmfmac43456-sdio.bin
-brcmfmac43456-sdio.clm_blob
-brcmfmac43456-sdio.txt
-LICENCE.broadcom_bcm43xx
+## Pi Bootfiles
 
-```
-Further you need a file 
+All necessary files for PiZero, Pi3 and Pi4 are provided on the sample bootpartition.
+
+## Networking
+
+If enabled, WiFi needs the drivers on the flash card. All necessary files are provided on the sample bootpartition.
+
+However you need edit the file 
   `wpa_supplicant.conf`
 on the toplevel to configure your SSID:
 ```
@@ -297,28 +281,23 @@ network={
     key_mgmt=WPA-PSK
 }
 ```
-Windo$e users may look [here](https://github.com/RPi-Distro/firmware-nonfree/raw/f713a6054746bc61ece1c8696dce91a7b7e22dd9/brcm).
+## Building the original verision
 
-Pi Bootfiles
-------------
-It sometimes is a hassle to get the right files for a successful boot populated on your SDCard boot partition.
-Circle offers a convenient way to download those files for all Pi architectures. These have been used to test Circle.
+One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/works with gcc > 10.x).
 
 ```
-cd ${BUILDDIR}/circle-stdlib/libs/circle/boot
-make
+# for Legacy build:
+# use RASPPI = 1BRev1 for Raspberry Pi 1B Rev 1 (26 IOports) (GPIO0/1/21)
+# use RASPPI = 1BRev2 for Raspberry Pi 1B Rev 2 (26 IOports) (GPIO2/3/27)
+# use RASPPI = 1BPlus for Raspberry Pi 1B+ (40 I/OPorts)
+# use RASPPI = 0 for Raspberry Pi Zero
+# use RASPPI = 3 for Raspberry Pi Zero 2W or Raspberry Pi 3
+# use V = 1 optionally for verbose build
+# e.g.
+# 	make RASPPI=1BPlus V=1 legacy
+#
+# if you switch from legacy build to circle build 'make clean' is mandatory
 ```
-the populated directory looks like this:
-```
-armstub                   bcm2711-rpi-4-b.dtb  bcm2712d0-rpi-5-b.dtb  bcm2712-rpi-cm5-cm5io.dtb   config32.txt   fixup4cd.dat  fixup.dat         README        start_cd.elf
-bcm2710-rpi-zero-2-w.dtb  bcm2711-rpi-cm4.dtb  bcm2712-rpi-500.dtb    bcm2712-rpi-cm5l-cm5io.dtb  config64.txt   fixup4.dat    LICENCE.broadcom  start4cd.elf  start.elf
-bcm2711-rpi-400.dtb       bcm2712d0.dtbo       bcm2712-rpi-5-b.dtb    bootcode.bin                COPYING.linux  fixup_cd.dat  Makefile          start4.elf
-```
-One can copy all those files to the boot partition to be on the safe side for booting, even if for one particular architecture, only a subset is needed.
-As one can see, no config.txt is provided but templates. Merge intelligently with the info from above.
-
-Windo$e users may look [here](https://github.com/raspberrypi/firmware/blob/4bb9d889a9d48c7335ebe53c0b8be83285ea54b1/boot).
-
 # Disclaimer
 
 **Due to some unlikely, unexpected circumstances (e.g. overheating), you may damage your beloved devices (Raspberry Pi, Retro machines, Floppy Drives, C64s, VIC20s, C128s, SDCards, USBSticks, etc) by using this software. I do not take any responsibility, so use at your own risk!**
