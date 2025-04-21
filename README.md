@@ -16,6 +16,8 @@ Some further ideas:
 
 Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
 
+Some discussions, announcements one can find in the Forum64 thread, [here](https://www.forum64.de/index.php?thread/155126-new-release-pottendo-pi1541-webserver-for-upload-images-updates/&postID=2276999#post2276999).
+
 Status
 ------
 The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
@@ -31,7 +33,8 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 
 Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 <br />
-_*) now validated with at least 2 setups - credits to @ILAH and @znarF on F64!
+*) now validated with at least 2 setups - credits to @ILAH and @znarF on F64!
+
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. On can chose a static network configuration for faster startup, see below.
@@ -128,7 +131,7 @@ The following compiler suites were used for development:
 | Compiler | Package name                                     | Link                                                                                                                                          | Arch               |
 | -------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | GCC      | AArch32 bare-metal target (arm-none-eabi)        | [download](https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz)    | 32 bit             |
-| GCC      | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf.tar.xz) | 64 bit (RPi4 only) |
+| GCC      | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf.tar.xz) | 64 bit |
 
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 

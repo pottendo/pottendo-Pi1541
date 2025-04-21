@@ -1,12 +1,48 @@
 #!/bin/sh
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# written by pottendo
+#
+# To run this script, several developer tools must be present
+#   cross compiler - refer to readme
+#   make, wget, unzip, git, sed, patch, curl
+#
+# this doesn't do many sanity checks, so check carefully
+# used on Arch Linux, x86 host system
 
 base=`pwd`
+
+# some sanity checks
 if git remote get-url origin | grep `basename ${base}` ; then
     echo "Running in ${base}, OK!"
 else
     echo "$base should be the checkout pottendo-Pi1541"
     exit 1
 fi
+
+arm-none-eabi-gcc --version 2>&1 > /dev/null
+if [ ! $? -eq 0 ] ; then
+    echo "missing 32 bit compiler - refer to Readme"
+    exit 1
+fi
+aarch64-none-elf-gcc --version 2>&1 > /dev/null
+if [ ! $? -eq 0 ] ; then
+    echo "missing 64 bit compiler - refer to Readme"
+    exit 1
+fi
+
 tag="none"
 archs="pi3-32 pi3-64 pi4-32 pi4-64"
 while [ ! x"${opts}" = x"break" ] ; do
@@ -90,9 +126,19 @@ if [ x${checkout} = "xyes" ] ; then
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1581-318045-02.bin?format=raw -O dos1581
     rm chargen-906143-02.bin
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/C64/chargen-906143-02.bin?format=raw -O chargen
+    wget https://www.nightfallcrew.com/wp-content/plugins/download-monitor/download.php?id=48 -O /tmp/jiffy.zip
+    unzip /tmp/jiffy.zip JiffyDOS_1541-II.bin JiffyDOS_1581.bin
+    rm /tmp/jiffy.zip
+
     # finally populate options.txt and config.txt
     cd ${base}
     cp options.txt config.txt ${RELEASE}/Pi-Bootpart
+    mkdir ${RELEASE}/Pi-Bootpart/1541
+    curl -o /tmp/fb.zip -O -L -A "Mozilla/5.0" "https://commodore.software/downloads?task=download.send&id=1140:cbm-filebrowser-v1-6&catid=29"
+    cd /tmp
+    unzip fb.zip "disk images/cbm-filebrowser.d64"
+    mv "disk images/cbm-filebrowser.d64" ${RELEASE}/Pi-Bootpart/1541/fb.d64
+
     exit 0
 fi
 
