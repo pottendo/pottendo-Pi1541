@@ -118,7 +118,7 @@ if [ x${checkout} = "xyes" ] ; then
     cd ..
     cp -r firmware ${RELEASE}/Pi-Bootpart
     echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/Pi-Bootpart/cmdline.txt
-    cat <<EOF
+    cat > ${RELEASE}/Pi-Bootpart/wpa_supplicant.conf <<EOF
 #
 # wpa_supplicant.conf
 #
@@ -133,7 +133,7 @@ network={
     proto=WPA2
     key_mgmt=WPA-PSK
 }
-EOF > ${RELEASE}/Pi-Bootpart/wpa_supplicant.conf
+EOF
     echo "fetching roms..."
     cd ${RELEASE}/Pi-Bootpart
     rm dos*.bin
