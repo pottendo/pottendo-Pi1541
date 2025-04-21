@@ -17,7 +17,7 @@
 #
 # To run this script, several developer tools must be present
 #   cross compiler - refer to readme
-#   make, wget, unzip, git, sed, patch, curl
+#   make, wget, unzip, git, sed, patch
 #
 # this doesn't do many sanity checks, so check carefully
 # used on Arch Linux, x86 host system
@@ -150,11 +150,7 @@ EOF
     cd ${base}
     cp options.txt config.txt ${RELEASE}/Pi-Bootpart
     mkdir ${RELEASE}/Pi-Bootpart/1541
-    curl -o /tmp/fb.zip -O -L -A "Mozilla/5.0" "https://commodore.software/downloads?task=download.send&id=1140:cbm-filebrowser-v1-6&catid=29"
-    cd /tmp
-    unzip fb.zip "disk images/cbm-filebrowser.d64"
-    mv "disk images/cbm-filebrowser.d64" ${RELEASE}/Pi-Bootpart/1541/fb.d64
-
+    wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/Pi-Bootpart/1541/fb.d64
     echo "populated a Pi bootpartition for pottendo-Pi1541:"
     ls -l ${RELEASE}/Pi-Bootpart
     echo "Don't forget to adapt 'options.txt' and 'wpa_supplicant.conf' to your local needs!"
