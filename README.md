@@ -156,10 +156,10 @@ git clone https://github.com/pottendo/pottendo-Pi1541.git
 
 # now checkout circle-stdlib and populate a Pi1541 root
 cd ${BUILDDIR}/pottendo-Pi1541
-build.sh -c   # this clones circle-stdlib in ${BUILDDIR} and populates a Pi-bootpartition here: ${BUILDDIR}/Pi-Bootpart
+./build.sh -c   # this clones circle-stdlib in ${BUILDDIR} and populates a Pi-bootpartition here: ${BUILDDIR}/Pi-Bootpart
 # if all goes well, you're ready to build
-build.sh      # kernels for Pi3/32bit Pi3/64bit Pi4/32bit Pi4/64bit are built and finally moved to ${BUILDDIR}
-# to build for a single architecture, one can use 'build.sh -a pi3-32'
+./build.sh      # kernels for Pi3/32bit Pi3/64bit Pi4/32bit Pi4/64bit are built and finally moved to ${BUILDDIR}
+# to build for a single architecture, one can use e.g. 'build.sh -a pi3-32' 
 # subsequently you can build just using 'make' this uses circle-stdlib as used with the previous 'build.sh' run
 
 ```
