@@ -118,7 +118,7 @@ if [ x${checkout} = "xyes" ] ; then
     cd ..
     cp -r firmware ${RELEASE}/Pi-Bootpart
     echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/Pi-Bootpart/cmdline.txt
-    cat <EOF
+    cat <<EOF
 #
 # wpa_supplicant.conf
 #
