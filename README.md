@@ -63,7 +63,7 @@ Updates of Pi1541 kernel images require the correct filename, which must match t
 ![](docs/Edit-config.png)
 <br />
 
-A simple text-entry form based configuration editor is provided. Once uloaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
+A simple text-entry form based configuration editor is provided. Once uploaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
 <br />
 
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
@@ -256,7 +256,7 @@ Uart console on pins *14(TX)/15(RX)* gives useful log information. A sample _cmd
 
 ## Pi Bootfiles
 
-All necessary files for PiZero, Pi3 and Pi4 are provided on the sample bootpartition.
+All necessary files for Pi Zero/2, Pi3 and Pi4 and their variants are provided on the sample bootpartition.
 
 ## Networking
 
