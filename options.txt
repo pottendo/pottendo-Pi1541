@@ -2,9 +2,9 @@
 ////////////////////////// HW Section
 
 // If you are using the split line hardware option (ie Option B) then you need to specify this option
-//splitIECLines = 1
+splitIECLines = 1
 // If you are using some type of hardware that requires the lines to be inverted then specify these options here
-invertIECInputs = 1
+//invertIECInputs = 1
 // If you are using a 7407
 //invertIECOutputs = 0
 
