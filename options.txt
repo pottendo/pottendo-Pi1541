@@ -142,10 +142,10 @@ DisplayTemperature = 0
 
 /////////////////////////////// pottendo Pi1541 Options
 // this turns on/off HDMI output
-headLess = 1  // no HDMI output
+headLess = 0
 
-// Network configuration
-netWifi = 1
+// Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
+netWifi = 0
 netEthernet = 0
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
 useDHCP = 1 // get network config automatically, else uncomment and define static network config below

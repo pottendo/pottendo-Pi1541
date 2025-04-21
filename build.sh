@@ -118,6 +118,22 @@ if [ x${checkout} = "xyes" ] ; then
     cd ..
     cp -r firmware ${RELEASE}/Pi-Bootpart
     echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/Pi-Bootpart/cmdline.txt
+    cat <<__HERE__
+#
+# wpa_supplicant.conf
+#
+# adjust your country code
+country=AT
+
+network={
+    # adjust your SSID
+    ssid="REPLACE_WITH_MY_NETWORK_SSI"
+    # adjust your WiFi password
+    psk="REPLACYE_WITH_MY_WIFI_PASSWORD"
+    proto=WPA2
+    key_mgmt=WPA-PSK
+}
+__HERE__ > ${RELEASE}/Pi-Bootpart/wpa_supplicant.conf
     echo "fetching roms..."
     cd ${RELEASE}/Pi-Bootpart
     rm dos*.bin
@@ -139,6 +155,9 @@ if [ x${checkout} = "xyes" ] ; then
     unzip fb.zip "disk images/cbm-filebrowser.d64"
     mv "disk images/cbm-filebrowser.d64" ${RELEASE}/Pi-Bootpart/1541/fb.d64
 
+    echo "populated a Pi bootpartition for pottendo-Pi1541:"
+    ls -l ${RELEASE}/Pi-Bootpart
+    echo "Don't forget to adapt 'options.txt' and 'wpa_supplicant.conf' to your local needs!"
     exit 0
 fi
 
