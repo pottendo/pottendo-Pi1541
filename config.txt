@@ -10,7 +10,7 @@ kernel_address=0x1f00000
 kernel=kernel.img
 
 # this is for the PiZero 2 W
-[p02]
+[pi02]
 arm_freq=1300
 over_voltage=4
 sdram_freq=500

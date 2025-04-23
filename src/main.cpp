@@ -1101,12 +1101,20 @@ extern bool webserver_upload;
 #if defined(EXPERIMENTALZERO)
 				diskCaddy.Update();
 #endif
+#if defined(__CIRCLE__)
+				if (options.GetHeadLess())
+					diskCaddy.Update();
+#endif
 			}
 			else if (prevDisk)
 			{
 				pi1541.drive.Insert(diskCaddy.NextDisk());
 #if defined(EXPERIMENTALZERO)
 				diskCaddy.Update();
+#endif
+#if defined(__CIRCLE__)
+				if (options.GetHeadLess())
+					diskCaddy.Update();
 #endif
 			}
 #if not defined(EXPERIMENTALZERO)

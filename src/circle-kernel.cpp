@@ -210,10 +210,10 @@ TShutdownMode CKernel::Run (void)
 	{
 		unsigned temp = 0;
 		extern volatile EmulatingMode emulating;
-		log("running headless...0");
-		while (1)
+		log("%s: running headless...0", __FUNCTION__);
+		if (options.DisplayTemperature())
 		{
-			if (options.DisplayTemperature())
+			while (1)
 			{
 				RGBA BkColour = RGBA(0, 0, 0, 0xFF);
 				RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
@@ -224,11 +224,10 @@ TShutdownMode CKernel::Run (void)
 				screenLCD->PrintText(false, 8*12, 0, buf, TextColour, BkColour);
 				screenLCD->SwapBuffers();
 				core0RefreshingScreen.Release();
+				MsDelay(5000);
 			}
-			if (emulating != IEC_COMMANDS)
-				diskCaddy.Update();
-			MsDelay(250);
 		}
+		log("%s: halting core 0", __FUNCTION__);
 	}
 	return ShutdownHalt;
 }
@@ -473,13 +472,13 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	int i = 0;
 	switch (core) {
 	case 1:
-	{
-		Kernel.log("launching emulator on core %d", core);
-		const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
-		Kernel.append2version(pi1541HWOption);
-		DEBUG_LOG("%s: launchung emulation on %s", __FUNCTION__, Kernel.get_version());
-		emulator();
-	}
+		{
+			Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
+			const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
+			Kernel.append2version(pi1541HWOption);
+			DEBUG_LOG("%s: options selected %s", __FUNCTION__, pi1541HWOption);
+			emulator();
+		}
 		break;
 	case 2:
 #if RASPPI >= 3

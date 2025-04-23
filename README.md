@@ -176,9 +176,7 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 
 Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
 The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
-In case you want to run the legacy version (_kernel.img_) you may reuse the [pi0] section at the top; and remove all other sections.
-(for some reason my PiZero doesn't filter during boot, so I have to remove all other sections).
-Hint remove the line _[pi0]_, if not running on a Pi0, otherwise boot will disregard the lines below.
+In case you want to run the slightly improved legacy 1.24 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
 
 Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendi-Pi1541:
 
@@ -195,7 +193,7 @@ kernel_address=0x1f00000
 kernel=kernel.img
 
 # this is for the PiZero 2 W
-[p02]
+[pi02]
 arm_freq=1300
 over_voltage=4
 sdram_freq=500
@@ -231,7 +229,7 @@ arm_64bit=1
 kernel=kernel8.img
 # Pi3 legacy 32bit kernel
 #kernel_address=0x1f00000
-#kernel=kernel-1.23.img
+#kernel=kernel.img
 
 # all Pi4 variants
 [pi4]
@@ -298,6 +296,15 @@ One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/work
 #
 # if you switch from legacy build to circle build 'make clean' is mandatory
 ```
+
+Copy the resulting `kernel.img` to your SDCard and adjust the appropriate section _[pi3]_ to load this image by uncommenting the lines
+```
+kernel_address=0x1f00000
+kernel=kernel.img
+```
+For other Pi models, you may need to add appropriate sections and the needed options to your _config.txt_.
+
+
 # Disclaimer
 
 **Due to some unlikely, unexpected circumstances (e.g. overheating), you may damage your beloved devices (Raspberry Pi, Retro machines, Floppy Drives, C64s, VIC20s, C128s, SDCards, USBSticks, etc) by using this software. I do not take any responsibility, so use at your own risk!**
