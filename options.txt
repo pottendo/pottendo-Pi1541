@@ -67,17 +67,18 @@ SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
 // By default Pi1541 will search the root of the SD card for a ROM file and use this for ROM1.
 // The first file found with either of the following names will be used; d1541.rom, dos1541, d1541II, Jiffy.bin
 // You can override the default ROM1 by specifying it here
-ROM1 = JiffyDOS_1541-II.bin
+ROM1 = dos1541
+//ROM1 = JiffyDOS_1541-II.bin
 // You can specify additional ROMS here (up to 7)
 // You can then use the function keys (F1-F7) on the keyboard to change which one you would like to use (only in browse mode and not in emulation mode)
 // You can also use the buttons to swap ROMs by holding down button 1 and pressing one other buttons 2-5
 // .LST files can also specify one of these ROMS that will automatically be selected when the LST file is loaded.
 ROM2 = dos1541ii
-ROM3 = dos1541
+//ROM3 = dos1541
 
 // Reference you 1581 ROM here
-//ROM1581 = dos1581
-ROM1581 = JiffyDOS_1581.bin
+ROM1581 = dos1581
+//ROM1581 = JiffyDOS_1581.bin
 
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1

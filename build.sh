@@ -142,9 +142,6 @@ EOF
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1581-318045-02.bin?format=raw -O dos1581
     rm chargen-906143-02.bin
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/C64/chargen-906143-02.bin?format=raw -O chargen
-    wget https://www.nightfallcrew.com/wp-content/plugins/download-monitor/download.php?id=48 -O /tmp/jiffy.zip
-    unzip /tmp/jiffy.zip JiffyDOS_1541-II.bin JiffyDOS_1581.bin
-    rm /tmp/jiffy.zip
 
     # finally populate options.txt and config.txt
     cd ${base}
