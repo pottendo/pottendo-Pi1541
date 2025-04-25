@@ -98,7 +98,8 @@ if [ x${tag} != "xnone" ] ; then
     fi
 else
     # install in builddir, where the checkouts have been done
-    RELEASE=${base}/..
+    RELEASE=${base}/../Pi-Bootpart
+    mkdir ${RELEASE} 2>/dev/null
 fi
 
 if [ x${checkout} = "xyes" ] ; then
@@ -107,18 +108,18 @@ if [ x${checkout} = "xyes" ] ; then
     git clone --recursive https://github.com/smuehlst/circle-stdlib.git
     cd ${CIRCLE}/libs/circle
     patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V49.0.diff
-    mkdir ${RELEASE}/Pi-Bootpart 2>/dev/null
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make
-    cp bootcode.bin fixup* start* bcm2711-rpi-4-b.dtb ${RELEASE}/Pi-Bootpart
+    cp LICENCE.broadcom bootcode.bin fixup* start* bcm2711-rpi-4-b.dtb ${RELEASE}
     # fetch WiFi firmware
     cd ${CIRCLE}/libs/circle/addon/wlan/firmware
     make
     cd ..
-    cp -r firmware ${RELEASE}/Pi-Bootpart
-    echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/Pi-Bootpart/cmdline.txt
-    cat > ${RELEASE}/Pi-Bootpart/wpa_supplicant.conf <<EOF
+    cp -r firmware ${RELEASE}
+    rm -f ${RELEASE}/.gitignore ${RELEASE}/Makefile
+    echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/cmdline.txt
+    cat > ${RELEASE}/wpa_supplicant.conf <<EOF
 #
 # wpa_supplicant.conf
 #
@@ -135,7 +136,7 @@ network={
 }
 EOF
     echo "fetching roms..."
-    cd ${RELEASE}/Pi-Bootpart
+    cd ${RELEASE}
     rm dos*.bin
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1541-325302-01%2B901229-05.bin?format=raw -O dos1541
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/DRIVES/dos1541ii-251968-03.bin?format=raw -O dos1541ii
@@ -145,11 +146,11 @@ EOF
 
     # finally populate options.txt and config.txt
     cd ${base}
-    cp options.txt config.txt ${RELEASE}/Pi-Bootpart
-    mkdir ${RELEASE}/Pi-Bootpart/1541
-    wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/Pi-Bootpart/1541/fb.d64
+    cp options.txt config.txt ${RELEASE}
+    mkdir ${RELEASE}/1541
+    wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/1541/fb.d64
     echo "populated a Pi bootpartition for pottendo-Pi1541:"
-    ls -l ${RELEASE}/Pi-Bootpart
+    ls -l ${RELEASE}
     echo "Don't forget to adapt 'options.txt' and 'wpa_supplicant.conf' to your local needs!"
     exit 0
 fi
@@ -180,7 +181,7 @@ for a in ${archs} ; do
     esac
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
-    ./configure $opts >make-${a}.log
+    ./configure $opts 2>&1 >make-${a}.log
     sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
     sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
     echo "building circle-stdlib, may take a while..."
