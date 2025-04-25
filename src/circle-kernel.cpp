@@ -325,7 +325,7 @@ void CKernel::run_webserver(void)
 		mScheduler.MsSleep (100);
 		if (options.DisplayTemperature() && 
 			options.GetHeadLess() &&
-			!(temp_period++ % 50))	// every 5 sec, display temp on LCD
+			!(temp_period++ % 10))	// every sec, display temp on LCD
 		{
 			display_temp();
 		}
@@ -517,7 +517,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			while (1)
 			{
 				display_temp();
-				MsDelay(5000);
+				MsDelay(1000);
 			}
 		}
 		break;
