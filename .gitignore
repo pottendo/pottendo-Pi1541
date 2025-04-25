@@ -21,3 +21,4 @@ src/webcontent/edit-config.h
 pi3-sample
 src/webcontent/edit-config.h
 make-*.log
+src/webcontent/manage-imgs.h

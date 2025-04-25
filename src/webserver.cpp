@@ -34,7 +34,7 @@ using namespace std;
 
 extern Options options;
 bool webserver_upload = false;
-static string def_prefix = "SD:/1541/";
+static string def_prefix = "SD:/1541";
 
 #define MAX_CONTENT_SIZE	4000000
 
@@ -49,6 +49,9 @@ static const char s_config[] =
 
 static const char s_edit_config[] =
 #include "webcontent/edit-config.h"
+;
+static const char s_manage[] =
+#include "webcontent/manage-imgs.h"
 ;
 
 static const u8 s_Style[] =
@@ -131,7 +134,7 @@ static string print_human_readable_time(WORD ftime) {
 	return string(tmp);
 }
 
-static void direntry_table(string &res, string &path, int type_filter)
+static void direntry_table(string &res, string &path, string &page, int type_filter)
 {
 	res = "<table>\
 		<tr>\
@@ -145,12 +148,13 @@ static void direntry_table(string &res, string &path, int type_filter)
 	vector<FILINFO> list;
     // Open the directory
 	
-	const char *x = (def_prefix + path).c_str();
+	const char *x = (def_prefix + "/" + path).c_str();
     fr = f_opendir(&dir, x);
     if (fr != FR_OK) {
         DEBUG_LOG("Failed to open directory '%s': %d", x, fr);
         return;
     }
+	DEBUG_LOG("%s: path = '%s'", __FUNCTION__, x);
     while (1) {
         // Read a directory item
         fr = f_readdir(&dir, &fno);
@@ -168,27 +172,27 @@ static void direntry_table(string &res, string &path, int type_filter)
 			transform(sb.begin(), sb.end(), sb.begin(), ::tolower);
 			return sa < sb;
 		});
-	string sep;
-	if (path != "")
+	string sep = "/";
+	string file_type = (type_filter == AM_DIR) ? string("[DIR]") : string("[FILE]");
+	if ((type_filter == AM_DIR) && (path != ""))
 	{
-		sep = '/';
 		size_t pos = path.find_last_of('/');
 		if (pos == string::npos) pos = 0;
 		res += "<tr><td>" + 
-						string("<a href=index.html?") + path.substr(0, pos) + ">..</a>" +
+						string("<a href=") + page + "?" + file_type + "&" + path.substr(0, pos) + "&>..</a>" +
 					"</td>" +
-					"<td>[DIR]</td>" +
+					"<td>" + file_type + "</td>" +
 					"<td>" + "--" + "</td>" +
 				"</tr>";
 	}
 	for (auto it : list)
 	{
 	    if (it.fattrib & type_filter) {
-            //DEBUG_LOG("[DIR]  %s", (path + sep + it.fname).c_str());
+            DEBUG_LOG("%s  %s", file_type.c_str(), (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
-						string("<a href=index.html?") + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
+						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
-					"<td>[DIR]</td>" +
+					"<td>" + file_type + "</td>" +
 					"<td>" + print_human_readable_time(it.fdate) + "</td>" +
 					"</tr>";
         } else {
@@ -331,7 +335,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned nPartLength;
 		string curr_dir;
 		string curr_path = urlDecode(pParams);
-
+		string page = "index.html";
+		stringstream ss(pParams);
+		string type;
+		getline(ss, type, '&');
+		getline(ss, curr_path, '&');
+		curr_path = urlDecode(curr_path);
 		bool noFormParts = true;
 		unsigned int temp;
 		GetTemperature(temp);
@@ -340,7 +349,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			def_prefix.c_str(), 
 			temp / 1000);
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		direntry_table(curr_dir, curr_path, AM_DIR);
+		direntry_table(curr_dir, curr_path, page, AM_DIR);
 
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
@@ -380,7 +389,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					memcpy(tmp, pPartDataCB, nPartLengthCB);
 					tmp[nPartLengthCB] = '\0';
 					curr_path = string(tmp);
-					direntry_table(curr_dir, curr_path, AM_DIR);
+					direntry_table(curr_dir, curr_path, page, AM_DIR);
 				}
 			}			
 
@@ -399,7 +408,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					UINT bw;
 					string sep="";
 					if (curr_path != "") sep = "/";
-					string _x = string(def_prefix + curr_path + sep + targetfn);
+					string _x = string(def_prefix + "/" + curr_path + sep + targetfn);
 					if (write_file(_x.c_str(), pPartData, nPartLength))
 					{
 						snprintf(msg, 1023, "successfully wrote: %s", _x.c_str());
@@ -422,7 +431,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 		}
 
-		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version());
+		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + "/" + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -543,6 +552,36 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		read_file(dfn, msg2, config);
 		msg += msg2;
 		String.Format(s_edit_config, msg.c_str(), options.c_str(), config.c_str(), Kernel.get_version());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/manage-imgs.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+		string msg = "OK";
+		string curr_path = urlDecode(pParams);
+		string curr_dir, files;
+		string page = "manage-imgs.html";
+		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		DEBUG_LOG("pParams = %s", pParams);
+		stringstream ss(pParams);
+		string type;
+		getline(ss, type, '&');
+		getline(ss, curr_path, '&');
+		curr_path = urlDecode(curr_path);
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (type == "[DIR]" || type == "") {
+			direntry_table(curr_dir, curr_path, page, AM_DIR);
+			direntry_table(files, curr_path, page, ~AM_DIR);
+		} 
+		else{
+			msg = "Mounting <i>" + def_prefix + curr_path + "</i>";
+		}
+
+		String.Format(s_manage, msg.c_str(), (def_prefix + curr_path).c_str(), (curr_dir + "<br />" + files).c_str(), Kernel.get_version());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
