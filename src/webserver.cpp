@@ -228,8 +228,8 @@ static char *extract_field(const char *field, const char *pPartHeader, char *fil
 			exl++;
 		}
 		extension[exl] = '\0';
-		Kernel.log("found filename: '%s' %i", filename, strlen(filename));
-		Kernel.log("found extension: '%s' %i", extension, strlen(extension));
+		//Kernel.log("found filename: '%s' %i", filename, strlen(filename));
+		//Kernel.log("found extension: '%s' %i", extension, strlen(extension));
 	}
 	return filename;
 }
@@ -523,7 +523,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string msg = "", msg2 = "";
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
-			DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
+			//DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
 			extract_field("name=\"", pPartHeader, filename, extension);
 			string dfn = string("SD:/") + filename;			
 
