@@ -204,30 +204,11 @@ TShutdownMode CKernel::Run (void)
 	if (options.GetHeadLess() == false)
 	{
 		UpdateScreen();
-		log("unexpected return of display thread");
+		log("%s: unexpected return of display thread, halting core 0", __FUNCTION__);
 	} 
 	else 
 	{
-		unsigned temp = 0;
-		extern volatile EmulatingMode emulating;
-		log("%s: running headless...0", __FUNCTION__);
-		if (options.DisplayTemperature())
-		{
-			while (1)
-			{
-				RGBA BkColour = RGBA(0, 0, 0, 0xFF);
-				RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
-				char buf[128];
-				GetTemperature(temp);
-				sprintf(buf, " %dC", temp / 1000);
-				core0RefreshingScreen.Acquire();				
-				screenLCD->PrintText(false, 8*12, 0, buf, TextColour, BkColour);
-				screenLCD->SwapBuffers();
-				core0RefreshingScreen.Release();
-				MsDelay(5000);
-			}
-		}
-		log("%s: halting core 0", __FUNCTION__);
+		log("%s: running headless, halting core 0...", __FUNCTION__);
 	}
 	return ShutdownHalt;
 }
@@ -309,6 +290,20 @@ bool CKernel::run_wifi(void)
 	return bOK;
 }
 
+static void display_temp(void)
+{
+	unsigned temp = 0;
+	RGBA BkColour = RGBA(0, 0, 0, 0xFF);
+	RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
+	char buf[128];
+	GetTemperature(temp);
+	sprintf(buf, " %dC", temp / 1000);
+	core0RefreshingScreen.Acquire();
+	screenLCD->PrintText(false, 8 * 12, 0, buf, TextColour, BkColour);
+	screenLCD->SwapBuffers();
+	core0RefreshingScreen.Release();
+}
+
 void CKernel::run_webserver(void) 
 {
 	CString IPString;
@@ -324,10 +319,16 @@ void CKernel::run_webserver(void)
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
 	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
 	new CWebServer (m_Net, &m_ActLED);
-	for (unsigned nCount = 0; 1; nCount++)
+	int temp_period = 0;
+	while(1)
 	{
 		mScheduler.MsSleep (100);
-		mScreen.Rotor (0, nCount);
+		if (options.DisplayTemperature() && 
+			options.GetHeadLess() &&
+			!(temp_period++ % 50))	// every 5 sec, display temp on LCD
+		{
+			display_temp();
+		}
 	}
 }
 
@@ -510,6 +511,15 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	out:
 #endif	
 		Kernel.log("disabling network support on core %d", core);
+		if (options.DisplayTemperature())
+		{	
+			DEBUG_LOG("%s: displaying temperature on LCD", __FUNCTION__);
+			while (1)
+			{
+				display_temp();
+				MsDelay(5000);
+			}
+		}
 		break;
 	case 3:	/* health monitoring */
 		if (options.GetHealthMonitor() == 1)
