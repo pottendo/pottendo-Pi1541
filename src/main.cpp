@@ -762,7 +762,7 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s\n", __FUNCTION__, diskImage->GetName());
+	DEBUG_LOG("%s: name = %s", __FUNCTION__, diskImage->GetName());
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -1033,6 +1033,14 @@ extern bool webserver_upload;
 			DEBUG_LOG("%s: webserver upload done.", __FUNCTION__);
 			webserver_upload = false;
 			exitDoAutoLoad = true;
+		}
+extern char mount_img[256];
+extern bool mount_new;
+		if (mount_new)
+		{
+			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
+			emulating = IEC_COMMANDS;
+			exitEmulation = true;
 		}
 #endif		
 		if ((emulating == IEC_COMMANDS) || (resetCount > 10) || exitEmulation || exitDoAutoLoad)
@@ -1499,6 +1507,20 @@ void __not_in_flash_func(emulator)(void)
 						default:
 							break;
 					}
+#if defined(__CIRCLE__)
+					extern char mount_img[256];
+					extern bool mount_new;
+					FILINFO fi;
+					if (mount_new)
+					{
+						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
+						strncpy(fi.fname, mount_img, 255);
+						diskCaddy.Insert(&fi, false);
+						mount_new = false;
+						fileBrowser->Update();
+						emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+					}
+#endif
 					usDelay(1);
 				}
 			}
@@ -1506,6 +1528,18 @@ void __not_in_flash_func(emulator)(void)
 			{
 				while (emulating == IEC_COMMANDS)
 				{
+#if defined(__CIRCLE__)
+extern char mount_img[256];
+extern bool mount_new;
+					FILINFO fi;
+					if (mount_new)
+					{
+						strncpy(fi.fname, mount_img, 255);
+						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
+						diskCaddy.Insert(&fi, false);
+						mount_new = false;
+					}
+#endif
 					fileBrowser->Update();
 					if (fileBrowser->SelectionsMade())
 						emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());

@@ -169,7 +169,6 @@ bool DiskCaddy::Insert(const FILINFO* fileInfo, bool readOnly)
 #endif
 		UINT bytesRead;
 		SetACTLed(true);
-		printf("%s: rb = %p\n", __FUNCTION__, DiskImage::readBuffer);
 		memset(DiskImage::readBuffer, 0xff, READBUFFER_SIZE);
 		f_read(&fp, DiskImage::readBuffer, READBUFFER_SIZE, &bytesRead);
 		SetACTLed(false);

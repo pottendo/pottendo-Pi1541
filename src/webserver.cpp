@@ -35,6 +35,8 @@ using namespace std;
 
 extern Options options;
 bool webserver_upload = false;
+char mount_img[256] = { 0 };
+bool mount_new = false;
 static string def_prefix = "SD:/1541";
 
 #define MAX_CONTENT_SIZE	4000000
@@ -75,19 +77,16 @@ CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket 
 :	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
 	m_pActLED (pActLED)
 {
-	mem_stat(__FUNCTION__);
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
 }
 
 CWebServer::~CWebServer (void)
 {
-	mem_stat(__FUNCTION__);
 	m_pActLED = 0;
 }
 
 CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pSocket)
 {
-	mem_stat(__FUNCTION__);
 	return new CWebServer (pNetSubSystem, m_pActLED, pSocket);
 }
 
@@ -158,7 +157,6 @@ static void direntry_table(string &res, string &path, string &page, int type_fil
         DEBUG_LOG("Failed to open directory '%s': %d", x, fr);
         return;
     }
-	DEBUG_LOG("%s: path = '%s'", __FUNCTION__, x);
     while (1) {
         // Read a directory item
         fr = f_readdir(&dir, &fno);
@@ -192,7 +190,7 @@ static void direntry_table(string &res, string &path, string &page, int type_fil
 	for (auto it : list)
 	{
 	    if (it.fattrib & type_filter) {
-            DEBUG_LOG("%s  %s", file_type.c_str(), (path + sep + it.fname).c_str());
+            //DEBUG_LOG("%s  %s", file_type.c_str(), (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
 						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
@@ -328,8 +326,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	filename[0] = '\0';
 	extension[0] = '\0';
 
-	mem_stat("web1");
-	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -353,7 +350,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			options.GetAutoMountImageName(),
 			def_prefix.c_str(), 
 			temp / 1000);
-		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		direntry_table(curr_dir, curr_path, page, AM_DIR);
 
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
@@ -436,7 +433,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 		}
 
-		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + "/" + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version());
+		string mem;
+		mem_stat(__FUNCTION__, mem, true);
+		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + "/" + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -570,20 +569,25 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "manage-imgs.html";
-		DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		DEBUG_LOG("pParams = %s", pParams);
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("pParams = %s", pParams);
 		stringstream ss(pParams);
 		string type;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
-		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
-		if (type == "[DIR]" || type == "") {
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (type == "[DIR]" || type == "") 
+		{
 			direntry_table(curr_dir, curr_path, page, AM_DIR);
 			direntry_table(files, curr_path, page, ~AM_DIR);
 		} 
-		else{
+		else
+		{
 			msg = "Mounting <i>" + def_prefix + curr_path + "</i>";
+			strncpy(mount_img, (def_prefix + curr_path).c_str(), 255);
+			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
+			mount_new = true;
 		}
 
 		String.Format(s_manage, msg.c_str(), (def_prefix + curr_path).c_str(), (curr_dir + "<br />" + files).c_str(), Kernel.get_version());
@@ -634,7 +638,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	memcpy (pBuffer, pContent, nLength);
 
 	*pLength = nLength;
-	mem_stat("web2");
 
 	return HTTPOK;
 }

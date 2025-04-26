@@ -80,15 +80,22 @@ void setDNS(const char *dns)
 	parse_netaddr(dns, DNSServer[0], DNSServer[1], DNSServer[2], DNSServer[3]);
 }
 
-void mem_stat(const char *func, bool verb)
+void mem_stat(const char *func, std::string &mem, bool verb)
 {
-	static size_t old = 0;
 	CMemorySystem *ms;
-	DEBUG_LOG("memory status: %s...", func);
-	if (verb) CMemorySystem::DumpStatus();
 	ms = CMemorySystem::Get();
+	if (verb) 
+	{
+		char tmp[256];
+		snprintf(tmp, 255, "Memory: %ldkB/%ldkB", ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
+		mem = std::string(tmp); 
+		return;
+	}
+	static size_t old = 0;
+	DEBUG_LOG("memory status: %s...", func);
 	DEBUG_LOG("Memory delta: %d", ms->GetHeapFreeSpace(HEAP_ANY) - old);
-	DEBUG_LOG("Heap: %d/%d", (old = ms->GetHeapFreeSpace(HEAP_ANY)), ms->GetMemSize());
+	old = ms->GetHeapFreeSpace(HEAP_ANY);
+	DEBUG_LOG("Heap: %d/%d", old, ms->GetMemSize());
 }
 
 CKernel::CKernel(void) :
