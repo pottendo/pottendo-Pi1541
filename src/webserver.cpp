@@ -21,6 +21,7 @@
 #include <circle/logger.h>
 #include <circle/string.h>
 #include <circle/util.h>
+#include <circle/memory.h>
 #include <assert.h>
 #include "circle-kernel.h"
 #include "options.h"
@@ -74,16 +75,19 @@ CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket 
 :	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
 	m_pActLED (pActLED)
 {
+	mem_stat(__FUNCTION__);
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
 }
 
 CWebServer::~CWebServer (void)
 {
+	mem_stat(__FUNCTION__);
 	m_pActLED = 0;
 }
 
 CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pSocket)
 {
+	mem_stat(__FUNCTION__);
 	return new CWebServer (pNetSubSystem, m_pActLED, pSocket);
 }
 
@@ -324,6 +328,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	filename[0] = '\0';
 	extension[0] = '\0';
 
+	mem_stat("web1");
 	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
@@ -629,6 +634,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	memcpy (pBuffer, pContent, nLength);
 
 	*pLength = nLength;
+	mem_stat("web2");
 
 	return HTTPOK;
 }

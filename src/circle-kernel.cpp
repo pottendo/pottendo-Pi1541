@@ -26,6 +26,7 @@
 #include <circle/timer.h>
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
+#include <circle/memory.h>
 #include <iostream>
 #include <sstream>
 #include <circle/usb/usbmassdevice.h>
@@ -77,6 +78,17 @@ void setDNS(const char *dns)
 {
 	DEBUG_LOG("%s: static DNSServer = %s", __FUNCTION__, dns);
 	parse_netaddr(dns, DNSServer[0], DNSServer[1], DNSServer[2], DNSServer[3]);
+}
+
+void mem_stat(const char *func, bool verb)
+{
+	static size_t old = 0;
+	CMemorySystem *ms;
+	DEBUG_LOG("memory status: %s...", func);
+	if (verb) CMemorySystem::DumpStatus();
+	ms = CMemorySystem::Get();
+	DEBUG_LOG("Memory delta: %d", ms->GetHeapFreeSpace(HEAP_ANY) - old);
+	DEBUG_LOG("Heap: %d/%d", (old = ms->GetHeapFreeSpace(HEAP_ANY)), ms->GetMemSize());
 }
 
 CKernel::CKernel(void) :

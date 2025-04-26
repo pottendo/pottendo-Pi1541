@@ -44,6 +44,7 @@ void setIP(const char *ip);
 void setNM(const char *nm);
 void setGW(const char *gw);
 void setDNS(const char *dns);
+void mem_stat(const char *func, bool verb = false);
 
 extern "C" {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
