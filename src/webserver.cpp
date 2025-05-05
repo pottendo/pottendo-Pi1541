@@ -327,7 +327,7 @@ static int read_dir(string name, list<string> &dir)
 {
 	FILINFO fileinfo;
 	FIL fp;
-	int ret = 0;
+	int ret = -1;
 	if (f_open(&fp, name.c_str(), FA_READ) != FR_OK)
 		return -1;
 	strncpy(fileinfo.fname, name.c_str(), 255);
@@ -375,19 +375,16 @@ static int read_dir(string name, list<string> &dir)
 		default:
 			break;
 	}	
-	if (ret)
+	if (ret > 0)
 	{
 		DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
 		fileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
-		//DEBUG_LOG("%s: dir is\n'%s'\n", __FUNCTION__, dir.c_str());
 	}
 	else
-	{
 		DEBUG_LOG("%s: failed to open '%s'", __FUNCTION__, name.c_str());
-		return ret = -1;
-	}
+	diskImage->Close();
 	delete diskImage;
-	return ret = 0;;
+	return ret;
 }
 
 THTTPStatus CWebServer::GetContent (const char  *pPath,
