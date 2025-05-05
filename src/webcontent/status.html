@@ -26,7 +26,7 @@
 		integrity="sha512-8lE+UgnY2CgbE+WDsGwSwAiMOswuRYm11jXYV5KWH6XfSDAzrdRMbPQDpCwzVjJbe9quHrNNPV6N/llRKnw5Hg=="
 		crossorigin="anonymous" />
 	<link rel="icon" href="/favicon.ico" type="image/x-icon">
-	<title>Pi1541 Web-Interface Configuration & Update</title>
+	<title>Pi1541 Web-Interface</title>
 </head>
 
 <body>
@@ -39,41 +39,12 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<h1 style="text-align:center">Upload Pi1541 Files</h1>
+			<h1 style="text-align:center">Pi1541 Status</h1>
 			<p style="text-align:center"> by pottendo</p>
+
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h4 style="text-align:left">Pi1541 kernel upload</h2>
-			<form action="config.html" method="post" name="config-form" accept-charset="UTF-8" enctype="multipart/form-data">
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input1" id="UploadKernel" name="kernelimage">
-						<label class="custom-file-label" for="UploadKernel">Choose file</label>
-					</div>
-					<br /> <br />
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Kernel" />
-				</div>
-			</form>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h4 style="text-align:left">Pi1541 other files upload</h2>
-			<form action="options.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input2" id="UploadOptions" name="options">
-						<label class="custom-file-label" for="UploadOptions">Choose file</label>
-					</div>
-					<br /> <br />
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload file to SD:/" />
-				</div>
-			</form>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<form action="index.html" method="post" name="config_form" enctype="multipart/form-data">
-				<div class="form-group">
-					<input type="submit" class="btn btn-success" value="Back to main page" />
-					<br/><br/>
-				</div>
-			</form>
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
@@ -92,13 +63,8 @@
 
 		<script>
 			$(document).ready(function () {
-				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadKernel").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-				document.querySelector('.custom-file-input2').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadOptions").files[0].name;
+				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadFile").files[0].name;
 					var nextSibling = e.target.nextElementSibling;
 					nextSibling.innerText = fileName;
 				});

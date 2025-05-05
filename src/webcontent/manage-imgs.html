@@ -19,6 +19,13 @@
 		  background-color: #657272;
 		}
 		tr:hover {background-color: #6a7575;}
+
+		@font-face {
+      		font-family: 'C64 Pro Mono';
+      		src: url('web/C64_Pro_Mono.ttf') format('truetype');
+      		font-weight: normal;
+      		font-style: normal;
+    	}
 		</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -33,7 +40,9 @@
 	<br />
 	<div class="container">
 		<div class="container" style="background-color: #3a3a3a; text-align: center; padding-bottom: 8px; padding-top: 8px;">
-			<img src="/pi1541-logo.png" style="height: 256px; width: 1024px;" />
+			<a href="index.html">
+				<img src="/pi1541-logo.png" style="height: 256px; width: 1024px; cursor:pointer;"/>
+			</a>
 		</div>
 		<div class="container bg-dark">
 			<br />
@@ -45,9 +54,25 @@
 			<form action="manage.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
 					<div>
-						SDCard %s
+						<table>
+							<tr valign="center"><td>SDCard %s</td>
+								<td style="text-align:right;">
+									<a href="manage-imgs.html?[MOUNT]&%s">
+										<button type="button">Mount image</button>	
+									</a>
+								</td>
+							</tr>
+						</table>
 						<br /><br />
-						%s
+						<table>
+							<tr>
+								<th>Directory & Files</th>
+								<th>Image content</th>
+							</tr>
+							<tr valign="top"><td>%s</td>
+								<td style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">%s</td>
+							</tr>
+						</table>
 					</div>
 				</div>
 			</form>
@@ -60,7 +85,7 @@
 				</div>
 			</form>
 		</div>
-		<p class="small">%s</p>
+		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
 				target="_blank">Pi1541 firebase</a>.</p>
 		<p class="small">Find the pottendo-Pi1541 project resources here <a

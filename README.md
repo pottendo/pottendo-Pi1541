@@ -8,6 +8,8 @@ A simple web-server features
 - upload of a Pi1541 kernel image
 - upload of Pi1541 files like _options.txt_, _config.txt_
 - edit of _options.txt_ and _config.txt_
+- mount images, including an image content preview (d81 preview not supported)
+- reboot of Pi1541
 
 Some further ideas:
 - Enhance webserver to support image administration (copy, move, delete, rename, etc.)
@@ -250,7 +252,7 @@ enable_uart=1
 disable_overscan=1
 ```
 
-Uart console on pins *14(TX)/15(RX)* gives useful log information. A sample _cmdline.txt_ with `console=serial0,115200 logdev=ttyS1 socmaxtemp=78` is provided. If you have other options, put all options in one line, put _loglevel=4_ if you want to see the full developer debug log.
+Uart console on pins *14(TX)/15(RX)* gives useful log information. A sample _cmdline.txt_ with `console=serial0,115200 logdev=ttyS1 socmaxtemp=75 loglevel=2` is provided. If you have other options, put all options in one line, put _loglevel=4_ if you want to see the full developer debug log.
 
 ## Pi Bootfiles
 

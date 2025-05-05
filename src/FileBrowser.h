@@ -27,6 +27,8 @@
 #include "ff-local.h"
 #endif
 #endif
+#include <string.h>
+#include <list>
 #include <vector>
 #include "types.h"
 #include "DiskImage.h"
@@ -182,8 +184,7 @@ public:
 	void Update();
 
 	void RefeshDisplay();
-	void DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon);
-
+	void DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, std::list<std::string> *image_dir = nullptr);
 	void DisplayStatusBar();
 
 	void FolderChanged();

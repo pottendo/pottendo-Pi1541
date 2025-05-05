@@ -1495,7 +1495,7 @@ void FileBrowser::ShowDeviceAndROM( const char* ROMName )
 	}
 }
 
-void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon)
+void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, std::list<std::string>* image_dir)
 {
 #if not defined(EXPERIMENTALZERO)
 	// Ideally we should not have to load the entire disk to read the directory.
@@ -1525,55 +1525,57 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 	u32 x_px = 0;
 	u32 y_px = 0;
 
-	ClearScreen();
-
-	if (options.DisplayTracks())
+	if (!image_dir)
 	{
-		for (track = 0; track < HALF_TRACK_COUNT; track += 2)
+		ClearScreen();
+
+		if (options.DisplayTracks())
 		{
-			int yoffset = screenMain->ScaleY(400);
-			unsigned index;
-			unsigned length = diskImage->TrackLength(track);
-			unsigned countSync = 0;
-
-			u8 shiftReg = 0;
-			for (index = 0; index < length / 8; ++index)
+			for (track = 0; track < HALF_TRACK_COUNT; track += 2)
 			{
-				RGBA colour;
-				unsigned count1s = 0;
-				bool sync = false;
+				int yoffset = screenMain->ScaleY(400);
+				unsigned index;
+				unsigned length = diskImage->TrackLength(track);
+				unsigned countSync = 0;
 
-				int bit;
-
-				for (bit = 0; bit < 64; ++bit)
+				u8 shiftReg = 0;
+				for (index = 0; index < length / 8; ++index)
 				{
-					if (bit % 8 == 0)
-						shiftReg = diskImage->GetNextByte(track, index * 8 + bit / 8);
+					RGBA colour;
+					unsigned count1s = 0;
+					bool sync = false;
 
-					if (shiftReg & 0x80)
+					int bit;
+
+					for (bit = 0; bit < 64; ++bit)
 					{
-						count1s++;
-						countSync++;
-						if (countSync == 10)
-							sync = true;
+						if (bit % 8 == 0)
+							shiftReg = diskImage->GetNextByte(track, index * 8 + bit / 8);
+
+						if (shiftReg & 0x80)
+						{
+							count1s++;
+							countSync++;
+							if (countSync == 10)
+								sync = true;
+						}
+						else
+						{
+							countSync = 0;
+						}
+						shiftReg <<= 1;
 					}
+
+					if (sync)
+						colour = RGBA(0xff, 0x00, 0x00, 0xFF);
 					else
-					{
-						countSync = 0;
-					}
-					shiftReg <<= 1;
+						colour = RGBA(0x00, (unsigned char)((float)count1s / 64.0f * 255.0f), 0x00, 0xFF);
+
+					screenMain->DrawRectangle(index, (track >> 1) * 4 + yoffset, index + 1, (track >> 1) * 4 + 4 + yoffset, colour);
 				}
-
-				if (sync)
-					colour = RGBA(0xff, 0x00, 0x00, 0xFF);
-				else
-					colour = RGBA(0x00, (unsigned char)((float)count1s / 64.0f * 255.0f), 0x00, 0xFF);
-
-				screenMain->DrawRectangle(index, (track >> 1) * 4 + yoffset, index + 1, (track >> 1) * 4 + 4 + yoffset, colour);
 			}
 		}
 	}
-
 	track = 18;
 
 	if (diskImage->GetDecodedSector(track, sectorNo, buffer))
@@ -1636,7 +1638,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 				blocksFree += buffer[bamOffset + bamTrack * BAM_ENTRY_SIZE];
 
 			y_px = 0;
-			for (u32 bit = 0; bit < DiskImage::SectorsPerTrackD64(bamTrack); bit++)
+			for (u32 bit = 0; image_dir && (bit < DiskImage::SectorsPerTrackD64(bamTrack)); bit++)
 			{
 				u32 bits = buffer[bamOffset + 1 + (bit >> 3) + bamTrack * BAM_ENTRY_SIZE];
 
@@ -1661,14 +1663,25 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 
 		x = 0;
 		y = 0;
-		snprintf(bufferOut, 128, "0");
-		screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+		std::string dir_line;
+		snprintf(bufferOut, 128, "0 ");
+		if (image_dir)
+			dir_line += std::string(bufferOut);
+		else
+			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		x = 16;
 		snprintf(bufferOut, 128, "\"%s\" %c%c%c%c%c%c", name, buffer[162], buffer[163], buffer[164], buffer[165], buffer[166], buffer[167]);
-		screenMain->PrintText(true, x, y, bufferOut, bgColour, textColour);
+		if (image_dir)
+			dir_line += std::string(bufferOut);
+		else
+			screenMain->PrintText(true, x, y, bufferOut, bgColour, textColour);
 		x = 0;
 		y += fontHeight;
-
+		if (image_dir)
+		{
+			image_dir->push_back(dir_line);
+			dir_line = "";
+		}
 		if (track != 0)
 		{
 			unsigned trackPrev = 0xff;
@@ -1719,11 +1732,17 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								name[charIndex] = 0;
 
 								//DEBUG_LOG("%d name = %s %x\r\n", blocks, name, fileType);
-								snprintf(bufferOut, 128, "%d", blocks);
-								screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+								snprintf(bufferOut, 128, "%-4d ", blocks);
+								if (image_dir)
+									dir_line += std::string(bufferOut);
+								else
+									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 5 * 8;
-								snprintf(bufferOut, 128, "\"%s\"", name);
-								screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+								snprintf(bufferOut, 128, "\"%s\" ", name);
+								if (image_dir)
+									dir_line += std::string(bufferOut);
+								else
+									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 19 * 8;
 								char modifier = 0x20;
 								if ((fileType & 0x80) == 0)
@@ -1731,8 +1750,16 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								else if (fileType & 0x40)
 									modifier = screen2petscii(60);
 								snprintf(bufferOut, 128, "%s%c", fileTypes[fileType & 7], modifier);
-								screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+								if (image_dir)
+									dir_line += std::string(bufferOut);
+								else
+									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								y += fontHeight;
+								if (image_dir)
+								{
+									image_dir->push_back(dir_line);
+									dir_line = "";
+								}
 							}
 						}
 						entryOffset += 32;
@@ -1748,10 +1775,20 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 		x = 0;
 		//DEBUG_LOG("%d blocks free\r\n", blocksFree);
 		snprintf(bufferOut, 128, "%d BLOCKS FREE.\r\n", blocksFree);
-		screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+		if (image_dir)
+		{
+			// overrule line end for web output
+			bufferOut[strlen(bufferOut) - 2] = '\0';
+			dir_line += std::string(bufferOut);
+			image_dir->push_back(dir_line);
+		}
+		else
+			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		y += fontHeight;
 	}
 
+	if (image_dir)
+		return;
 	DisplayStatusBar();
 
 	if (filenameForIcon)

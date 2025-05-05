@@ -2,7 +2,7 @@
 # Makefile
 #
 
-CONTENT	= index.h pi1541-logo.h style.h config.h edit-config.h manage-imgs.h #tuning.h ledoff.h ledon.h favicon.h
+CONTENT	= index.h status.h pi1541-logo.h style.h config.h edit-config.h manage-imgs.h C64_Pro_Mono-STYLE.h #tuning.h ledoff.h ledon.h favicon.h
 
 EXTRACLEAN = $(CONTENT) converttool
 
@@ -17,6 +17,10 @@ all: converttool $(CONTENT)
 	@./converttool $< > $@
 
 %.h: %.png
+	@echo "  GEN   $@"
+	@./converttool -b $< > $@
+
+%.h: %.ttf
 	@echo "  GEN   $@"
 	@./converttool -b $< > $@
 	

@@ -1362,12 +1362,12 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 }
 #endif
 
+FileBrowser* fileBrowser;
 void __not_in_flash_func(emulator)(void)
 {
 #if not defined(EXPERIMENTALZERO)
 	Keyboard* keyboard = Keyboard::Instance();
 #endif
-	FileBrowser* fileBrowser;
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
 
 	roms.lastManualSelectedROMIndex = 0;

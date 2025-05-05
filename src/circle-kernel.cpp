@@ -40,6 +40,7 @@
 
 
 CCPUThrottle CPUThrottle;
+int reboot_req = 0;
 extern CKernel Kernel;
 extern Options options;
 
@@ -347,6 +348,13 @@ void CKernel::run_webserver(void)
 			!(temp_period++ % 10))	// every sec, display temp on LCD
 		{
 			display_temp();
+		}
+		if (reboot_req && reboot_req++ > 4)
+		{
+			log("%s: rebooting now...", __FUNCTION__);
+			DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
+			mScheduler.MsSleep(20);
+			reboot_now();
 		}
 	}
 }

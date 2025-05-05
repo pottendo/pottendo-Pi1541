@@ -31,6 +31,9 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <list>
+#include "FileBrowser.h"
+#include "Petscii.h"
 using namespace std;
 
 extern Options options;
@@ -57,6 +60,11 @@ static const char s_manage[] =
 #include "webcontent/manage-imgs.h"
 ;
 
+static const char s_status[] =
+{
+#include "webcontent/status.h"
+};
+
 static const u8 s_Style[] =
 #include "webcontent/style.h"
 ;
@@ -69,6 +77,11 @@ static const u8 s_Favicon[] =
 static const u8 s_logo[] =
 {
 #include "webcontent/pi1541-logo.h"
+};
+
+static const u8 s_font[] =
+{
+#include "webcontent/C64_Pro_Mono-STYLE.h"
 };
 
 static const char FromWebServer[] = "webserver";
@@ -190,7 +203,7 @@ static void direntry_table(string &res, string &path, string &page, int type_fil
 	for (auto it : list)
 	{
 	    if (it.fattrib & type_filter) {
-            //DEBUG_LOG("%s  %s", file_type.c_str(), (path + sep + it.fname).c_str());
+            //DEBUG_LOG("'%s' - '%s'", file_type.c_str(), (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
 						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
@@ -308,6 +321,75 @@ static bool read_file(string &dfn, string &msg, string &fcontent)
 	return ret;
 }
 
+static unsigned char img_buf[READBUFFER_SIZE];
+extern FileBrowser *fileBrowser;
+static int read_dir(string name, list<string> &dir)
+{
+	FILINFO fileinfo;
+	FIL fp;
+	int ret = 0;
+	if (f_open(&fp, name.c_str(), FA_READ) != FR_OK)
+		return -1;
+	strncpy(fileinfo.fname, name.c_str(), 255);
+	UINT bytesRead;
+	SetACTLed(true);
+	memset(img_buf, 0xff, READBUFFER_SIZE);
+	f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead);
+	SetACTLed(false);
+	f_close(&fp);
+
+	DiskImage* diskImage = new DiskImage();
+	if (!diskImage)
+	{
+		DEBUG_LOG("%s: new DiskImage failed", __FUNCTION__);
+		return -1;
+	}
+
+	DiskImage::DiskType diskType = DiskImage::GetDiskImageTypeViaExtention(fileinfo.fname);
+	switch (diskType)
+	{
+		case DiskImage::D64:
+			ret = diskImage->OpenD64(&fileinfo, img_buf, bytesRead);
+			break;
+		case DiskImage::G64:
+			ret = diskImage->OpenG64(&fileinfo, img_buf, bytesRead);
+			break;
+#if defined(PI1581SUPPORT)				
+		case DiskImage::D81:
+			//ret = diskImage->OpenD81(&fileinfo, img_buf, bytesRead);
+			// D81 content unsupported
+		break;
+#endif				
+		case DiskImage::T64:
+			ret = diskImage->OpenT64(&fileinfo, img_buf, bytesRead);
+			break;
+		case DiskImage::PRG:
+			ret = diskImage->OpenPRG(&fileinfo, img_buf, bytesRead);
+			break;
+		case DiskImage::NIB:
+			ret = diskImage->OpenNIB(&fileinfo, img_buf, bytesRead);
+			break;
+		case DiskImage::NBZ:
+			ret = diskImage->OpenNBZ(&fileinfo, img_buf, bytesRead);
+			break;
+		default:
+			break;
+	}	
+	if (ret)
+	{
+		DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
+		fileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
+		//DEBUG_LOG("%s: dir is\n'%s'\n", __FUNCTION__, dir.c_str());
+	}
+	else
+	{
+		DEBUG_LOG("%s: failed to open '%s'", __FUNCTION__, name.c_str());
+		return ret = -1;
+	}
+	delete diskImage;
+	return ret = 0;;
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -325,8 +407,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	char extension[10];
 	filename[0] = '\0';
 	extension[0] = '\0';
+	string mem;
+	mem_stat(__FUNCTION__, mem, true);
 
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -433,8 +517,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 		}
 
-		string mem;
-		mem_stat(__FUNCTION__, mem, true);
 		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + "/" + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
 
 		pContent = (const u8 *)(const char *)String;
@@ -496,7 +578,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			msg = (modelstr + "<br />Kernelname: <i>" + kernelname + "</i>");
 		}
-		String.Format(s_config, msg.c_str(), Kernel.get_version());
+		String.Format(s_config, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";		
@@ -523,7 +605,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					msg = string("Failed to write <i>") + dfn + "</i>";
 			}
 		}
-		String.Format(s_config, msg.c_str(), Kernel.get_version());
+		String.Format(s_config, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
@@ -555,7 +637,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		dfn = "SD:/config.txt";
 		read_file(dfn, msg2, config);
 		msg += msg2;
-		String.Format(s_edit_config, msg.c_str(), options.c_str(), config.c_str(), Kernel.get_version());
+		String.Format(s_edit_config, msg.c_str(), options.c_str(), config.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
@@ -566,39 +648,96 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const u8 *pPartData;
 		unsigned nPartLength;
 		string msg = "OK";
+		string content = "No image selected";
+		list<string> dir;
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "manage-imgs.html";
-		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		//DEBUG_LOG("pParams = %s", pParams);
+		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
 		string type;
+		bool mount_it = false;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (type == "[MOUNT]")
+		{
+			FILINFO fi;
+			if (f_stat(curr_path.c_str(), &fi) == FR_OK)
+			{
+				type = "[DIR]";
+				if (fi.fattrib & ~AM_DIR)
+				{
+					type = "[FILE]";
+					mount_it = true;
+				}
+				if (curr_path.length() > def_prefix.length())
+					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
+				else
+					curr_path = "";
+			}
+		}
 		if (type == "[DIR]" || type == "") 
 		{
 			direntry_table(curr_dir, curr_path, page, AM_DIR);
 			direntry_table(files, curr_path, page, ~AM_DIR);
 		} 
-		else
+
+		if (type == "[FILE]")
 		{
-			msg = "Mounting <i>" + def_prefix + curr_path + "</i>";
+			const size_t idx = curr_path.rfind('/');
+			string cwd = curr_path.substr(0, idx);
+			direntry_table(curr_dir, cwd, page, AM_DIR);
+			direntry_table(files, cwd, page, ~AM_DIR);
+			int revers = 0;
+			if (mount_it)
+				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
+			else
+				msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
 			strncpy(mount_img, (def_prefix + curr_path).c_str(), 255);
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
-			mount_new = true;
+			if (read_dir(def_prefix + curr_path, dir) < 0)
+			{
+				DEBUG_LOG("%s: failed to readdir of '%s'", __FUNCTION__, mount_img);
+				msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
+			}
+			content = "";
+			for (auto it = dir.begin(); it != dir.end(); it++)
+			{
+				// ugly special first line handling to show revers
+				if (it == dir.begin())
+					revers = 128;
+				else 
+					revers = 0;
+				for (long unsigned int i = 0; i < it->length(); i++)
+				{
+					char buf[16];
+					sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i])+revers);
+					content+=string(buf);
+				}
+				content += "<br />";
+			}
+			if (mount_it)
+				mount_new = true;
 		}
-
-		String.Format(s_manage, msg.c_str(), (def_prefix + curr_path).c_str(), (curr_dir + "<br />" + files).c_str(), Kernel.get_version());
+		String.Format(s_manage, msg.c_str(), (def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(), (curr_dir + files).c_str(), content.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
 	else if (strcmp(pPath, "/reset.html") == 0)
 	{
+		string msg;
+extern int reboot_req;
 		DEBUG_LOG("%s: reset requested.", __FUNCTION__);
-		reboot_now();
+		msg = "Reboot requested...";
+		reboot_req++;
+		String.Format(s_status, msg.c_str(), Kernel.get_version(), mem.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
 	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
@@ -617,6 +756,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = s_Favicon;
 		nLength = sizeof s_Favicon;
 		*ppContentType = "image/x-icon";
+	}
+	else if (strcmp (pPath, "/web/C64_Pro_Mono.ttf") == 0)
+	{
+		pContent = s_font;
+		nLength = sizeof s_font;
+		*ppContentType = "font/ttf";
 	}
 	else
 	{
