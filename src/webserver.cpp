@@ -22,6 +22,7 @@
 #include <circle/string.h>
 #include <circle/util.h>
 #include <circle/memory.h>
+#include <circle/timer.h>
 #include <assert.h>
 #include "circle-kernel.h"
 #include "options.h"
@@ -424,10 +425,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		bool noFormParts = true;
 		unsigned int temp;
 		GetTemperature(temp);
-		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC</i>", 
+		CString *t = Kernel.get_timer()->GetTimeString();
+		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC</i><br />%s", 
 			options.GetAutoMountImageName(),
 			def_prefix.c_str(), 
-			temp / 1000);
+			temp / 1000,
+			t->c_str());
+		delete t;
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 
@@ -513,7 +517,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg, 1023, "upload failed!");
 			}
 		}
-
 		String.Format(s_Index, msg, curr_path.c_str(), ("Upload to <I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
 
 		pContent = (const u8 *)(const char *)String;

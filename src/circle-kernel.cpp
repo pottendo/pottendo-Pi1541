@@ -27,6 +27,7 @@
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 #include <circle/memory.h>
+#include <circle/net/ntpdaemon.h>
 #include <iostream>
 #include <sstream>
 #include <circle/usb/usbmassdevice.h>
@@ -338,6 +339,7 @@ void CKernel::run_webserver(void)
 	new_ip = true;
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
 	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
+	new CNTPDaemon("152.53.132.244", m_Net);
 	new CWebServer (m_Net, &m_ActLED);
 	int temp_period = 0;
 	while(1)
