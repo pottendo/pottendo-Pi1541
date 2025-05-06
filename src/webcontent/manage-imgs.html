@@ -3,22 +3,22 @@
 
 <head>
 	<style>
-		table {
+		table.dirs {
 		  border-collapse: collapse;
 		  width: 100%;
 		}
-		th, td {
+		table.dirs th, table.dirs td {
 		  text-align: left;
 		  padding: 4px;
 		  border-bottom: 1px solid #DDD;				
 		}
-		tr:nth-child(even) {
+		table.dirs tr:nth-child(even) {
 		  background-color: #525c5c;
 		}
-		tr:nth-child(odd) {
+		table.dirs tr:nth-child(odd) {
 		  background-color: #657272;
 		}
-		tr:hover {background-color: #6a7575;}
+		table.dirs tr:hover {background-color: #6a7575;}
 
 		@font-face {
       		font-family: 'C64 Pro Mono';
@@ -49,12 +49,42 @@
 			<h1 style="text-align:center">Pi1541 Manage images</h1>
 			<p style="text-align:center"> by pottendo</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<h3 style="text-align: left">Status</h3>
 			<p>%s</p>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<table>
+				<td><form action="index.html" method="post" name="manage_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Upload Images" />
+					</div>
+				</form></td>
+				<td><form action="manage-imgs.html" method="post" name="manage_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Mount Images" />
+					</div>
+				</form></td>
+				<td><form action="config.html" method="post" name="config_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Upload Pi1541 Files" />
+					</div>
+				</form></td>
+				<td><form action="edit-config.html" method="post" name="edit_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Change Configuration" />
+					</div>
+				</form></td>
+				<td><form action="reset.html" method="post" name="edit_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Reset Pi1541" />
+					</div>
+				</form></td>
+			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<form action="manage.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
+					<h4 style="text-align: left;">Mount Images</h4>
 					<div>
-						<table>
+						<table class="dirs">
 							<tr valign="center"><td>SDCard %s</td>
 								<td style="text-align:right;">
 									<a href="manage-imgs.html?[MOUNT]&%s">
@@ -64,12 +94,13 @@
 							</tr>
 						</table>
 						<br /><br />
-						<table>
+						<table class="dirs">
 							<tr>
-								<th>Directory & Files</th>
+								<th>Directories</th>
+								<th>Files</th>
 								<th>Image content</th>
 							</tr>
-							<tr valign="top"><td>%s</td>
+							<tr valign="top"><td>%s</td><td>%s</td>
 								<td style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">%s</td>
 							</tr>
 						</table>
@@ -77,13 +108,6 @@
 				</div>
 			</form>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-
-			<form action="index.html" method="post" name="back-button" enctype="multipart/form-data">
-				<div class="form-group">
-					<input type="submit" class="btn btn-success" value="Back to main page" />
-					<br/><br/>
-				</div>
-			</form>
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"

@@ -45,19 +45,25 @@ Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 
 <br />
 
-If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. On can chose a static network configuration for faster startup, see below.
+If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. One can chose a static network configuration for faster startup, see below.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
 
 <br />
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 
-![](docs/Update.png)
+![](docs/Image-upload.png)
 <br />
 
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
-![](docs/Image-upload.png)
+![](docs/Manage-image.png)
+<br />
+
+Select image for preview and mount it.
+<br />
+
+![](docs/Pi1541-upload.png)
 <br />
 
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
@@ -180,7 +186,7 @@ Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
 The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
 In case you want to run the slightly improved legacy 1.24 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
 
-Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendi-Pi1541:
+Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendo-Pi1541:
 
 ```
 [pi0]
@@ -332,33 +338,5 @@ Commodore 16
 Commodore Plus4
 
 See https://cbm-pi1541.firebaseapp.com/ for SD card and hardware configurations.
-
-Toolchain Installation
-----------------------
-
-On Windows use GNU Tools ARM Embedded tool chain 5.4:
-https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q2-update
-and Make:
-http://gnuwin32.sourceforge.net/packages/make.htm
-
-
-On dpkg based linux systems install:
-(Tested on osmc/rpi3)
-```
-apt-get install binutils-arm-none-eabi gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
-```
-
-On RHEL/Centos/Fedora systems follow the guide at:
-https://web1.foxhollow.ca/?menu=centos7arm
-(Tested on Centos7/x64 with GCC7)
-https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads/7-2017-q4-major
-
-Building
---------
-```
-make
-```
-This will build kernel.img
-
 
 In order to build the Commodore programs from the `CBM-FileBrowser_v1.6/sources/` directory, you'll need to install the ACME cross assembler, which is available at https://github.com/meonwax/acme/

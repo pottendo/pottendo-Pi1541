@@ -150,14 +150,12 @@ static string print_human_readable_time(WORD ftime) {
 	return string(tmp);
 }
 
-static void direntry_table(string &res, string &path, string &page, int type_filter)
+static const string header_NTD = string("<tr><th>Name</th><th>Type</th><th>Date</th></tr>");
+static const string header_NT = string("<tr><th>Name</th><th>Type</th></tr>");
+
+static void direntry_table(const string header, string &res, string &path, string &page, int type_filter)
 {
-	res = "<table>\
-		<tr>\
-    		<th>Name</th>\
-    		<th>Type</th>\
-    		<th>Date</th>\
-  		</tr>";
+	res = string("<table class=\"dirs\">") + header;
    	FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
@@ -197,7 +195,6 @@ static void direntry_table(string &res, string &path, string &page, int type_fil
 						string("<a href=") + page + "?" + file_type + "&" + path.substr(0, pos) + "&>..</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td>" +
-					"<td>" + "--" + "</td>" +
 				"</tr>";
 	}
 	for (auto it : list)
@@ -208,7 +205,7 @@ static void direntry_table(string &res, string &path, string &page, int type_fil
 						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td>" +
-					"<td>" + print_human_readable_time(it.fdate) + "</td>" +
+					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate) + "</td>" : "") +
 					"</tr>";
         } else {
 			/* file*/
@@ -432,7 +429,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			def_prefix.c_str(), 
 			temp / 1000);
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		direntry_table(curr_dir, curr_path, page, AM_DIR);
+		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
@@ -472,7 +469,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					memcpy(tmp, pPartDataCB, nPartLengthCB);
 					tmp[nPartLengthCB] = '\0';
 					curr_path = string(tmp);
-					direntry_table(curr_dir, curr_path, page, AM_DIR);
+					direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 				}
 			}			
 
@@ -483,6 +480,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				if ((strcmp(extension, "d64") == 0) ||
 					(strcmp(extension, "g64") == 0) ||
 					(strcmp(extension, "d81") == 0) ||
+					(strcmp(extension, "nib") == 0) ||
+					(strcmp(extension, "nbz") == 0) ||
+					(strcmp(extension, "t64") == 0) ||
 					(strcmp(extension, "prg") == 0))
 				{
 					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
@@ -514,7 +514,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 		}
 
-		String.Format(s_Index, msg, curr_path.c_str(), (def_prefix + "/" + curr_path).c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_Index, msg, curr_path.c_str(), ("Upload to <I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -644,7 +644,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
-		string msg = "OK";
+		string msg = "";
 		string content = "No image selected";
 		list<string> dir;
 		string curr_path = urlDecode(pParams);
@@ -665,6 +665,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (f_stat(curr_path.c_str(), &fi) == FR_OK)
 			{
 				type = "[DIR]";
+				msg = "No Image selected, nothing mounted";
 				if (fi.fattrib & ~AM_DIR)
 				{
 					type = "[FILE]";
@@ -678,16 +679,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		if (type == "[DIR]" || type == "") 
 		{
-			direntry_table(curr_dir, curr_path, page, AM_DIR);
-			direntry_table(files, curr_path, page, ~AM_DIR);
+			direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
+			direntry_table(header_NTD, files, curr_path, page, ~AM_DIR);
 		} 
 
 		if (type == "[FILE]")
 		{
 			const size_t idx = curr_path.rfind('/');
 			string cwd = curr_path.substr(0, idx);
-			direntry_table(curr_dir, cwd, page, AM_DIR);
-			direntry_table(files, cwd, page, ~AM_DIR);
+			direntry_table(header_NT, curr_dir, cwd, page, AM_DIR);
+			direntry_table(header_NTD, files, cwd, page, ~AM_DIR);
 			int revers = 0;
 			if (mount_it)
 				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
@@ -719,7 +720,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (mount_it)
 				mount_new = true;
 		}
-		String.Format(s_manage, msg.c_str(), (def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(), (curr_dir + files).c_str(), content.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_manage, msg.c_str(), 
+					(def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(),
+					curr_dir.c_str(), files.c_str(), content.c_str(),
+					Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

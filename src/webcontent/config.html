@@ -3,22 +3,22 @@
 
 <head>
 	<style>
-		table {
+		table.dirs {
 		  border-collapse: collapse;
 		  width: 100%;
 		}
-		th, td {
+		table.dirs th, table.dirs td {
 		  text-align: left;
 		  padding: 4px;
 		  border-bottom: 1px solid #DDD;				
 		}
-		tr:nth-child(even) {
+		table.dirs tr:nth-child(even) {
 		  background-color: #525c5c;
 		}
-		tr:nth-child(odd) {
+		table.dirs tr:nth-child(odd) {
 		  background-color: #657272;
 		}
-		tr:hover {background-color: #6a7575;}
+		table.dirs tr:hover {background-color: #6a7575;}
 		</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -42,9 +42,39 @@
 			<h1 style="text-align:center">Upload Pi1541 Files</h1>
 			<p style="text-align:center"> by pottendo</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<h3 style="text-align: left">Status</h3>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h4 style="text-align:left">Pi1541 kernel upload</h2>
+
+			<table>
+				<td><form action="index.html" method="post" name="manage_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Upload Images" />
+					</div>
+				</form></td>
+				<td><form action="manage-imgs.html" method="post" name="manage_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Mount Images" />
+					</div>
+				</form></td>
+				<td><form action="config.html" method="post" name="config_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Upload Pi1541 Files" />
+					</div>
+				</form></td>
+				<td><form action="edit-config.html" method="post" name="edit_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Change Configuration" />
+					</div>
+				</form></td>
+				<td><form action="reset.html" method="post" name="edit_form" enctype="multipart/form-data">
+					<div class="form-group">
+						<input type="submit" class="btn btn-success" value="Reset Pi1541" />
+					</div>
+				</form></td>
+			</table>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<h4 style="text-align:left">Pi1541 kernel upload</h4>
 			<form action="config.html" method="post" name="config-form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
 					<div class="custom-file">
@@ -68,12 +98,6 @@
 				</div>
 			</form>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<form action="index.html" method="post" name="config_form" enctype="multipart/form-data">
-				<div class="form-group">
-					<input type="submit" class="btn btn-success" value="Back to main page" />
-					<br/><br/>
-				</div>
-			</form>
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
