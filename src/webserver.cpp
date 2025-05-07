@@ -406,7 +406,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -445,7 +445,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			unsigned nPartLengthCB;
 			const char *targetfn = filename;
 			bool do_remount = false;
-			DEBUG_LOG("%s: pPartHeader = '%s' - filename = '%s'", __FUNCTION__, pPartHeader, filename);
+			//DEBUG_LOG("%s: pPartHeader = '%s' - filename = '%s'", __FUNCTION__, pPartHeader, filename);
 			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 			{
 				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
@@ -654,8 +654,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "manage-imgs.html";
-		DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
 		string type;
 		bool mount_it = false;
@@ -663,7 +663,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[MOUNT]")
 		{
 			FILINFO fi;
@@ -679,12 +679,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				if (curr_path.find(def_prefix) != string::npos)
 					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
 				if (curr_path[0] != '/') curr_path = "/" + curr_path;
-#if 0
-				if (curr_path.length() > def_prefix.length())
-					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
-				else
-					curr_path = "";
-#endif					
 			}
 			else
 				return HTTPNotFound;
@@ -700,7 +694,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			const size_t idx = curr_path.rfind('/');
 			string cwd = curr_path.substr(0, idx);
-			DEBUG_LOG("%s: idx = %d, cwd = '%s'", __FUNCTION__, idx, cwd.c_str());
 			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
 				return HTTPNotFound;

@@ -27,7 +27,7 @@
 #include "ff-local.h"
 #endif
 #endif
-#include <string.h>
+#include <string>
 #include <list>
 #include <vector>
 #include "types.h"

@@ -160,12 +160,14 @@ Options::Options(void)
         , buttonInsert(5)
 	, rotaryEncoderEnable(0) //ROTARY:
 	, rotaryEncoderInvert(0) //ROTARY:
+	, headLess(0)
+#if defined(__CIRCLE__)	
 	, netWifi(0)
 	, netEthernet(0)
-	, headLess(0)
 	, noHealthMonitor(1)
 	, useDHCP(1)
 	, TZ(2.0)
+#endif	
 {
 	autoMountImageName[0] = 0;
 	strcpy(ROMFontName, "chargen");
