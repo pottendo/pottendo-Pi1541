@@ -137,17 +137,18 @@ static std::string urlDecode(const std::string& value) {
     return decoded.str();
 }
 
-static string print_human_readable_time(WORD ftime) {
+static string print_human_readable_time(WORD fdate, WORD ftime)
+{
 	char tmp[256];
-    int year   = ((ftime >> 9) & 0x7F) + 1980;
-    int month  = (ftime >> 5) & 0x0F;
-    int day    = ftime & 0x1F;
+    int year   = ((fdate >> 9) & 0x7F) + 1980;
+    int month  = (fdate >> 5) & 0x0F;
+    int day    = fdate & 0x1F;
     int hour   = (ftime >> 11) & 0x1F;
     int minute = (ftime >> 5) & 0x3F;
     int second = (ftime & 0x1F) * 2;
 
-    snprintf(tmp, 255, "%04d-%02d-%02d %02d:%02d:%02d\n",
-           		year, month, day, hour, minute, second);
+    snprintf(tmp, 255, "%04d-%02d-%02d %02d:%02d\n",
+           		year, month, day, hour, minute);
 	return string(tmp);
 }
 
@@ -206,7 +207,7 @@ static void direntry_table(const string header, string &res, string &path, strin
 						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td>" +
-					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate) + "</td>" : "") +
+					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "") +
 					"</tr>";
         } else {
 			/* file*/

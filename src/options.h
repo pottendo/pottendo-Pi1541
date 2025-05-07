@@ -114,6 +114,7 @@ public:
 	inline void SetHeadLess(unsigned int h) { headLess = h; }
 	inline unsigned int GetHealthMonitor() const { return noHealthMonitor; }
 	inline unsigned int GetDHCP() const { return useDHCP; }
+	inline float GetTZ() const { return TZ; }
 
 	// Page up and down will jump a different amount based on the maximum number rows displayed.
 	// Perhaps we should use some keyboard modifier to the the other screen?
@@ -198,18 +199,22 @@ private:
 	unsigned int rotaryEncoderEnable;
 	//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 	unsigned int rotaryEncoderInvert;
+	// headless
+	unsigned int headLess;
 
+#if defined (__CIRCLE__)
 	// WiFi & Networking
 	unsigned int netWifi;
 	unsigned int netEthernet;
-
-	// headless
-	unsigned int headLess;
 
 	// Healthmonitor Console, default is off
 	unsigned int noHealthMonitor;
 
 	// use DHCP
 	unsigned int useDHCP;
+
+	// Timezone, multiplied by 60, defaults to 2.0 (CEST)
+	float TZ;
+#endif	
 };
 #endif

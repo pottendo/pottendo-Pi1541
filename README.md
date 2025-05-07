@@ -36,7 +36,7 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - Buzzer sound output
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
-- Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs
+- Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
 
 Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 <br />
@@ -112,6 +112,7 @@ However, the code compiles and runs in principle on those platforms; due to the 
 The following options control new functions available:
 | Option      | Value  | Purpose                                  |
 | ----------- | ------ | ---------------------------------------- |
+| TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |
 | netWifi     | 0 or 1 | disable/enable Wifi network              |
 | IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          |
@@ -125,7 +126,8 @@ Here a snippet one can add to his `options.txt`:
 // this turns on/off HDMI output
 headLess = 1  // no HDMI output
 
-// Network configuration
+// Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
+TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
 netWifi = 0
 netEthernet = 1
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly

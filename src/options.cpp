@@ -165,6 +165,7 @@ Options::Options(void)
 	, headLess(0)
 	, noHealthMonitor(1)
 	, useDHCP(1)
+	, TZ(2.0)
 {
 	autoMountImageName[0] = 0;
 	strcpy(ROMFontName, "chargen");
@@ -257,11 +258,14 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(buttonInsert)
 		ELSE_CHECK_DECIMAL_OPTION(rotaryEncoderEnable) //ROTARY:
 		ELSE_CHECK_DECIMAL_OPTION(rotaryEncoderInvert) //ROTARY:
+		ELSE_CHECK_DECIMAL_OPTION(headLess)
+#if defined(__CIRCLE__)
 		ELSE_CHECK_DECIMAL_OPTION(netWifi)
 		ELSE_CHECK_DECIMAL_OPTION(netEthernet)
-		ELSE_CHECK_DECIMAL_OPTION(headLess)
 		ELSE_CHECK_DECIMAL_OPTION(noHealthMonitor)
 		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
+		ELSE_CHECK_FLOAT_OPTION(TZ)
+#endif		
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{
 			strncpy(autoBaseName, pValue, 255);

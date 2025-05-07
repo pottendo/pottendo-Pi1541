@@ -28,6 +28,7 @@
 #include <circle/cputhrottle.h>
 #include <circle/memory.h>
 #include <circle/net/ntpdaemon.h>
+#include <circle/timer.h>
 #include <iostream>
 #include <sstream>
 #include <circle/usb/usbmassdevice.h>
@@ -221,15 +222,19 @@ TShutdownMode CKernel::Run (void)
 	new_ip = true;
 	if (screen_failed)
 		options.SetHeadLess(1);
+	const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
+	Kernel.append2version(pi1541HWOption);
+	DEBUG_LOG("%s: options selected %s", __FUNCTION__, pi1541HWOption);
+	// launch everything
 	Kernel.launch_cores();
 	if (options.GetHeadLess() == false)
 	{
 		UpdateScreen();
-		log("%s: unexpected return of display thread, halting core 0", __FUNCTION__);
+		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
 	} 
 	else 
 	{
-		log("%s: running headless, halting core 0...", __FUNCTION__);
+		DEBUG_LOG("%s: running headless, halting core %d...", __FUNCTION__, 0);
 	}
 	return ShutdownHalt;
 }
@@ -339,6 +344,10 @@ void CKernel::run_webserver(void)
 	new_ip = true;
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
 	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
+	if (mTimer.SetTimeZone(options.GetTZ() * 60))
+		DEBUG_LOG("%s: timezone set '%.0f'mins vs. UTC", __FUNCTION__, options.GetTZ() * 60.0);
+	else
+		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	new CNTPDaemon("152.53.132.244", m_Net);
 	new CWebServer (m_Net, &m_ActLED);
 	int temp_period = 0;
@@ -501,15 +510,10 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	int i = 0;
 	switch (core) {
-	case 1:
-		{
-			Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
-			const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
-			Kernel.append2version(pi1541HWOption);
-			DEBUG_LOG("%s: options selected %s", __FUNCTION__, pi1541HWOption);
-			emulator();
-		}
-		break;
+		case 1:
+		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
+		emulator();
+	
 	case 2:
 #if RASPPI >= 3
 		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");

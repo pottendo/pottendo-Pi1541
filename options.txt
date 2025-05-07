@@ -146,6 +146,7 @@ DisplayTemperature = 0
 headLess = 0
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
+TZ = 2.0    // 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
 netWifi = 0
 netEthernet = 0
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
