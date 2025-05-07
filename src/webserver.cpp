@@ -155,7 +155,7 @@ static string print_human_readable_time(WORD fdate, WORD ftime)
 static const string header_NTD = string("<tr><th>Name</th><th>Type</th><th>Date</th></tr>");
 static const string header_NT = string("<tr><th>Name</th><th>Type</th></tr>");
 
-static void direntry_table(const string header, string &res, string &path, string &page, int type_filter)
+static int direntry_table(const string header, string &res, string &path, string &page, int type_filter)
 {
 	res = string("<table class=\"dirs\">") + header;
    	FRESULT fr;              // Result code
@@ -168,7 +168,7 @@ static void direntry_table(const string header, string &res, string &path, strin
     fr = f_opendir(&dir, x);
     if (fr != FR_OK) {
         DEBUG_LOG("Failed to open directory '%s': %d", x, fr);
-        return;
+        return -1;
     }
     while (1) {
         // Read a directory item
@@ -216,7 +216,7 @@ static void direntry_table(const string header, string &res, string &path, strin
 	}
 
 	res += "</table>";
-
+	return 0;
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension)
@@ -445,7 +445,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			unsigned nPartLengthCB;
 			const char *targetfn = filename;
 			bool do_remount = false;
-
+			DEBUG_LOG("%s: pPartHeader = '%s' - filename = '%s'", __FUNCTION__, pPartHeader, filename);
 			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 			{
 				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
@@ -655,14 +655,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_dir, files;
 		string page = "manage-imgs.html";
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
+		DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
 		string type;
 		bool mount_it = false;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
-		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		type = urlDecode(type);
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[MOUNT]")
 		{
 			FILINFO fi;
@@ -675,25 +676,34 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					type = "[FILE]";
 					mount_it = true;
 				}
+				if (curr_path.find(def_prefix) != string::npos)
+					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
+				if (curr_path[0] != '/') curr_path = "/" + curr_path;
+#if 0
 				if (curr_path.length() > def_prefix.length())
 					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
 				else
 					curr_path = "";
+#endif					
 			}
+			else
+				return HTTPNotFound;
 		}
 		if (type == "[DIR]" || type == "") 
 		{
-			direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
-			direntry_table(header_NTD, files, curr_path, page, ~AM_DIR);
+			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
+				(direntry_table(header_NTD, files, curr_path, page, ~AM_DIR) < 0))
+				return HTTPNotFound;
 		} 
 
 		if (type == "[FILE]")
 		{
 			const size_t idx = curr_path.rfind('/');
 			string cwd = curr_path.substr(0, idx);
-			direntry_table(header_NT, curr_dir, cwd, page, AM_DIR);
-			direntry_table(header_NTD, files, cwd, page, ~AM_DIR);
-			int revers = 0;
+			DEBUG_LOG("%s: idx = %d, cwd = '%s'", __FUNCTION__, idx, cwd.c_str());
+			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
+				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
+				return HTTPNotFound;
 			if (mount_it)
 				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 			else
@@ -706,6 +716,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
 			}
 			content = "";
+			int revers = 0;
 			for (auto it = dir.begin(); it != dir.end(); it++)
 			{
 				// ugly special first line handling to show revers

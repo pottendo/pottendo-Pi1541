@@ -14,6 +14,7 @@ A simple web-server features
 Some further ideas:
 - Enhance webserver to support image administration (copy, move, delete, rename, etc.)
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
+- _.lst_ file handling
 - ...
 
 Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
@@ -51,6 +52,21 @@ The IP address is briefly shown on the LCD, once received. One can check the IP 
 <br />
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
+
+One can also use `curl` to script the upload - this may be usefull to be included in your build-process or bulk upload into `/1541` or other directories. The commandlines to be used looks like this:
+```
+# replace a.b.c.d with you Pi1541 IP address
+# this uploads to SD:/1541 on your SDCard
+curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html
+# this uploads to /1541/demos/deus
+curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html?%5BDIR%5D\&demos/deus
+
+# to mount an image which resides in SD:/1541
+curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&my-diskimage.d64
+# to mount an image which resides in SD:/1541/demos/deus
+curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64
+```
+_Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect
 
 ![](docs/Image-upload.png)
 <br />
