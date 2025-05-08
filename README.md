@@ -57,14 +57,14 @@ One can also use `curl` to script the upload - this may be usefull to be include
 ```
 # replace a.b.c.d with you Pi1541 IP address
 # this uploads to SD:/1541 on your SDCard
-curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html
+curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html >/dev/null
 # this uploads to /1541/demos/deus
-curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html?%5BDIR%5D\&demos/deus
+curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html?%5BDIR%5D\&demos/deus >/dev/null
 
 # to mount an image which resides in SD:/1541
-curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&my-diskimage.d64
+curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&my-diskimage.d64 >/dev/null
 # to mount an image which resides in SD:/1541/demos/deus
-curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64
+curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64 >/dev/null
 ```
 _Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect
 
