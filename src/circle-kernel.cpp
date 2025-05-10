@@ -90,7 +90,11 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 	if (verb) 
 	{
 		char tmp[256];
+#if AARCH == 32		
+		snprintf(tmp, 255, "Memory: %dkB/%dkB", ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
+#else	
 		snprintf(tmp, 255, "Memory: %ldkB/%ldkB", ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
+#endif	
 		mem = std::string(tmp); 
 		return;
 	}

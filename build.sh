@@ -96,6 +96,7 @@ if [ x${tag} != "xnone" ] ; then
 	    echo "failed to build legacy codebase"
 	    exit 1
     fi
+    make clean 2>&1 >/dev/null
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart
