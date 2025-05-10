@@ -220,7 +220,7 @@ kernel=kernel.img
 
 # this is for the PiZero 2 W
 [pi02]
-arm_freq=1300
+arm_freq=1400
 over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
@@ -237,7 +237,7 @@ kernel=kernel8.img
 
 # all Pi3 variants
 [pi3]
-arm_freq=1300
+arm_freq=1400
 over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
