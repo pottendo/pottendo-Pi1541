@@ -142,6 +142,23 @@ CKernel::CKernel(void) :
 	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
 }
 
+static void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
+{
+	Kernel.log("%s - state = 0x%04x", __FUNCTION__, CurrentState);
+	if (CurrentState & SystemStateUnderVoltageOccurred) {
+		Kernel.log("%s: undervoltage occured...", __FUNCTION__);
+	}
+	if (CurrentState & SystemStateFrequencyCappingOccurred) {
+		Kernel.log("%s: frequency capping occured...", __FUNCTION__);
+	}
+	if (CurrentState & SystemStateThrottlingOccurred) {
+		Kernel.log("%s: throttling occured to %dMHz", __FUNCTION__, CPUThrottle.GetClockRate() / 1000000L);
+	}
+	if (CurrentState & SystemStateSoftTempLimitOccurred) {
+		Kernel.log("%s: softtemplimit occured...", __FUNCTION__);
+	}
+}
+
 boolean CKernel::Initialize (void) 
 {
 	boolean bOK;
@@ -217,6 +234,10 @@ TShutdownMode CKernel::Run (void)
 	{	
 		log("maxed freq to %dMHz", CPUThrottle.GetClockRate() / 1000000L);
 	}
+    unsigned tmask = SystemStateUnderVoltageOccurred | SystemStateFrequencyCappingOccurred |
+					 SystemStateThrottlingOccurred | SystemStateSoftTempLimitOccurred;
+	CPUThrottle.RegisterSystemThrottledHandler(tmask, monitorhandler, nullptr);
+	CPUThrottle.Update();
 
 	kernel_main(0, 0, 0);/* options will be initialized */
 	new_ip = true;
@@ -230,6 +251,7 @@ TShutdownMode CKernel::Run (void)
 	if (options.GetHeadLess() == false)
 	{
 		UpdateScreen();
+		CPUThrottle.Update();
 		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
 	} 
 	else 
@@ -358,6 +380,7 @@ void CKernel::run_webserver(void)
 			options.GetHeadLess() &&
 			!(temp_period++ % 10))	// every sec, display temp on LCD
 		{
+			CPUThrottle.Update();
 			display_temp();
 		}
 		if (reboot_req && reboot_req++ > 4)
@@ -449,31 +472,14 @@ int CKernel::usb_massstorage_available(void)
 	return 1;
 }
 
-void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
-{
-	Kernel.log("%s - state = 0x%04x", __FUNCTION__, CurrentState);
-	if (CurrentState & SystemStateUnderVoltageOccurred) {
-		Kernel.log("%s: undervoltage occured...", __FUNCTION__);
-	}
-	if (CurrentState & SystemStateFrequencyCappingOccurred) {
-		Kernel.log("%s: frequency capping occured...", __FUNCTION__);
-	}
-	if (CurrentState & SystemStateThrottlingOccurred) {
-		Kernel.log("%s: throttling occured to %dMHz", __FUNCTION__, CPUThrottle.GetClockRate() / 1000000L);
-	}
-	if (CurrentState & SystemStateSoftTempLimitOccurred) {
-		Kernel.log("%s: softtemplimit occured...", __FUNCTION__);
-	}
-}
-
-void CKernel::run_tempmonitor(void)
+void CKernel::run_tempmonitor(bool run)
 {
     unsigned tmask = SystemStateUnderVoltageOccurred | SystemStateFrequencyCappingOccurred |
 					 SystemStateThrottlingOccurred | SystemStateSoftTempLimitOccurred;
 	CPUThrottle.RegisterSystemThrottledHandler(tmask, monitorhandler, nullptr);
 	CPUThrottle.Update();
 	// CPUThrottle.DumpStatus(true);
-	while (true) {
+	do {
 		if (CPUThrottle.SetOnTemperature() == false)
 			log("temperature monitor failed...");
 		MsDelay(5 * 1000);
@@ -485,7 +491,7 @@ void CKernel::run_tempmonitor(void)
 			CPUThrottle.IsDynamic() ? " " : " not ",
 			CPUThrottle.GetClockRate() / 1000000L, 
 			CPUThrottle.GetMaxClockRate() / 1000000L);
-	}
+	} while (run);
 }
 
 TKernelTimerHandle CKernel::timer_start(unsigned delay, TKernelTimerHandler *pHandler, void *pParam, void *pContext)

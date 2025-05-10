@@ -100,7 +100,7 @@ public:
 	TKernelTimerHandle timer_start(unsigned delay, TKernelTimerHandler *pHandler, void *pParam = 0, void *pContext = 0);
 	void timer_cancel(TKernelTimerHandle handler) { mTimer.CancelKernelTimer(handler); }
 	inline bool get_ip(const char **p) { *p = ip_address; return true ; if (new_ip) { new_ip = false; return true; } else return false; }
-	void run_tempmonitor(void);
+	void run_tempmonitor(bool run = true);
 	CUSBKeyboardDevice *get_kbd(void) { return m_pKeyboard; }
 	inline void set_kbd(CUSBKeyboardDevice *kbd) { m_pKeyboard = kbd; }
 	void playsound(void);

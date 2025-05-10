@@ -20,6 +20,34 @@ index 6a1efcfe..c1bf5acf 100644
  /* FF_STR_VOLUME_ID switches support for volume ID in arbitrary strings.
  /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
  /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
+diff --git a/boot/Makefile b/boot/Makefile
+index 236f32e1..3a21bac9 100644
+--- a/boot/Makefile
++++ b/boot/Makefile
+@@ -14,7 +14,7 @@
+ # Use firmware revision built/committed on: Nov 26 2024
+ FIRMWARE ?= 4bb9d889a9d48c7335ebe53c0b8be83285ea54b1
+ 
+-BASEURL = https://github.com/raspberrypi/firmware/blob/$(FIRMWARE)/boot
++BASEURL = https://github.com/raspberrypi/firmware/raw/$(FIRMWARE)/boot
+ 
+ FILES = LICENCE.broadcom COPYING.linux \
+ 	bootcode.bin start.elf fixup.dat start4.elf fixup4.dat \
+@@ -32,12 +32,12 @@ firmware: clean
+ 	@for file in $(FILES) ; \
+ 	do \
+ 		echo Downloading $$file ... ; \
+-		wget -q -O $$file $(BASEURL)/$$file?raw=true ; \
++		wget -q -O $$file $(BASEURL)/$$file ; \
+ 	done
+ 	@for file in $(OVERLAYS) ; \
+ 	do \
+ 		echo Downloading $$file ... ; \
+-		wget -q -O $$file $(BASEURL)/overlays/$$file?raw=true ; \
++		wget -q -O $$file $(BASEURL)/overlays/$$file ; \
+ 	done
+ 
+ all: firmware armstub bootloader
 diff --git a/include/circle/sysconfig.h b/include/circle/sysconfig.h
 index 566e6eb7..079cdf2b 100644
 --- a/include/circle/sysconfig.h

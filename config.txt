@@ -11,11 +11,10 @@ kernel=kernel.img
 
 # this is for the PiZero 2 W
 [pi02]
-arm_freq=1300
+arm_freq=1400
 over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
-force_turbo=1
 boot_delay=1
 gpu_mem=16
 hdmi_group=2
@@ -29,11 +28,12 @@ kernel=kernel8.img
 
 # all Pi3 variants
 [pi3]
-arm_freq=1300
+arm_freq=1400
 over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
-force_turbo=1
+temp_soft_limit=70
+temp_limit=80
 boot_delay=1
 gpu_mem=16
 hdmi_group=2
