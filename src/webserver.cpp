@@ -427,10 +427,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned int temp;
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC</i><br />%s", 
+		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>", 
 			options.GetAutoMountImageName(),
 			def_prefix.c_str(), 
 			temp / 1000,
+			CPUThrottle.GetClockRate() / 1000000L,
 			t->c_str());
 		delete t;
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());

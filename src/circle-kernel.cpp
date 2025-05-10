@@ -118,7 +118,8 @@ CKernel::CKernel(void) :
 	m_WPASupplicant (_CONFIG_FILE),
 	m_MCores(CMemorySystem::Get()),
 	screen_failed(false),
-	no_pwm(false)
+	no_pwm(false),
+	arch("unknown")
 {
 	boolean serialOK;
 	
@@ -218,13 +219,11 @@ TShutdownMode CKernel::Run (void)
 		extern unsigned versionMajor;
 		extern unsigned versionMinor;
 #if AARCH == 32		
-		char *arch = "32bit";
+		arch = "32bit";
 #else
-		char *arch = "64bit";
+		arch = "64bit";
 #endif		
-		int rev = mi->GetModelRevision();
-		snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %s/Rev%d", PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev);
-		log(pPi1541Version);
+		log(get_version());
 	} else {
 		log("GetMachinModel failed - halting system"); 
 		return ShutdownHalt;
@@ -510,6 +509,16 @@ void CKernel::playsound(void)
 		return;
 	m_PWMSoundDevice->Playback ((void *)Sample_bin, Sample_bin_size, 1, 8);
 #endif	
+}
+
+char *CKernel::get_version(void)
+{
+	extern unsigned int versionMajor, versionMinor;
+	CMachineInfo *mi = CMachineInfo::Get();
+	int rev = mi->GetModelRevision();
+	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %s/Rev%d@%ldMHz", 
+		PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev, CPUThrottle.GetClockRate() / 1000000L);
+	return pPi1541Version;
 }
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
