@@ -543,7 +543,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				case MachineModelZero2W:
 				case MachineModel3B:
 				case MachineModel3BPlus:
+#if AARCH == 32
 					kernelname = "kernel8-32.img";
+#else
+					kernelname = "kernel8.img";
+#endif	
 					break;
 				case MachineModel4B:
 #if AARCH == 32
