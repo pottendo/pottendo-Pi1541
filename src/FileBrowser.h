@@ -184,7 +184,11 @@ public:
 	void Update();
 
 	void RefeshDisplay();
+	#if defined(__CIRCLE__)
 	void DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, std::list<std::string> *image_dir = nullptr);
+	#else
+	void DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, void *image_dir = nullptr);
+	#endif
 	void DisplayStatusBar();
 
 	void FolderChanged();

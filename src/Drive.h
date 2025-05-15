@@ -23,7 +23,12 @@
 #include "DiskImage.h"
 #include <stdlib.h>
 
+
 #if defined(EXPERIMENTALZERO)
+	#define FAST_CODE 1
+#endif
+
+#if defined(FAST_CODE)
 inline int ceil(float num) {
 	int inum = (int)num;
 	if (num == (float)inum) {
@@ -48,7 +53,7 @@ public:
 	static void OnPortOut(void*, unsigned char status);
 
 	bool Update();
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	void DriveLoopWrite();
 	void DriveLoopRead();
 	void DriveLoopReadNoFluxNoCycles();
@@ -68,7 +73,7 @@ public:
 
 	inline unsigned char GetLastHeadDirection() const { return lastHeadDirection; } // For simulated head movement sounds
 private:
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	int32_t localSeed;
 	inline void ResetEncoderDecoder(unsigned int min, unsigned int /*max*/span)
 	{
@@ -98,7 +103,7 @@ private:
 			bitsInTrack = diskImage->BitsInTrack(headTrackPos);
 			headBitOffset %= bitsInTrack;
 			cyclesPerBit = CYCLES_16Mhz_PER_ROTATION / (float)bitsInTrack;
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 			cyclesPerBitInt = cyclesPerBit;
 			cyclesPerBitErrorConstant = (unsigned int)((cyclesPerBit - ((float)cyclesPerBitInt)) * static_cast<float>(0xffffffff));
 			cyclesForBitErrorCounter = (unsigned int)(((cyclesForBit)-(int)(cyclesForBit)) * static_cast<float>(0xffffffff));
@@ -126,7 +131,7 @@ private:
 
 	void DumpTrack(unsigned track); // Used for debugging disk images.
 
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	inline u32 AdvanceSectorPosition(int& byteOffset)
 	{
 		if (++headBitOffset == bitsInTrack)
@@ -183,7 +188,7 @@ private:
 	// CB2 (output)
 	//	- R/!W
 	m6522* m_pVIA;
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	unsigned int cyclesLeftForBit;
 	unsigned int fluxReversalCyclesLeft;
 	unsigned int UE7Counter;

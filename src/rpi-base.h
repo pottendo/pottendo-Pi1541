@@ -51,9 +51,14 @@ typedef unsigned KTHType;        /* needed for backward compatibility, Circle 64
     #define PERIPHERAL_BASE     0x20000000UL
 #endif
 
+#if defined(RPI2) || defined(RPI3)
+    #define GPU_UNCACHED_BASE    0xC0000000UL
+#else
+    #define GPU_UNCACHED_BASE    0x40000000UL
+#endif
+
 //#define GPU_IO_BASE				0x7E000000
 //#define GPU_CACHED_BASE			0x40000000
-//#define GPU_UNCACHED_BASE		0xC0000000
 //
 //#if defined ( RPI2 ) || defined (RPI3)
 //#define GPU_MEM_BASE	GPU_UNCACHED_BASE
