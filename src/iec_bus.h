@@ -381,6 +381,7 @@ public:
 #if defined (__CIRCLE__)
 			_mask = ((1 << PIGPIO_OUT_LED) | (1 << PIGPIO_OUT_SOUND));			
 #if defined (CIRCLE_GPIO)
+			DEBUG_LOG("%s: using circle GPIO", __FUNCTION__);
 			IEC_Bus::IO_led.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_led.SetMode(GPIOModeOutput, false);
 			IEC_Bus::IO_sound.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_sound.SetMode(GPIOModeOutput, false);
 			IEC_Bus::IO_CLK.AssignPin(PIGPIO_CLOCK); IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
@@ -388,6 +389,8 @@ public:
 			IEC_Bus::IO_DAT.AssignPin(PIGPIO_DATA); IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 			IEC_Bus::IO_SRQ.AssignPin(PIGPIO_SRQ); IEC_Bus::IO_SRQ.SetMode(GPIOModeInput, false);
 			IEC_Bus::IO_RST.AssignPin(PIGPIO_RESET); IEC_Bus::IO_RST.SetMode(GPIOModeInput, false);
+#else
+			DEBUG_LOG("%s: using register GPIO", __FUNCTION__);
 #endif			
 			for (int i = 0; i < 5; i++) {
 				IO_buttons[i].AssignPin(ButtonPins[i]);
@@ -734,9 +737,6 @@ public:
 		}
 		else
 		{
-#if defined(CIRCLE_GPIO)
-			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK));
-#endif
 			static const unsigned setlist[4] = {
 				0,
 				1 << PIGPIO_OUT_DATA,
@@ -766,19 +766,36 @@ public:
 			}
 #else
 #if RASPPI == 5
-			write32(RIO0_OUT(0, RIO_CLR_OFFSET), clear);
-			write32(RIO0_OUT(0, RIO_SET_OFFSET), set);
+			write32(RIO0_OUT(0, RIO_CLR_OFFSET), clearlist[sel]);
+			write32(RIO0_OUT(0, RIO_SET_OFFSET), setlist[sel]);
 #else
-			CGPIOPin::WriteAll(set, _mask);
+			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK));
+			CGPIOPin::WriteAll(setlist[sel], _mask);
 #endif
 #endif /* CIRCLE_GPIO */
 #endif /* __PICO2__ */
 		}
 	}
 
-#if !defined(CIRCLE_GPIO)
+#if defined(CIRCLE_GPIO)
 	// Added these two functions so these don't need to be done in the
 	// RefreshOuts*() functions.
+	static inline void RefreshOutLED(void)
+	{
+		if (OutputLED) 
+			IEC_Bus::IO_led.Write(HIGH);
+		else
+			IEC_Bus::IO_led.Write(LOW);
+
+	}
+	static inline void RefreshOutSound(void)
+	{
+		if(OutputSound) 
+			IEC_Bus::IO_sound.Write(HIGH);
+		else
+			IEC_Bus::IO_sound.Write(LOW);
+	}
+#else
 	static inline void RefreshOutLED(void)
 	{
 		if(OutputLED) write32(ARM_GPIO_GPSET0, 1<<PIGPIO_OUT_LED);
@@ -789,9 +806,7 @@ public:
 		if(OutputSound) write32(ARM_GPIO_GPSET0, 1<<PIGPIO_OUT_SOUND);
 		else            write32(ARM_GPIO_GPCLR0, 1<<PIGPIO_OUT_SOUND);
 	}
-#else
-#warning "LED/SOUND not yet circleIO capable"
-#endif
+#endif 	/* CIRCLE_GPIO */
 
 #if defined(PI1581SUPPORT)
 	static inline void RefreshOuts1581(void)
@@ -832,9 +847,6 @@ public:
 		}
 		else
 		{
-#if defined (CIRCLE_GPIO)		
-			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
-#endif	
 			if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
 			else clear |= 1 << PIGPIO_OUT_DATA;
 
@@ -850,8 +862,6 @@ public:
 				clear = tmp;
 			}
 		}
-
-
 #if !defined (CIRCLE_GPIO)
 		write32(ARM_GPIO_GPSET0, set);
 		write32(ARM_GPIO_GPCLR0, clear);
@@ -860,11 +870,13 @@ public:
 		write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
 		write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
 #else
+		_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
 		CGPIOPin::WriteAll(set, _mask);
 #endif
 #endif
 	}			
 #endif /* PI1581SUPPORT */	
+
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;

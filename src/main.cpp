@@ -2167,6 +2167,9 @@ extern "C"
     	}		
 #endif
 		LoadOptions();
+#if defined(__CIRCLE__)
+		options.SetHeadLess(options.GetDisableHDMI());
+#endif			
 		InitialiseHardware();
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		enable_MMU_and_IDCaches();

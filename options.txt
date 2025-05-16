@@ -116,9 +116,6 @@ LcdLogoName = 1541classic
 //ScreenWidth = 512
 //ScreenHeight = 384
 
-// This option displays the IEC bus activity on the bottom of the Pi's screen
-GraphIEC = 1
-
 // You can create 320x200 PNG files with the same name as your disk images. With this option turned on they will be displayed on the Pi's screen.
 //DisplayPNGIcons = 1
 
@@ -139,11 +136,15 @@ GraphIEC = 1
 
 // This option will display the temperature of the Pi's CPU.
 // It should be about 52C anything above 75C is bad and there is something wrong with your hardware
-DisplayTemperature = 0
+DisplayTemperature = 0  // may impact compatibility / timing of emulation
+DisableHDMI = 0         // same as headLess, compatibility with recent Pi1541 (>V1.24)
+// This option displays the IEC bus activity on the bottom of the Pi's screen
+HDMIGraphIEC = 0        // only if HDMI is enabled
+HDMIDisplayIECActivity = 0    // only if HDMI is enabled
 
 /////////////////////////////// pottendo Pi1541 Options
 // this turns on/off HDMI output
-headLess = 0
+// headLess = 1 // replaced by DisableHDMI
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
 TZ = 2.0    // 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
