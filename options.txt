@@ -28,7 +28,7 @@ i2cScan = 1 // scan i2c bus and display addresses on screen
 // If you have hardware with a peizo buzzer (the type without a generator) then you can use this option to hear the head step
 SoundOnGPIO = 1
 SoundOnGPIODuration = 1000 // Length of buzz in micro seconds
-SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
+SoundOnGPIOFreq = 150 // Frequency of buzz in Hz
 
 // You can remap the physical button functions
 // numbers correspond to the standard board layout

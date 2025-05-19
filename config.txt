@@ -39,12 +39,13 @@ gpu_mem=16
 hdmi_group=2
 hdmi_mode=16
 # select 32- or 64-bit mode
-arm_64bit=1
+arm_64bit=1     # set to 0 for original kernels!
 # Pi 3 & Pi Zero 2W, 32bit
 #kernel=kernel8-32.img
 # Pi 3 & Pi Zero 2W, 64bit
 kernel=kernel8.img
 # Pi3 legacy 32bit kernel
+#force_turbo = 1        # needed for original kernels, which are 32bit => also set "arm_64bit = 0" above!
 #kernel_address=0x1f00000
 #kernel=kernel-1.23.img
 
