@@ -152,12 +152,12 @@ static string print_human_readable_time(WORD fdate, WORD ftime)
 	return string(tmp);
 }
 
-static const string header_NTD = string("<tr><th>Name</th><th>Type</th><th>Date</th></tr>");
-static const string header_NT = string("<tr><th>Name</th><th>Type</th></tr>");
+static const string header_NTD = string("<tr><th>Name</th><th>Type</th><th>Date</th>");
+static const string header_NT = string("<tr><th>Name</th><th>Type</th>");
 
-static int direntry_table(const string header, string &res, string &path, string &page, int type_filter)
+static int direntry_table(const string header, string &res, string &path, string &page, int type_filter, bool file_ops = false)
 {
-	res = string("<table class=\"dirs\">") + header;
+	res = string("<table class=\"dirs\">") + header + (file_ops ? "<th>Delete</th>" : "") + "</tr>";
    	FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
@@ -207,8 +207,14 @@ static int direntry_table(const string header, string &res, string &path, string
 						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td>" +
-					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "") +
-					"</tr>";
+					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "");
+			if (file_ops)
+			{
+				res += "<td>" +
+					    string("<a href=") + page + "?[DEL]&" + urlEncode(path + sep + it.fname) + "><button type=\"button\">Delete</button></a>" +
+					   "</td>";
+			}
+			res += "</tr>";
         } else {
 			/* file*/
             //DEBUG_LOG("[FILE] %s\t(%lu bytes)", it.fname, (unsigned long)it.fsize);
@@ -320,6 +326,29 @@ static bool read_file(string &dfn, string &msg, string &fcontent)
 	return ret;
 }
 
+static bool D81DiskInfo(DiskImage *diskimage, list<string> *dir)
+{
+	DEBUG_LOG("%s: reading disk '%s'", __FUNCTION__, diskimage->GetName());
+	unsigned track, sector;
+	char buffer[260] = {0};
+	char linebuffer[32] = {0};
+	char name[32] = {0};
+	bool ret = true;
+	std::string dir_line;
+	diskimage->DumpTrack(40);
+	if (diskimage->GetDecodedSector(40, 0, (u8 *)buffer))
+	{
+		if ((buffer[0] != 40) || (buffer[1] != 3) || (buffer[2] != 'D'))
+			DEBUG_LOG("D81 header warning: %d/%d", buffer[0], buffer[1]);
+		strncpy(name, &buffer[4], 16);
+		snprintf(linebuffer, 32, "\"%s\" %c%c %c%c", name, buffer[0x16], buffer[0x17], buffer[0x19], buffer[0x1a]);
+		DEBUG_LOG("Diskname = '%s'", linebuffer);
+		dir_line += std::string(linebuffer);	
+		dir->push_back(dir_line);
+	}
+	return ret;
+}
+
 static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
 static int read_dir(string name, list<string> &dir)
@@ -355,8 +384,11 @@ static int read_dir(string name, list<string> &dir)
 			break;
 #if defined(PI1581SUPPORT)				
 		case DiskImage::D81:
-			//ret = diskImage->OpenD81(&fileinfo, img_buf, bytesRead);
-			// D81 content unsupported
+			ret = diskImage->OpenD81(&fileinfo, img_buf, bytesRead);
+			if (ret > 0)
+				D81DiskInfo(diskImage, &dir);
+			else
+				DEBUG_LOG("%s: OpenD81 failed", __FUNCTION__);
 		break;
 #endif				
 		case DiskImage::T64:
@@ -406,7 +438,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams);
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -415,13 +448,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
-		string curr_dir;
+		string curr_dir, files;
 		string curr_path = urlDecode(pParams);
 		string page = "index.html";
 		stringstream ss(pParams);
-		string type;
+		string type, mkdir, ndir;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
+		getline(ss, mkdir, '&');
+		getline(ss, ndir, '&');
 		curr_path = urlDecode(curr_path);
 		bool noFormParts = true;
 		unsigned int temp;
@@ -434,9 +469,22 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			CPUThrottle.GetClockRate() / 1000000L,
 			t->c_str());
 		delete t;
-		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		DEBUG_LOG("type = %s", type.c_str());
+		if (mkdir == "[MKDIR]")
+		{	
+			FRESULT ret;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
+			snprintf(msg, 1023,"mkdir '%s'", fullndir.c_str());
+			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
+				snprintf(msg, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
+			else
+				snprintf(msg, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
+		}
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
-
+		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
@@ -469,6 +517,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 			{
+				//DEBUG_LOG("%s: pPartHeaderCB = '%s'", __FUNCTION__, pPartHeaderCB);
 				if (strstr(pPartHeaderCB, "name=\"xpath\"") != 0)
 				{
 					char tmp[256];
@@ -509,17 +558,19 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				}
 				else
 				{
-					Kernel.log("%s: invalid filetype: '.%s'...\n", __FUNCTION__, extension);
+					Kernel.log("%s: invalid filetype: '.%s'...", __FUNCTION__, extension);
 					snprintf(msg, 1023, "invalid image extension!");
 				}
 			}
 			else
 			{
-				Kernel.log("%s: upload failed due to unkown reasons...\n", __FUNCTION__);
+				Kernel.log("%s: upload failed due to unkown reasons...", __FUNCTION__);
 				snprintf(msg, 1023, "upload failed!");
 			}
 		}
-		String.Format(s_Index, msg, curr_path.c_str(), ("Upload to <I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_Index, msg, curr_path.c_str(), (
+			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
+			Kernel.get_version(), mem.c_str(), curr_path.c_str());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();

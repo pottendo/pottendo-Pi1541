@@ -1501,7 +1501,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 	// Ideally we should not have to load the entire disk to read the directory.
 	static const char* fileTypes[]=
 	{
-		"DEL", "SEQ", "PRG", "USR", "REL", "UKN", "UKN", "UKN"
+		"DEL", "SEQ", "PRG", "USR", "REL", "???", "???", "???"
 	};
 	// Decode the BAM
 	unsigned track = 18;

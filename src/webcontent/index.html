@@ -89,12 +89,19 @@
 					<input type="hidden" id="xpath" name="xpath" value="%s">
 					<br /><br />
 					<div>
-						SDCard %s
+						Current path: %s
 						<br /><br />
-						%s
+						<table class="dirs">
+							<tr>
+								<th>Directories</th>
+								<th>Files</th>
+							</tr>
+							<tr valign="top"><td>%s</td><td>%s</td></tr>
+						</table>
 					</div>
 				</div>
 			</form>
+			<input type="submit" class="btn btn-success" onclick="myFunction()" id="mdir" name="mdir" value="Make Directory" />
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 		</div>
 		<p class="small">%s, %s</p>
@@ -121,7 +128,15 @@
 				});
 			});
 		</script>
-
+		<script>
+			function myFunction() {
+				let dir = prompt("Directory name");
+				if (dir != null) {
+					let nurl = "index.html?[DIR]&" + "%s" +"&[MKDIR]&" + encodeURIComponent(dir.trim());
+					window.location.href = nurl;
+				}
+			}
+		</script>
 	</div>
 </body>
 
