@@ -211,7 +211,7 @@ static int direntry_table(const string header, string &res, string &path, string
 			if (file_ops)
 			{
 				res += "<td>" +
-					    string("<a href=") + page + "?[DEL]&" + urlEncode(path + sep + it.fname) + "><button type=\"button\">Delete</button></a>" +
+					    string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + "><button type=\"button\">Delete</button></a>" +
 					   "</td>";
 			}
 			res += "</tr>";
@@ -452,10 +452,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string page = "index.html";
 		stringstream ss(pParams);
-		string type, mkdir, ndir;
+		string type, fops, ndir;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
-		getline(ss, mkdir, '&');
+		getline(ss, fops, '&');
 		getline(ss, ndir, '&');
 		curr_path = urlDecode(curr_path);
 		bool noFormParts = true;
@@ -471,20 +471,29 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		delete t;
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		DEBUG_LOG("type = %s", type.c_str());
-		if (mkdir == "[MKDIR]")
+		if (fops == "[MKDIR]")
 		{	
 			FRESULT ret;
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
-			snprintf(msg, 1023,"mkdir '%s'", fullndir.c_str());
 			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
 				snprintf(msg, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
 				snprintf(msg, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
 		}
+		if (fops == "[DEL]")
+		{	
+			FRESULT ret;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, fullndir.c_str());
+			if ((ret = f_unlink(fullndir.c_str())) != FR_OK)
+				snprintf(msg, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
+			else
+				snprintf(msg, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+		}
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
-		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
@@ -568,6 +577,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg, 1023, "upload failed!");
 			}
 		}
+		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		String.Format(s_Index, msg, curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
 			Kernel.get_version(), mem.c_str(), curr_path.c_str());
