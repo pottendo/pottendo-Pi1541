@@ -1506,7 +1506,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 	// Decode the BAM
 	unsigned track = 18;
 	unsigned sectorNo = 0;
-	char name[17] = { 0 };
+	char name[32] = { 0 };
 	unsigned char buffer[260] = { 0 };
 	int charIndex;
 	u32 fontHeight = screenMain->GetFontHeightDirectoryDisplay();
@@ -1726,10 +1726,20 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								for (charIndex = 0; charIndex < DIR_ENTRY_NAME_LENGTH; ++charIndex)
 								{
 									char c = buffer[DIR_ENTRY_OFFSET_NAME + entryOffset + charIndex];
-									if (c == 0xa0) c = 0x20;
+									//if (c == 0xa0) c = 0x20;
 									name[charIndex] = c;
 								}
-								name[charIndex] = 0;
+								name[charIndex] = name[charIndex + 1] = 0;
+								char *_e = strchr(name, 0xa0);
+								if (_e) 
+								{
+									(*_e) = '"';
+									name[charIndex] = 0xa0;
+								}
+								else
+								{
+									name[charIndex] = '"';
+								}
 
 								//DEBUG_LOG("%d name = %s %x\r\n", blocks, name, fileType);
 								snprintf(bufferOut, 128, "%-4d ", blocks);
@@ -1738,7 +1748,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								else
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 5 * 8;
-								snprintf(bufferOut, 128, "\"%s\" ", name);
+								snprintf(bufferOut, 128, "\"%s ", name);
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else

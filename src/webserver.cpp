@@ -400,7 +400,6 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 			DEBUG_LOG("D81 header warning: %d/%d", buffer[0], buffer[1]);
 		memcpy(name, &buffer[4], 16);
 		snprintf(linebuffer, 32, "0 \"%s\" %c%c%c%c%c", name, buffer[0x16], buffer[0x17], buffer[0x18], buffer[0x19], buffer[0x1a]);
-		DEBUG_LOG("Diskname = '%s'", linebuffer);
 		dir_line += std::string(linebuffer);	
 		dir->push_back(dir_line);
 	}
@@ -427,9 +426,19 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 				if (buffer[2] & 0b01000000) locked = '<';
 				if (!(buffer[2] & 0b10000000)) closed = '*';
 				memcpy(name, &buffer[5], 16);
-				name[16] = '\0';
+				name[16] = name[17] = '\0';
+				char *_e = strchr(name, 0xa0);
+				if (_e) 
+				{
+					(*_e) = '"';
+					name[16] = 0xa0;
+				}
+				else
+				{
+					name[16] = '"';
+				}				
 				size = static_cast<int>(buffer[0x1e]) + static_cast<int>(buffer[0x1f]) * 256;
-				snprintf(linebuffer, 31, "%-4u \"%s\"%c%s%c", size, name, closed, ftype, locked);
+				snprintf(linebuffer, 31, "%-4u \"%s%c%s%c", size, name, closed, ftype, locked);
 				dir->push_back(string(linebuffer));
 				buffer += 0x20;
 				locked = closed = ' ';
@@ -489,7 +498,7 @@ static int read_dir(string name, list<string> &dir)
 			break;
 #if defined(PI1581SUPPORT)				
 		case DiskImage::D81:
-			D81DiskInfo(img_buf, &dir);
+			ret = D81DiskInfo(img_buf, &dir);
 			goto out;
 		break;
 #endif				
