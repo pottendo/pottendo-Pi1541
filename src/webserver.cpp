@@ -659,6 +659,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					(strcmp(extension, "nib") == 0) ||
 					(strcmp(extension, "nbz") == 0) ||
 					(strcmp(extension, "t64") == 0) ||
+					(strcmp(extension, "png") == 0) ||
 					(strcmp(extension, "prg") == 0))
 				{
 					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
