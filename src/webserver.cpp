@@ -444,6 +444,8 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 		get_sector(img_buf, 40, sector, buffer);
 		for (int i = 0x10; i < 0x100; i += 6)
 		{
+			if ((i == 250) && sector == 1)	// skip BAM free blocks entry for directory (track 40)
+				continue;
 			size += static_cast<int>(buffer[i]);
 		}
 	}
