@@ -82,7 +82,7 @@
 					</div>
 					<br /> <br />
 					<div class="custom-checkbox">
-						<input type="checkbox" checked id="am-cb1" name="am-cb1" value="1">
+						<input type="checkbox" unchecked id="am-cb1" name="am-cb1" value="1">
 						<label for="am-cb1">Automount-image</label>
 					</div>					
 					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
@@ -101,7 +101,7 @@
 					</div>
 				</div>
 			</form>
-			<input type="submit" class="btn btn-success" onclick="myFunction()" id="mdir" name="mdir" value="Make Directory" />
+			<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir" value="Make Directory" />
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 		</div>
 		<p class="small">%s, %s</p>
@@ -129,7 +129,7 @@
 			});
 		</script>
 		<script>
-			function myFunction() {
+			function mkDir() {
 				let dir = prompt("Directory name");
 				if (dir != null) {
 					let nurl = "index.html?[DIR]&" + "%s" +"&[MKDIR]&" + encodeURIComponent(dir.trim());
