@@ -326,26 +326,129 @@ static bool read_file(string &dfn, string &msg, string &fcontent)
 	return ret;
 }
 
-static bool D81DiskInfo(DiskImage *diskimage, list<string> *dir)
+#if 0
+static void hexdump(const unsigned char *buf, int len)
 {
-	DEBUG_LOG("%s: reading disk '%s'", __FUNCTION__, diskimage->GetName());
+    int i;
+    int idx = 0;
+    int lines = 0;
+    char linestr[256] = {0};
+
+    while (len > 0) {
+
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[4];
+                snprintf(t, 4, "%02x ", (uint8_t) buf[idx + i]);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, "   ");
+            }
+        }
+        strcat(linestr, "|");
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[2];
+                char c;
+                if (((unsigned char)buf[idx + i] > 31) && /* avoid tabs and other printable ctrl chars) */
+                    isprint((unsigned char)buf[idx + i])) {
+                    c= buf[idx + i];
+                } else {
+                    c = '.';
+                }
+                snprintf(t, 2, "%c", c);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, " ");
+            }
+        }
+        strcat(linestr, "|");
+        DEBUG_LOG("%s", linestr);
+        idx += 16;
+        len -= 16;
+    }
+}
+#endif
+
+static bool get_sector(unsigned char *img_buf, int track, int sector, unsigned char * &src)
+{
+	if ((track >= D81_TRACK_COUNT) || (sector >= 40))
+		return false;
+	track--;
+	src = img_buf + (track * 40 * 256) + (sector * 256);
+	//hexdump(src, 16);
+	return true;
+}
+
+static const char* fileTypes[]=
+{
+	"DEL", "SEQ", "PRG", "USR", "REL", "CBM", "???", "???",
+	"???", "???", "???", "???", "???", "???", "???", "???"
+};
+
+static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
+{
 	unsigned track, sector;
-	char buffer[260] = {0};
 	char linebuffer[32] = {0};
-	char name[32] = {0};
 	bool ret = true;
+	unsigned char *buffer;
 	std::string dir_line;
-	diskimage->DumpTrack(40);
-	if (diskimage->GetDecodedSector(40, 0, (u8 *)buffer))
+	char name[32] = {0};
+	if (get_sector(img_buf, 40, 0, buffer))
 	{
 		if ((buffer[0] != 40) || (buffer[1] != 3) || (buffer[2] != 'D'))
 			DEBUG_LOG("D81 header warning: %d/%d", buffer[0], buffer[1]);
-		strncpy(name, &buffer[4], 16);
-		snprintf(linebuffer, 32, "\"%s\" %c%c %c%c", name, buffer[0x16], buffer[0x17], buffer[0x19], buffer[0x1a]);
+		memcpy(name, &buffer[4], 16);
+		snprintf(linebuffer, 32, "0 \"%s\" %c%c%c%c%c", name, buffer[0x16], buffer[0x17], buffer[0x18], buffer[0x19], buffer[0x1a]);
 		DEBUG_LOG("Diskname = '%s'", linebuffer);
 		dir_line += std::string(linebuffer);	
 		dir->push_back(dir_line);
 	}
+	unsigned no_entries = 0, size;
+	const char *ftype;
+	char locked = ' ';
+	char closed = ' '; 
+	track = 40;
+	sector = 3;
+	do {
+		if (get_sector(img_buf, track, sector, buffer))
+		{
+			track = buffer[0];
+			sector = buffer[1];
+			for (int entry = 0; entry < 8; entry++)
+			{
+				no_entries++;
+				if (buffer[2] == 0)
+				{
+					DEBUG_LOG("scratched entry");
+					continue;
+				}
+				ftype = fileTypes[(buffer[2] & 7)];
+				if (buffer[2] & 0b01000000) locked = '<';
+				if (!(buffer[2] & 0b10000000)) closed = '*';
+				memcpy(name, &buffer[5], 16);
+				name[16] = '\0';
+				size = static_cast<int>(buffer[0x1e]) + static_cast<int>(buffer[0x1f]) * 256;
+				snprintf(linebuffer, 31, "%-4u \"%s\"%c%s%c", size, name, closed, ftype, locked);
+				dir->push_back(string(linebuffer));
+				buffer += 0x20;
+				locked = closed = ' ';
+			}
+		} 
+		else 
+			track = ret = false; 
+	} while ((track != 0) && (no_entries < 296));
+	size = 0;
+	for (int sector = 1; sector < 3; sector++)
+	{
+		get_sector(img_buf, 40, sector, buffer);
+		for (int i = 0x10; i < 0x100; i += 6)
+		{
+			size += static_cast<int>(buffer[i]);
+		}
+	}
+	snprintf(linebuffer, 31, "%u BLOCKS FREE", size);
+	dir->push_back(string(linebuffer));
 	return ret;
 }
 
@@ -384,11 +487,8 @@ static int read_dir(string name, list<string> &dir)
 			break;
 #if defined(PI1581SUPPORT)				
 		case DiskImage::D81:
-			ret = diskImage->OpenD81(&fileinfo, img_buf, bytesRead);
-			if (ret > 0)
-				D81DiskInfo(diskImage, &dir);
-			else
-				DEBUG_LOG("%s: OpenD81 failed", __FUNCTION__);
+			D81DiskInfo(img_buf, &dir);
+			goto out;
 		break;
 #endif				
 		case DiskImage::T64:
@@ -413,6 +513,7 @@ static int read_dir(string name, list<string> &dir)
 	}
 	else
 		DEBUG_LOG("%s: failed to open '%s'", __FUNCTION__, name.c_str());
+out:		
 	diskImage->Close();
 	delete diskImage;
 	return ret;
