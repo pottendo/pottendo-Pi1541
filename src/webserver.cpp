@@ -219,7 +219,7 @@ static int direntry_table(const string header, string &res, string &path, string
 			if (file_ops)
 			{
 				res += "<td>" +
-					    string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + "><button type=\"button\">Delete</button></a>" +
+					    string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + "><button type=\"button\" class=\"btb btn-success\">Delete</button></a>" +
 					   "</td>";
 			}
 			res += "</tr>";
