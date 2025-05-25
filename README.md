@@ -4,15 +4,19 @@ This is an optional port of Pi1541 (V1.24) to the current Circle bare metal libr
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A simple web-server features
-- upload of images to the SDCard
-- upload of a Pi1541 kernel image
-- upload of Pi1541 files like _options.txt_, _config.txt_
+- Manage Upload and SDCard
+  - upload of images to the SDCard
+  - upload of a Pi1541 kernel image
+  - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
+- Mount Images
+  - mount images, 
+  - image content preview
 - edit of _options.txt_ and _config.txt_
-- mount images, including an image content preview (d81 preview not supported)
+- Update Pi1541 files like _options.txt_, _config.txt_
 - reboot of Pi1541
 
 Some further ideas:
-- Enhance webserver to support image administration (copy, move, delete, rename, etc.)
+- Enhance webserver to support image administration (copy, move, rename, delete directories, upload directories, etc.)
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - _.lst_ file handling
 - ...
