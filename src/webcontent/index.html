@@ -4,22 +4,29 @@
 <head>
 	<style>
 		table.dirs {
-		  border-collapse: collapse;
-		  width: 100%;
+			border-collapse: collapse;
+			width: 100%;
 		}
-		table.dirs th, table.dirs td {
-		  text-align: left;
-		  padding: 4px;
-		  border-bottom: 1px solid #DDD;				
+
+		table.dirs th,
+		table.dirs td {
+			text-align: left;
+			padding: 4px;
+			border-bottom: 1px solid #DDD;
 		}
+
 		table.dirs tr:nth-child(even) {
-		  background-color: #525c5c;
+			background-color: #525c5c;
 		}
+
 		table.dirs tr:nth-child(odd) {
-		  background-color: #657272;
+			background-color: #657272;
 		}
-		table.dirs tr:hover {background-color: #6a7575;}
-		</style>
+
+		table.dirs tr:hover {
+			background-color: #6a7575;
+		}
+	</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.5.2/darkly/bootstrap.min.css"
@@ -40,7 +47,7 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<h1 style="text-align:center">Pi1541 Web-Interface</h1>
+			<h1 style="text-align:center">Pi1541 Upload/Manage SDCard</h1>
 			<p style="text-align:center"> by pottendo</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<h3 style="text-align: left">Menu</h3>
@@ -68,7 +75,7 @@
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8"
 				enctype="multipart/form-data">
-				<h4 style="text-align: left;">Image upload</h4>
+				<h4 style="text-align: left;">Select Diskimage for upload</h4>
 				<div class="form-group">
 					<div class="custom-file">
 						<input type="file" class="custom-file-input" id="UploadFile" name="diskimage">
@@ -83,8 +90,17 @@
 					<input type="hidden" id="xpath" name="xpath" value="%s">
 				</div>
 			</form>
-			<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir" value="Make Directory" />
-			<br /><br />
+			<table>
+				<tr>
+					<td>
+						<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir"
+							value="Make Directory" />
+						<input type="submit" class="btn btn-success" onclick="newD64()" id="newD64" name="newD64"
+							value="Create Diskimage" />
+					</td>
+				</tr>
+			</table>
+			<br />
 			<div>
 				Current path: %s
 				<br /><br />
@@ -99,43 +115,56 @@
 					</tr>
 				</table>
 			</div>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 		</div>
-		<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-	</div>
-	<p class="small">%s, %s</p>
-	<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
-			target="_blank">Pi1541 firebase</a>.</p>
-	<p class="small">Find the pottendo-Pi1541 project resources here <a
-			href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
-	<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
-		integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
-		crossorigin="anonymous"></script>
-	<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-		integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
-		crossorigin="anonymous"></script>
-	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-		integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
-		crossorigin="anonymous"></script>
-
-	<script>
-		$(document).ready(function () {
-			document.querySelector('.custom-file-input').addEventListener('change', function (e) {
-				var fileName = document.getElementById("UploadFile").files[0].name;
-				var nextSibling = e.target.nextElementSibling;
-				nextSibling.innerText = fileName;
+		<p class="small">%s, %s</p>
+		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
+				target="_blank">Pi1541 firebase</a>.</p>
+		<p class="small">Find the pottendo-Pi1541 project resources here
+			<a href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.
+		</p>
+		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+			crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+			integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+			crossorigin="anonymous"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+			crossorigin="anonymous"></script>
+		<script>
+			$(document).ready(function () {
+				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadFile").files[0].name;
+					var nextSibling = e.target.nextElementSibling;
+					nextSibling.innerText = fileName;
+				});
 			});
-		});
-	</script>
-	<script>
-		function mkDir() {
-			let dir = prompt("Directory name");
-			if (dir != null) {
-				let nurl = "index.html?[DIR]&" + "%s" + "&[MKDIR]&" + encodeURIComponent(dir.trim());
-				window.location.href = nurl;
-			}
-		}
-	</script>
+		</script>
+		<script>
+			function mkDir() {
+				let dir = prompt("Directory name");
+				if (dir != null) {
+					let nurl = "index.html?[DIR]&" + "%s" + "&[MKDIR]&" + encodeURIComponent(dir.trim());
+					window.location.href = nurl;
+				}
+			};
+		</script>
+		<script>
+			function newD64() {
+				let dname = prompt("Diskimage Name");
+				if (dname != null) {
+					if (!dname.endsWith(".d64") && !dname.endsWith(".D64") &&
+						!dname.endsWith(".g64") && !dname.endsWith(".G64"))
+						ext = ".d64";
+					else
+						ext = "";
+					let nurl = "index.html?[DIR]&" + "%s" + "&[NEWDISK]&" + encodeURIComponent(dname.trim() + ext);
+					window.location.href = nurl;
+				}
+			};
+		</script>
 	</div>
 </body>
-
+		
 </html>

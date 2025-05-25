@@ -35,6 +35,7 @@
 #include <list>
 #include "FileBrowser.h"
 #include "Petscii.h"
+#include "iec_commands.h"
 using namespace std;
 
 extern Options options;
@@ -137,6 +138,11 @@ static std::string urlDecode(const std::string& value) {
     return decoded.str();
 }
 
+static bool endsWith(const std::string& str, const std::string& suffix) {
+    if (str.length() < suffix.length()) return false;
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
 static string print_human_readable_time(WORD fdate, WORD ftime)
 {
 	char tmp[256];
@@ -204,7 +210,9 @@ static int direntry_table(const string header, string &res, string &path, string
 	    if (it.fattrib & type_filter) {
             //DEBUG_LOG("'%s' - '%s'", file_type.c_str(), (path + sep + it.fname).c_str());
 			res += 	"<tr><td>" + 
-						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
+						string("<a href=") + 
+						(file_ops ? "mount-imgs.html" : page) + 
+						"?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td>" +
 					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "");
@@ -603,7 +611,32 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if ((ret = f_unlink(fullndir.c_str())) != FR_OK)
 				snprintf(msg, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
-				snprintf(msg, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+			snprintf(msg, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+		}
+		if (fops == "[NEWDISK]")
+		{
+			extern IEC_Commands *_m_IEC_Commands;
+			int ret;
+			char dt;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: create new disk '%s'", __FUNCTION__, ndir.c_str());
+			if (endsWith(fullndir, ".g64") || endsWith(fullndir, ".G64"))
+			{
+				dt = 'g';
+				_m_IEC_Commands->SetNewDiskType(DiskImage::G64);
+				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
+			}
+			else 
+			{
+				dt = 'd';
+				_m_IEC_Commands->SetNewDiskType(DiskImage::D64);
+				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
+			}
+			if (ret)
+				snprintf(msg, 1023,"Failed to create new %c64 image <i>%s</i>", dt, fullndir.c_str());
+			else
+				snprintf(msg, 1023,"Successfully created new %c64 image <i>%s</i>", dt, fullndir.c_str());
 		}
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
@@ -693,7 +726,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		String.Format(s_Index, msg, curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
-			Kernel.get_version(), mem.c_str(), curr_path.c_str());
+			Kernel.get_version(), mem.c_str(), curr_path.c_str(), curr_path.c_str());
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
