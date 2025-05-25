@@ -50,15 +50,15 @@ static const char s_Index[] =
 #include "webcontent/index.h"
 ;
 
-static const char s_config[] =
-#include "webcontent/config.h"
+static const char s_update[] =
+#include "webcontent/update.h"
 ;
 
 static const char s_edit_config[] =
 #include "webcontent/edit-config.h"
 ;
-static const char s_manage[] =
-#include "webcontent/manage-imgs.h"
+static const char s_mount[] =
+#include "webcontent/mount-imgs.h"
 ;
 
 static const char s_status[] =
@@ -699,7 +699,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
-	else if (strcmp(pPath, "/config.html") == 0)
+	else if (strcmp(pPath, "/update.html") == 0)
 	{
 		const char *pPartHeader;
 		const u8 *pPartData;
@@ -758,7 +758,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			msg = (modelstr + "<br />Kernelname: <i>" + kernelname + "</i>");
 		}
-		String.Format(s_config, msg.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_update, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";		
@@ -785,7 +785,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					msg = string("Failed to write <i>") + dfn + "</i>";
 			}
 		}
-		String.Format(s_config, msg.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_update, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
@@ -822,7 +822,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
-	else if (strcmp(pPath, "/manage-imgs.html") == 0)
+	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
 		const char *pPartHeader;
 		const u8 *pPartData;
@@ -832,7 +832,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		list<string> dir;
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
-		string page = "manage-imgs.html";
+		string page = "mount-imgs.html";
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
@@ -907,7 +907,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (mount_it)
 				mount_new = true;
 		}
-		String.Format(s_manage, msg.c_str(), 
+		String.Format(s_mount, msg.c_str(), 
 					(def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(),
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());

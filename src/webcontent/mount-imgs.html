@@ -46,48 +46,40 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<h1 style="text-align:center">Pi1541 Manage images</h1>
+			<h1 style="text-align:center">Pi1541 Mount Images</h1>
 			<p style="text-align:center"> by pottendo</p>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<h3 style="text-align: left">Menu</h3>
+			<table style="width: 100%;">
+				<tr>
+					<td>
+						<div style="display: flex; justify-content: space-between; width: 100%;">
+							<a href="index.html"><input type="submit" class="btn btn-success"
+									value="Upload/Manage SDCard" /></a>
+							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
+									value="Mount Images" /></a>
+							<a href="edit-config.html"><input type="submit" class="btn btn-success"
+									value="Change Config" /></a>
+							<a href="update.html"><input type="submit" class="btn btn-success"
+									value="Update Pi1541" /></a>
+							<a href="reset.html"><input type="submit" class="btn btn-success"
+									value="Reset Pi1541" /></a>
+						</div>
+					</td>
+				</tr>
+			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<h3 style="text-align: left">Status</h3>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<table>
-				<td><form action="index.html" method="post" name="manage_form" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="submit" class="btn btn-success" value="Upload Images" />
-					</div>
-				</form></td>
-				<td><form action="manage-imgs.html" method="post" name="manage_form" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="submit" class="btn btn-success" value="Mount Images" />
-					</div>
-				</form></td>
-				<td><form action="config.html" method="post" name="config_form" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="submit" class="btn btn-success" value="Upload Pi1541 Files" />
-					</div>
-				</form></td>
-				<td><form action="edit-config.html" method="post" name="edit_form" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="submit" class="btn btn-success" value="Change Configuration" />
-					</div>
-				</form></td>
-				<td><form action="reset.html" method="post" name="edit_form" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="submit" class="btn btn-success" value="Reset Pi1541" />
-					</div>
-				</form></td>
-			</table>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<form action="manage.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
+			<form action="mount-imgs.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
 					<h4 style="text-align: left;">Mount Images</h4>
 					<div>
 						<table class="dirs">
 							<tr valign="center"><td>SDCard %s</td>
 								<td style="text-align:right;">
-									<a href="manage-imgs.html?[MOUNT]&%s">
+									<a href="mount-imgs.html?[MOUNT]&%s">
 										<button type="button">Mount image</button>	
 									</a>
 								</td>
