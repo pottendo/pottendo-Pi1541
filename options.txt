@@ -59,7 +59,7 @@ SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
 //
 //RotaryEncoderEnable = 1
 
-////////////////////////// Emultion Section 
+////////////////////////// Emulation Section 
 
 // If you would like to change the drive number then specify it here (8 is the default)
 //deviceID = 9

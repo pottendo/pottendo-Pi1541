@@ -119,7 +119,7 @@ if [ x${checkout} = "xyes" ] ; then
     cd ..
     cp -r firmware ${RELEASE}
     rm -f ${RELEASE}/firmware/.gitignore ${RELEASE}/firmware/Makefile
-    echo "console=serial0,115200 socmaxtemp=75 logdev=ttyS1 loglevel=2" > ${RELEASE}/cmdline.txt
+    echo "console=serial0,115200 socmaxtemp=80 logdev=ttyS1 loglevel=2" > ${RELEASE}/cmdline.txt
     cat > ${RELEASE}/wpa_supplicant.conf <<EOF
 #
 # wpa_supplicant.conf

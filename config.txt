@@ -46,7 +46,7 @@ arm_64bit=1
 kernel=kernel8.img
 # Pi3 legacy 32bit kernel
 #kernel_address=0x1f00000
-#kernel=kernel-1.23.img
+#kernel=kernel.img
 
 # all Pi4 variants
 [pi4]
