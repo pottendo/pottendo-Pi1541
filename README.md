@@ -6,13 +6,14 @@ As almost all Pi model specific bindings which have a counterparts in Circle hav
 A simple web-server features
 - Manage Upload and SDCard
   - upload of images to the SDCard
-  - upload of a Pi1541 kernel image
+  - delete of diskimage
+  - create directory
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
 - Mount Images
   - mount images, 
-  - image content preview
+  - image content preview, including D81 images
 - edit of _options.txt_ and _config.txt_
-- Update Pi1541 files like _options.txt_, _config.txt_
+- Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - reboot of Pi1541
 
 Some further ideas:
@@ -43,11 +44,7 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
 
-Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
-<br />
-
-*) _now validated with at least 2 setups_ - credits to @ILAH and @znarF on F64!
-
+*) Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. One can chose a static network configuration for faster startup, see below.
@@ -72,23 +69,23 @@ curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64 >/
 ```
 _Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect
 
-![](docs/Image-upload.png)
+![](docs/upload-manage.png)
 <br />
 
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
-![](docs/Manage-image.png)
+![](docs/mount.png)
 <br />
 
 Select image for preview and mount it.
 <br />
 
-![](docs/Pi1541-upload.png)
+![](docs/edit-config.png)
 <br />
 
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
 
-![](docs/Edit-config.png)
+![](docs/update.png)
 <br />
 
 A simple text-entry form based configuration editor is provided. Once uploaded potentially existing files on the SDCard are backuped by adding `.BAK` and then the content of the text-entry form is written to the file. Be careful, no sanity checks are made. Wrong configuration may stop Pi1541 from working after reboot.
@@ -115,6 +112,8 @@ Other uController support has been added:
 However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handel Pi1541 hard realtime requirements.
 
 **Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=78`.
+
+For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B's protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
 
 ## TODOs
 
