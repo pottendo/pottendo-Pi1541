@@ -81,7 +81,9 @@
 					</div>
 					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
 					<input type="hidden" id="xpath" name="xpath" value="%s">
+				</div>
 			</form>
+			<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir" value="Make Directory" />
 			<br /><br />
 			<div>
 				Current path: %s
@@ -98,7 +100,6 @@
 				</table>
 			</div>
 		</div>
-		<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir" value="Make Directory" />
 		<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 	</div>
 	<p class="small">%s, %s</p>
