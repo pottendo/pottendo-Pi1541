@@ -171,9 +171,7 @@ void ClearGpioEvent(rpi_gpio_pin_t gpio)
 
 void SetACTLed(int value)
 {
-#if defined(RPI3)
 	RPI_GpioVirtSetLed(value);
-#endif
 }
 
 #if defined(RPI3)
@@ -207,7 +205,7 @@ void RPI_TouchInit(void)
 	RPI_PropertyProcess();
 
 	if ((mp = RPI_PropertyGet(TAG_GET_TOUCHBUF)))
-		touchbuf = mp->data.buffer_32[0] & ~0xC0000000;		// Bus to physical
+		touchbuf = mp->data.buffer_32[0] & ~GPU_UNCACHED_BASE;		// Bus to physical
 	else
 		touchbuf = 0;
 }
@@ -251,6 +249,8 @@ void RPI_UpdateTouch(void)
 	}
 }
 
+#endif
+
 #define NUM_GPIO 2
 
 static volatile uint32_t gpiovirtbuf;
@@ -277,7 +277,7 @@ void RPI_GpioVirtInit(void)
 	RPI_PropertyProcess();
 
 	if ((mp = RPI_PropertyGet(TAG_GET_GPIOVIRTBUF)))
-		gpiovirtbuf = mp->data.buffer_32[0] & ~0xC0000000;		// Bus to physical
+		gpiovirtbuf = mp->data.buffer_32[0] & ~GPU_UNCACHED_BASE;		// Bus to physical
 	else
 		gpiovirtbuf = 0;
 }
@@ -333,4 +333,3 @@ void RPI_GpioVirtSetLed(int val)
 
 	write32(gpiovirtbuf + pin * 4, enables_disables[pin]);
 }
-#endif

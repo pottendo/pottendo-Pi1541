@@ -258,6 +258,73 @@ extern "C"
 //		- output B ie every 2nd count
 //			drives UD2 shifter
 //
+
+		//UF4
+		//	Clocks shift register on QB bit 1
+		//		occurs on counts 2, 6, 10, 14
+		//		(2 is the only count that outputs a 1 into readShiftRegister)
+		//		The shift register clocks on the low to high of its clock
+		//		0 0 0 0 (0		-|
+		//		0 0 0 1 (1		 | A 3 cycle bit cell for a 1 - Note if the reset occured in the 2nd count of the encoder/decoder then the bit cell is 4
+		//		0 0 1 0 (2	CLK1-|
+		//		0 0 1 1 (3		 |
+		//		0 1 0 0 (4		 | A 4 cycle bit cell for a consecutive 0
+		//		0 1 0 1 (5		 |
+		//		0 1 1 0 (6	CLK0_|
+		//		0 1 1 1 (7		 |
+		//		1 0 0 0 (8		 | A 4 cycle bit cell for a consecutive 0
+		//		1 0 0 1 (9		 |
+		//		1 0 1 0 (A	CLK0-|
+		//		1 0 1 1 (B		 |
+		//		1 1 0 0 (C		 | A 4 cycle bit cell for a consecutive 0
+		//		1 1 0 1 (D		 |
+		//		1 1 1 0	(E	CLK0_|
+		//		1 1 1 1 (F
+		//		So a flux reveral needs to occur in the first or second count of the encoder/decoder
+		//			this is a max of 2*0.8125 = 1.625us for the highest density
+		//			if longer than that then encoder/decoder will trigger twice making UF4 to count to 2 and clock the shift register
+		//				but then it will shift in the previous versions of QD QC
+		//					BUT THIS IS WHAT MAKES IT A 1 AS QD AND QC ARE RESET TO 0 WHEN THERE IS A FLUX REVERSAL
+		//		So after a flux reversal or not there needs to be another 2 counts without a flux reversal
+		//			another 2*0.8125 = 1.625us for the highest density of no flux reversal
+		//		If there are a long string of no flux reversals UF4 will keep counting 1s these will make it to QD and QC and 0 will be shifted in
+		//			HOWEVER if UF4 ever overflows then QD and QC will reset to 0 and hence a false flux reversal could shift in a 1 when QCB next counts
+		//				ie 18 counts = 4.5 BIT CELLS
+		//	Shifts in a bit to the shift register
+		//	QD QC via NOR
+		//	0	0	1
+		//	0	1	0
+		//	1	0	0
+		//	1	1	0
+		//	If the count is always reset, flux reversal QD and QC will be 0
+		//		To shift in the 1 with QD and QC == 0 then there needs to be another 1 count on QB - this is count 6
+		//	If the count us allowed to count up, no flux reversal then a 1 will move to QC
+
+		//	0.2 sec per rev
+		//	200000 us pre rev
+		//	Example track lengths
+		//	Bytes	bits (x8)	BitCell Time	Time Per Rev
+		//	7692	61536		3.25			199992
+		//	7009	56072		3.5				196252
+		//	6631	53048		3.75			198930
+		//	6250	50000		4				200000
+
+		//	capacity_max
+		//	7796	62368						218288
+		//	7239	57912						202692
+		//	6756	54048						202680
+		//	6334	50672						202688
+
+		//	Ideal
+		//	7692.3077	61538.46	200000
+		//	7142.8571	57142.857	200000
+		//	6666.6666	53333.333	200000
+		//	6250		50000		200000
+
+
+		//				
+
+
 // Byte Phase Lock
 // UE3 74LS191 Presettable 4-Bit Up/Down Counter
 //		- pin 14 CLOCK clocked by 
@@ -348,16 +415,17 @@ Drive::Drive()
 	: diskImage(0)
 	, m_pVIA(0)
 {
-	srand(0x811c9dc5U);
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	localSeed = 0x811c9dc5U;
+#else
+	srand(0x811c9dc5U);
 #endif
 	Reset();
 }
 
 void Drive::Reset()
 {
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	LED = false;
 	cyclesForBit = 0;
 	UE7Counter = 16;
@@ -371,7 +439,7 @@ void Drive::Reset()
 	readShiftRegister = 0;
 	writeShiftRegister = 0;
 	UE3Counter = 0;
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 	ResetEncoderDecoder(18 * 16, 4 * 16);
 	cyclesLeftForBit = ceil(cyclesPerBit - cyclesForBit);
 #else
@@ -474,7 +542,7 @@ bool Drive::Update()
 		// UE6 provides the CPU's clock by dividing the 16Mhz clock by 16.
 		// UE7 (a 74ls193 4bit counter) counts up on the falling edge of the 16Mhz clock. UE7 drives the Encoder/Decoder clock.
 		// So we need to simulate 16 cycles for every 1 CPU cycle
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 		if (writing)
 			DriveLoopWrite();
 		else
@@ -588,7 +656,7 @@ bool Drive::Update()
 }
 
 
-#if defined(EXPERIMENTALZERO)
+#if defined(FAST_CODE)
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 

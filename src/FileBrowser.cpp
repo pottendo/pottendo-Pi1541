@@ -1428,16 +1428,19 @@ void FileBrowser::UpdateInputDiskCaddy()
 void FileBrowser::DisplayStatusBar()
 {
 #if not defined(EXPERIMENTALZERO)
-	u32 x = 0;
-	u32 y = screenMain->ScaleY(STATUS_BAR_POSITION_Y);
+	if (options.HDMIDisplayIECActivity())
+	{
+		u32 x = 0;
+		u32 y = screenMain->ScaleY(STATUS_BAR_POSITION_Y);
 
-	char bufferOut[128];
-	if (options.DisplayTemperature())
-		snprintf(bufferOut, 127, "LED 0 Motor 0 Track 18.0 ATN 0 DAT 0 CLK 0 00%cC", 248);
-	else
-		snprintf(bufferOut, 127, "LED 0 Motor 0 Track 18.0 ATN 0 DAT 0 CLK 0");
+		char bufferOut[128];
+		if (options.DisplayTemperature())
+			snprintf(bufferOut, 127, "LED 0 Motor 0 Track 18.0 ATN 0 DAT 0 CLK 0 00%cC", 248);
+		else
+			snprintf(bufferOut, 127, "LED 0 Motor 0 Track 18.0 ATN 0 DAT 0 CLK 0");
 
-	screenMain->PrintText(false, x, y, bufferOut, RGBA(0, 0, 0, 0xff), RGBA(0xff, 0xff, 0xff, 0xff));
+		screenMain->PrintText(false, x, y, bufferOut, RGBA(0, 0, 0, 0xff), RGBA(0xff, 0xff, 0xff, 0xff));
+	}
 #endif
 }
 
@@ -1495,7 +1498,11 @@ void FileBrowser::ShowDeviceAndROM( const char* ROMName )
 	}
 }
 
+#if defined (__CIRCLE__)
 void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, std::list<std::string>* image_dir)
+#else
+void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, void* image_dir)
+#endif
 {
 #if not defined(EXPERIMENTALZERO)
 	// Ideally we should not have to load the entire disk to read the directory.
@@ -1665,23 +1672,29 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 		y = 0;
 		std::string dir_line;
 		snprintf(bufferOut, 128, "0 ");
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 		if (image_dir)
 			dir_line += std::string(bufferOut);
 		else
+#endif
 			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		x = 16;
 		snprintf(bufferOut, 128, "\"%s\" %c%c%c%c%c%c", name, buffer[162], buffer[163], buffer[164], buffer[165], buffer[166], buffer[167]);
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 		if (image_dir)
 			dir_line += std::string(bufferOut);
 		else
+#endif		
 			screenMain->PrintText(true, x, y, bufferOut, bgColour, textColour);
 		x = 0;
 		y += fontHeight;
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 		if (image_dir)
 		{
 			image_dir->push_back(dir_line);
 			dir_line = "";
 		}
+#endif			
 		if (track != 0)
 		{
 			unsigned trackPrev = 0xff;
@@ -1721,7 +1734,8 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 							u8 fileType = buffer[DIR_ENTRY_OFFSET_TYPE + entryOffset];
 							u16 blocks = (buffer[DIR_ENTRY_OFFSET_BLOCKS + entryOffset + 1] << 8) | buffer[DIR_ENTRY_OFFSET_BLOCKS + entryOffset];
 
-							if (fileType != 0) { // hide scratched files
+							if (fileType != 0) 
+							{ // hide scratched files
 								x = 0;
 								for (charIndex = 0; charIndex < DIR_ENTRY_NAME_LENGTH; ++charIndex)
 								{
@@ -1743,16 +1757,20 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 
 								//DEBUG_LOG("%d name = %s %x\r\n", blocks, name, fileType);
 								snprintf(bufferOut, 128, "%-4d ", blocks);
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
+#endif
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 5 * 8;
 								snprintf(bufferOut, 128, "\"%s ", name);
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
-									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
+#endif
+								screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 19 * 8;
 								char modifier = 0x20;
 								if ((fileType & 0x80) == 0)
@@ -1760,16 +1778,20 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								else if (fileType & 0x40)
 									modifier = screen2petscii(60);
 								snprintf(bufferOut, 128, "%s%c", fileTypes[fileType & 7], modifier);
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
+#endif
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								y += fontHeight;
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 								if (image_dir)
 								{
 									image_dir->push_back(dir_line);
 									dir_line = "";
 								}
+#endif									
 							}
 						}
 						entryOffset += 32;
@@ -1785,6 +1807,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 		x = 0;
 		//DEBUG_LOG("%d blocks free\r\n", blocksFree);
 		snprintf(bufferOut, 128, "%d BLOCKS FREE.\r\n", blocksFree);
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 		if (image_dir)
 		{
 			// overrule line end for web output
@@ -1793,12 +1816,15 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 			image_dir->push_back(dir_line);
 		}
 		else
+#endif			
 			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		y += fontHeight;
 	}
 
+#if defined(__CIRCLE__)			// avoid libstdc++ need
 	if (image_dir)
 		return;
+#endif			
 	DisplayStatusBar();
 
 	if (filenameForIcon)
@@ -1816,12 +1842,25 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 
 void FileBrowser::SelectAutoMountImage(const char* image)
 {
+	FILINFO fil;
+
 	f_chdir("/1541");
 	RefreshFolderEntries();
 
-	if (SelectLST(image))
+	if (f_stat(image, &fil) != FR_OK)
+		return;
+
+	if (fil.fattrib & AM_DIR)
+		return;
+
+	DiskImage::DiskType diskType = DiskImage::GetDiskImageTypeViaExtention(image);
+
+	// Should also be able to create a LST file from all the images currently selected in the caddy
+	if (diskType == DiskImage::LST)
 	{
-		selectionsMade = true;
+		selectionsMade = SelectLST(image);
+		if (selectionsMade)
+			lastSelectionName = image;
 	}
 	else
 	{
@@ -1843,6 +1882,8 @@ void FileBrowser::SelectAutoMountImage(const char* image)
 			ClearSelections();
 			caddySelections.entries.push_back(*current);
 			selectionsMade = FillCaddyWithSelections();
+			if (selectionsMade)
+				lastSelectionName = current->filImage.fname;
 		}
 	}
 }
