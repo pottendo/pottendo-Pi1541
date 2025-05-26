@@ -1035,7 +1035,7 @@ extern bool webserver_upload;
 			exitDoAutoLoad = true;
 		}
 extern char mount_img[256];
-extern bool mount_new;
+extern int mount_new;
 		if (mount_new)
 		{
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
@@ -1509,16 +1509,25 @@ void __not_in_flash_func(emulator)(void)
 					}
 #if defined(__CIRCLE__)
 					extern char mount_img[256];
-					extern bool mount_new;
+					extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
 						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
-						strncpy(fi.fname, mount_img, 255);
-						diskCaddy.Insert(&fi, false);
-						mount_new = false;
-						fileBrowser->Update();
-						emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+						if (mount_new == 1)
+						{
+							strncpy(fi.fname, mount_img, 255);
+							diskCaddy.Insert(&fi, false);
+							fileBrowser->Update();
+							emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+						}
+						if (mount_new == 2)/* .LST */
+						{
+							fileBrowser->FolderChanged();
+							fileBrowser->SelectLST(mount_img);
+							fileBrowser->SetSelectionsMade(true);
+						}
+						mount_new = 0;
 					}
 #endif
 					usDelay(1);
@@ -1530,14 +1539,14 @@ void __not_in_flash_func(emulator)(void)
 				{
 #if defined(__CIRCLE__)
 extern char mount_img[256];
-extern bool mount_new;
+extern int mount_new;
 					FILINFO fi;
-					if (mount_new)
+					if (mount_new == 1)
 					{
 						strncpy(fi.fname, mount_img, 255);
 						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
 						diskCaddy.Insert(&fi, false);
-						mount_new = false;
+						mount_new = 0;
 					}
 #endif
 					fileBrowser->Update();

@@ -9,8 +9,10 @@ A simple web-server features
   - delete of diskimage
   - create directory
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
+  - create LST files from current directory
+  - show icons (.png) if exists for images
 - Mount Images
-  - mount images, 
+  - mount images, LST files
   - image content preview, including D81 images
 - edit of _options.txt_ and _config.txt_
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_

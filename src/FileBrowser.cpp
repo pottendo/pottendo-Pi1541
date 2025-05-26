@@ -1350,6 +1350,60 @@ bool FileBrowser::MakeLST(const char* filenameLST)
 	return retcode;
 }
 
+bool FileBrowser::MakeLSTFromDir(const char* dir, const char *lstfn)
+{
+	bool retcode=false;
+	FIL fp;
+	FRESULT res;
+	FILINFO fno;
+	DIR d;
+	std::vector<std::string> fnames;
+
+	res = f_open(&fp, lstfn, FA_CREATE_ALWAYS | FA_WRITE);
+	if (res == FR_OK)
+	{
+		UINT bytes;
+		res = f_opendir(&d, dir);
+		if (res != FR_OK)
+			goto out;
+		
+		while (1)
+		{
+			res = f_readdir(&d, &fno);
+			if ((res != FR_OK) || (fno.fname[0] == 0))
+				break;
+			if (fno.fattrib & AM_DIR)
+				continue;
+
+			if (DiskImage::IsDiskImageExtention(fno.fname) && 
+				!DiskImage::IsLSTExtention(fno.fname))
+			{
+				fnames.push_back(std::string(fno.fname));
+			}
+		}
+		f_closedir(&d);
+		sort(fnames.begin(), fnames.end(), 
+			[](const std::string a, const std::string b) {
+				return a < b;});
+		for (auto it : fnames)
+		{
+			f_write(&fp, it.c_str(), it.length(), &bytes);
+			f_write(&fp, "\r\n", 2, &bytes);
+		}
+
+		f_write(&fp
+			, roms->ROMNames[roms->currentROMIndex]
+			, strlen(roms->ROMNames[roms->currentROMIndex])
+			, &bytes);
+		f_write(&fp, "\r\n", 2, &bytes);
+		retcode = true;
+	out:
+		f_close(&fp);
+	}
+
+	return retcode;
+}
+
 bool FileBrowser::SelectLST(const char* filenameLST)
 {
 	bool validImage = false;

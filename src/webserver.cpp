@@ -41,8 +41,10 @@ using namespace std;
 extern Options options;
 bool webserver_upload = false;
 char mount_img[256] = { 0 };
-bool mount_new = false;
+int mount_new = 0;
 static string def_prefix = "SD:/1541";
+#define MAX_ICON_SIZE (512 * 1024)
+static char icon_buf[MAX_ICON_SIZE];
 
 #define MAX_CONTENT_SIZE	4000000
 
@@ -143,6 +145,16 @@ static bool endsWith(const std::string& str, const std::string& suffix) {
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
+static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+    if(from.empty())
+        return;
+    size_t start_pos = 0;
+    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+}
+
 static string print_human_readable_time(WORD fdate, WORD ftime)
 {
 	char tmp[256];
@@ -158,7 +170,7 @@ static string print_human_readable_time(WORD fdate, WORD ftime)
 	return string(tmp);
 }
 
-static const string header_NTD = string("<tr><th>Name</th><th>Type</th><th>Date</th>");
+static const string header_NTD = string("<tr><th>Name</th><th>Icon</th><th>Date</th>");
 static const string header_NT = string("<tr><th>Name</th><th>Type</th>");
 
 static int direntry_table(const string header, string &res, string &path, string &page, int type_filter, bool file_ops = false)
@@ -183,7 +195,6 @@ static int direntry_table(const string header, string &res, string &path, string
 		if (fno.fattrib & type_filter)
 			list.push_back(fno);
     }
-    f_closedir(&dir);
 	
 	sort(list.begin(), list.end(), 
 		[](const FILINFO &a, const FILINFO &b) {
@@ -193,6 +204,8 @@ static int direntry_table(const string header, string &res, string &path, string
 			transform(sb.begin(), sb.end(), sb.begin(), ::tolower);
 			return sa < sb;
 		});
+	f_closedir(&dir);
+	string icon;
 	string sep = "/";
 	string file_type = (type_filter == AM_DIR) ? string("[DIR]") : string("[FILE]");
 	if ((type_filter == AM_DIR) && (path != ""))
@@ -205,16 +218,35 @@ static int direntry_table(const string header, string &res, string &path, string
 					"<td>" + file_type + "</td>" +
 				"</tr>";
 	}
+	FILINFO fi;
+	string fullname, png;
+	size_t idx;
 	for (auto it : list)
 	{
 	    if (it.fattrib & type_filter) {
             //DEBUG_LOG("'%s' - '%s'", file_type.c_str(), (path + sep + it.fname).c_str());
+			if (type_filter != AM_DIR)
+			{
+				icon = "<td><img src=\"/favicon.png\"></td>";
+				fullname = path + sep + string(it.fname);
+				if ((idx = fullname.find_last_of('.')) != string::npos)
+				{
+					png = fullname.substr(0, idx) + ".png";
+					//DEBUG_LOG("%s: png = '%s'", __FUNCTION__, png.c_str());
+					if (f_stat((def_prefix + png).c_str(), &fi) == FR_OK)
+					{
+						icon = "<td><img src=\"" + urlEncode(png) + "\" style=\"height: 64px; width: 96px;\"></td>";
+						//DEBUG_LOG("%s: icon html = '%s'", __FUNCTION__, icon.c_str());
+					}
+				}
+			}
 			res += 	"<tr><td>" + 
 						string("<a href=") + 
 						(file_ops ? "mount-imgs.html" : page) + 
 						"?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
-					"</td>" +
-					"<td>" + file_type + "</td>" +
+					"</td>" + 
+					((type_filter != AM_DIR) ? icon : "") +
+					((type_filter == AM_DIR) ? "<td>" + file_type + "</td>" : "") +
 					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "");
 			if (file_ops)
 			{
@@ -638,6 +670,17 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			else
 				snprintf(msg, 1023,"Successfully created new %c64 image <i>%s</i>", dt, fullndir.c_str());
 		}
+		if (fops == "[NEWLST]")
+		{
+			int ret;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: create new lst file '%s'", __FUNCTION__, fullndir.c_str());
+			if (!fileBrowser->MakeLSTFromDir((def_prefix + curr_path).c_str(), fullndir.c_str()))
+				snprintf(msg, 1023,"Failed to create new LST file <i>%s</i>", fullndir.c_str());
+			else
+				snprintf(msg, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
+		}
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
@@ -693,6 +736,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					(strcmp(extension, "nbz") == 0) ||
 					(strcmp(extension, "t64") == 0) ||
 					(strcmp(extension, "png") == 0) ||
+					(strcmp(extension, "lst") == 0) ||
 					(strcmp(extension, "prg") == 0))
 				{
 					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
@@ -726,7 +770,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		String.Format(s_Index, msg, curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
-			Kernel.get_version(), mem.c_str(), curr_path.c_str(), curr_path.c_str());
+			Kernel.get_version(), mem.c_str(), 
+			curr_path.c_str(), // mkdir script
+			curr_path.c_str(), // newD64 script
+			curr_path.c_str()); // newLST script
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -906,6 +953,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			const size_t idx = curr_path.rfind('/');
 			string cwd = curr_path.substr(0, idx);
+			string fullname = def_prefix + curr_path;
 			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
@@ -913,32 +961,52 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 			else
 				msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
+			// store for main emulation
 			strncpy(mount_img, (def_prefix + curr_path).c_str(), 255);
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
-			if (read_dir(def_prefix + curr_path, dir) < 0)
-			{
-				DEBUG_LOG("%s: failed to readdir of '%s'", __FUNCTION__, mount_img);
-				msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
-			}
 			content = "";
-			int revers = 0;
-			for (auto it = dir.begin(); it != dir.end(); it++)
+			// check if it's really an image
+			if (!DiskImage::IsLSTExtention(mount_img))
 			{
-				// ugly special first line handling to show revers
-				if (it == dir.begin())
-					revers = 128;
-				else 
-					revers = 0;
-				for (long unsigned int i = 0; i < it->length(); i++)
+				if (read_dir(def_prefix + curr_path, dir) < 0)
 				{
-					char buf[16];
-					sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i])+revers);
-					content+=string(buf);
+					DEBUG_LOG("%s: failed to readdir of '%s'", __FUNCTION__, mount_img);
+					msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
 				}
-				content += "<br />";
+				int revers = 0;
+				for (auto it = dir.begin(); it != dir.end(); it++)
+				{
+					// ugly special first line handling to show revers
+					if (it == dir.begin())
+						revers = 128;
+					else 
+						revers = 0;
+					for (long unsigned int i = 0; i < it->length(); i++)
+					{
+						char buf[16];
+						sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i])+revers);
+						content+=string(buf);
+					}
+					content += "<br />";
+				}
+				if (mount_it)
+					mount_new = 1;
 			}
-			if (mount_it)
-				mount_new = true;
+			else
+			{
+				// assume a textfile to show, e.g. .LST file
+				string tmp;
+				read_file(fullname, tmp, content);
+				msg = msg + tmp;
+				replaceAll(content, "\r\n", "<br />");
+				content = curr_path + ":<br /><br />" + content;
+				if (mount_it) 
+				{
+					if (f_chdir((def_prefix + cwd).c_str()) != FR_OK)
+						DEBUG_LOG("%s: can't change to '%s' for LST file loading", __FUNCTION__, cwd.c_str());
+					mount_new = 2;/* indicate .lst mount */
+				}
+			}
 		}
 		String.Format(s_mount, msg.c_str(), 
 					(def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(),
@@ -971,6 +1039,28 @@ extern int reboot_req;
 		pContent = s_logo;
 		nLength = sizeof s_logo;
 		*ppContentType = "image/x-icon";
+	}
+	else if (endsWith(string(pPath), ".png"))
+	{
+		FIL fp;
+		UINT br;
+		string fn;
+		fn = def_prefix + urlDecode(string(pPath));
+		DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
+		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
+		{
+			f_read(&fp, (void *)icon_buf, MAX_ICON_SIZE, &br);
+			pContent = (const unsigned char *)icon_buf;
+			nLength = br;
+			*ppContentType = "image/x-icon";
+			f_close(&fp);
+		}
+		else
+		{
+			pContent = s_Favicon;
+			nLength = sizeof s_Favicon;
+			*ppContentType = "image/x-icon";
+		}
 	}
 	else if (strcmp (pPath, "/favicon.ico") == 0)
 	{

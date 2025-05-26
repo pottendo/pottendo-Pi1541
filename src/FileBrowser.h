@@ -191,6 +191,7 @@ public:
 	void PopFolder();
 
 	bool SelectionsMade() { return selectionsMade; }
+	void SetSelectionsMade(bool s) { selectionsMade = s; }
 	const char* LastSelectionName() { return lastSelectionName; }
 	void ClearSelections();
 
@@ -208,6 +209,7 @@ public:
 	static void RefreshDevicesEntries(std::vector<FileBrowser::BrowsableList::Entry>& entries, bool toLower);
 
 	bool MakeLST(const char* filenameLST);
+	bool MakeLSTFromDir(const char* dir, const char *lstfn);
 	bool SelectLST(const char* filenameLST);
 
 	void SetScrollHighlightRate(float value) { scrollHighlightRate = value; }

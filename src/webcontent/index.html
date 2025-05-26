@@ -95,8 +95,10 @@
 					<td>
 						<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir"
 							value="Make Directory" />
-						<input type="submit" class="btn btn-success" onclick="newD64()" id="newD64" name="newD64"
+							<input type="submit" class="btn btn-success" onclick="newD64()" id="newD64" name="newD64"
 							value="Create Diskimage" />
+							<input type="submit" class="btn btn-success" onclick="newLST()" id="newLST" name="newLST"
+							value="Create LST" />
 					</td>
 				</tr>
 			</table>
@@ -160,6 +162,19 @@
 					else
 						ext = "";
 					let nurl = "index.html?[DIR]&" + "%s" + "&[NEWDISK]&" + encodeURIComponent(dname.trim() + ext);
+					window.location.href = nurl;
+				}
+			};
+		</script>
+		<script>
+			function newLST() {
+				let dname = prompt("LST Filename");
+				if (dname != null) {
+					if (!dname.endsWith(".lst") && !dname.endsWith(".LST"))
+						ext = ".lst";
+					else
+						ext = "";
+					let nurl = "index.html?[DIR]&" + "%s" + "&[NEWLST]&" + encodeURIComponent(dname.trim() + ext);
 					window.location.href = nurl;
 				}
 			};
