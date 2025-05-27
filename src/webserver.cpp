@@ -41,6 +41,7 @@ using namespace std;
 extern Options options;
 bool webserver_upload = false;
 char mount_img[256] = { 0 };
+char mount_path[256] = { 0 };
 int mount_new = 0;
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
@@ -952,7 +953,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (type == "[FILE]")
 		{
 			const size_t idx = curr_path.rfind('/');
-			string cwd = curr_path.substr(0, idx);
+			string cwd, img;
+			if (idx == string::npos)
+			{
+				img = curr_path;
+				cwd = "";
+				curr_path = "/" + curr_path;
+			} else {
+				cwd = curr_path.substr(0, idx);
+			 	img = curr_path.substr(idx + 1, curr_path.length());
+			}
 			string fullname = def_prefix + curr_path;
 			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
@@ -962,8 +972,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			else
 				msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
 			// store for main emulation
-			strncpy(mount_img, (def_prefix + curr_path).c_str(), 255);
-			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
+			strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
+			strncpy(mount_img, img.c_str(), 255);
+			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
 			content = "";
 			// check if it's really an image
 			if (!DiskImage::IsLSTExtention(mount_img))
@@ -1002,8 +1013,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				content = curr_path + ":<br /><br />" + content;
 				if (mount_it) 
 				{
-					if (f_chdir((def_prefix + cwd).c_str()) != FR_OK)
-						DEBUG_LOG("%s: can't change to '%s' for LST file loading", __FUNCTION__, cwd.c_str());
 					mount_new = 2;/* indicate .lst mount */
 				}
 			}

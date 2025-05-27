@@ -1508,14 +1508,19 @@ void __not_in_flash_func(emulator)(void)
 							break;
 					}
 #if defined(__CIRCLE__)
-					extern char mount_img[256];
-					extern int mount_new;
+extern char mount_img[256];
+extern char mount_path[256];
+extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
-						if (mount_new == 1)
+						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						if (f_chdir(mount_path) != FR_OK)
+							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
+						else if (mount_new == 1)
 						{
+
+							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
 							diskCaddy.Insert(&fi, false);
 							fileBrowser->Update();
@@ -1539,14 +1544,30 @@ void __not_in_flash_func(emulator)(void)
 				{
 #if defined(__CIRCLE__)
 extern char mount_img[256];
+extern char mount_path[256];
 extern int mount_new;
 					FILINFO fi;
-					if (mount_new == 1)
+					if (mount_new)
 					{
-						strncpy(fi.fname, mount_img, 255);
-						DEBUG_LOG("%s: websever requests to mount '%s'", __FUNCTION__, mount_img);
-						diskCaddy.Insert(&fi, false);
-						mount_new = 0;
+						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						if (f_chdir(mount_path) != FR_OK)
+							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
+						else if (mount_new == 1)
+						{
+
+							fileBrowser->FolderChanged();
+							strncpy(fi.fname, mount_img, 255);
+							diskCaddy.Insert(&fi, false);
+							fileBrowser->Update();
+							emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+						}
+						if (mount_new == 2)/* .LST */
+						{
+							fileBrowser->FolderChanged();
+							fileBrowser->SelectLST(mount_img);
+							fileBrowser->SetSelectionsMade(true);
+						}
+						mount_new = 0;						
 					}
 #endif
 					fileBrowser->Update();
