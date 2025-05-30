@@ -775,7 +775,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			const char *pPartHeaderCB;
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
-			const char *targetfn = filename;
 			bool do_remount = false;
 			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
 
@@ -817,7 +816,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				}
 				if ((nPartLengthCB > 0) && (strcmp(field, "diskimage") == 0))
 				{
-					targetfn = filename;
+					string targetfn = curr_path + '/' + filename;
 
 					if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 					{	
@@ -829,22 +828,21 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 							if (_t && (_t = strrchr(_t, '.')) && (strcasecmp(_t + 1, extension) == 0))
 							{
 								Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
-								targetfn = options.GetAutoMountImageName();
+								targetfn = string("/") + string(options.GetAutoMountImageName());
 								do_remount = true;
 								msg += "automounting<br />";
 							}
 							else
 							{	
 								DEBUG_LOG("%s: automount image extension doesn't match '%s' vs. '.%s'", __FUNCTION__, _t, extension);
-								msg += (string("automount extension mismatch, uploading image <i>") + filename + "</i><br />");
-								targetfn = filename;
+								msg += (string("automount extension mismatch, uploading image <i>") + targetfn + "</i><br />");
 							}
 						}
 					}
 					else
 						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn);
-					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, (curr_path + '/' + targetfn).c_str());
-					write_image(curr_path + '/' + targetfn, extension, pPartDataCB, nPartLengthCB, msg);
+					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
+					write_image(targetfn, extension, pPartDataCB, nPartLengthCB, msg);
 	
 					if (do_remount)
 						webserver_upload = true; // this re-mounts the automount image
