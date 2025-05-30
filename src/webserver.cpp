@@ -1104,7 +1104,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			// check if it's really an image
 			if (DiskImage::IsPicFileExtention(mount_img))
 			{
-				content = string("<img src=\"") + fullname + "\"/>";
+				content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
 			}
 			else if (!DiskImage::IsTextFileExtention(mount_img))
 			{
