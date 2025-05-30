@@ -1519,6 +1519,20 @@ bool DiskImage::IsTextFileExtention(const char *name)
 	return false;
 }
 
+bool DiskImage::IsPicFileExtention(const char *name)
+{
+	char* ext = strrchr((char*)name, '.');
+	if (ext && 
+			(
+				(toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'N' && toupper((char)ext[3]) == 'G')
+				||
+				(toupper((char)ext[1]) == 'J' && toupper((char)ext[2]) == 'J' && toupper((char)ext[3]) == 'G')
+			)
+		)
+		return true;
+	return false;
+}
+
 bool DiskImage::ConvertSector(unsigned track, unsigned sector, unsigned char* data)
 {
 	unsigned char buffer[SECTOR_LENGTH_WITH_CHECKSUM];

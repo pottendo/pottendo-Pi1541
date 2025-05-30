@@ -216,7 +216,7 @@ static int direntry_table(const string header, string &res, string &path, string
 		res += "<tr><td>" + 
 						string("<a href=") + page + "?" + file_type + "&" + path.substr(0, pos) + "&>..</a>" +
 					"</td>" +
-					"<td>" + file_type + "</td>" +
+					"<td>" + file_type + "</td><td></td>" +
 				"</tr>";
 	}
 	FILINFO fi;
@@ -243,7 +243,7 @@ static int direntry_table(const string header, string &res, string &path, string
 			}
 			res += 	"<tr><td>" + 
 						string("<a href=") + 
-						(file_ops ? "mount-imgs.html" : page) + 
+						((file_ops && (type_filter != AM_DIR)) ? "mount-imgs.html" : page) + 
 						"?" + file_type + "&" + urlEncode(path + sep + it.fname) + ">" + it.fname + "</a>" +
 					"</td>" + 
 					((type_filter != AM_DIR) ? icon : "") +
@@ -545,7 +545,7 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 	return ret;
 }
 
-FRESULT f_mkdir_full(const char *path, string &msg)
+static FRESULT f_mkdir_full(const char *path, string &msg)
 {
 	FRESULT ret = FR_OK;
 	FILINFO fi;
@@ -580,6 +580,47 @@ FRESULT f_mkdir_full(const char *path, string &msg)
 	} while (!done);
 	DEBUG_LOG("msg = %s", msg.c_str());
 	return ret;
+}
+
+static FRESULT f_unlink_full(string path, string &msg)
+{
+	DIR dir;
+	FILINFO fi;
+	FRESULT res;
+	string npath;
+
+	res = f_opendir(&dir, path.c_str());
+	if (res != FR_OK)
+		return res;
+	while (((res = f_readdir(&dir, &fi)) == FR_OK) && (fi.fname[0] != 0))
+	{	
+		npath = path + '/' + fi.fname;
+		if (fi.fattrib & AM_DIR)
+			res = f_unlink_full(npath, msg);
+		else
+		{
+			DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, npath.c_str());
+			res = f_unlink(npath.c_str());
+		}
+		if (res != FR_OK)
+		{
+			DEBUG_LOG("%s: failed to unlink '%s'", __FUNCTION__, npath.c_str());
+			msg += (string("failed to unlink <i>") + npath + "</i><br />");
+		}
+		else
+		{
+			DEBUG_LOG("%s: successfully unlinked '%s'", __FUNCTION__, npath.c_str());
+			msg += (string("successfully unlinked <i>") + npath + "</i><br />");
+		}			
+	}
+	if (res == FR_OK)
+	{
+		DEBUG_LOG("%s: unlink dir '%s'", __FUNCTION__, path.c_str());
+		msg += (string("successfully unlinked dir <i>") + npath + "</i><br />");
+		res = f_unlink(path.c_str());
+	}
+	f_closedir(&dir);
+	return res;
 }
 
 static unsigned char img_buf[READBUFFER_SIZE];
@@ -670,7 +711,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
@@ -720,14 +761,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (fops == "[DEL]")
 		{	
 			FRESULT ret;
+			msg = "";
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, fullndir.c_str());
-			if ((ret = f_unlink(fullndir.c_str())) != FR_OK)
+			if ((ret = f_unlink_full(fullndir, msg)) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
 				snprintf(msg_str, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
-			msg = msg_str;
+			msg += msg_str;
 		}
 		if (fops == "[NEWDISK]")
 		{
@@ -785,7 +827,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				tmp[nPartLength] = '\0';
 				DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
 				curr_path = string(tmp);
-				direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
+				//direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
 			}
 			msg = "Uploading...<br />";
 			while (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
@@ -850,7 +892,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				}
 			}
 		}
-		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
+		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
 		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
 		String.Format(s_Index, msg.c_str(), curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
@@ -1060,7 +1102,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
 			content = "";
 			// check if it's really an image
-			if (!DiskImage::IsTextFileExtention(mount_img))
+			if (DiskImage::IsPicFileExtention(mount_img))
+			{
+				content = string("<img src=\"") + fullname + "\"/>";
+			}
+			else if (!DiskImage::IsTextFileExtention(mount_img))
 			{
 				if (read_dir(def_prefix + curr_path, dir) < 0)
 				{
@@ -1132,12 +1178,14 @@ extern int reboot_req;
 		nLength = sizeof s_logo;
 		*ppContentType = "image/x-icon";
 	}
-	else if (endsWith(string(pPath), ".png"))
+	else if ((endsWith(string(pPath), ".png")) || (endsWith(string(pPath), ".jpg")))
 	{
 		FIL fp;
 		UINT br;
 		string fn;
-		fn = def_prefix + urlDecode(string(pPath));
+		fn = urlDecode(string(pPath));
+		if (fn.find(def_prefix) == string::npos)
+			fn = def_prefix + fn;
 		DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
 		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
 		{

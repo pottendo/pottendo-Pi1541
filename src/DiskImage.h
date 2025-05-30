@@ -190,6 +190,7 @@ public:
 	static bool IsDiskImageD71Extention(const char* diskImageName);
 	static bool IsLSTExtention(const char* diskImageName);
 	static bool IsTextFileExtention(const char* diskImageName);
+	static bool IsPicFileExtention(const char* diskImageName);
 
 	bool GetReadOnly() const { return readOnly; }
 	void SetReadOnly(bool readOnly) { this->readOnly = readOnly; }
