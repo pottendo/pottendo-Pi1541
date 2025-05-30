@@ -1504,6 +1504,21 @@ bool DiskImage::IsLSTExtention(const char* diskImageName)
 	return false;
 }
 
+bool DiskImage::IsTextFileExtention(const char *name)
+{
+	if (DiskImage::IsLSTExtention(name)) return true;
+	char* ext = strrchr((char*)name, '.');
+	if (ext && 
+			(
+				(toupper((char)ext[1]) == 'T' && toupper((char)ext[2]) == 'X' && toupper((char)ext[3]) == 'T')
+				||
+				(toupper((char)ext[1]) == 'N' && toupper((char)ext[2]) == 'F' && toupper((char)ext[3]) == 'O')
+			)
+		)
+		return true;
+	return false;
+}
+
 bool DiskImage::ConvertSector(unsigned track, unsigned sector, unsigned char* data)
 {
 	unsigned char buffer[SECTOR_LENGTH_WITH_CHECKSUM];

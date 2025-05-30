@@ -1060,11 +1060,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
 			content = "";
 			// check if it's really an image
-			if (!DiskImage::IsLSTExtention(mount_img))
+			if (!DiskImage::IsTextFileExtention(mount_img))
 			{
 				if (read_dir(def_prefix + curr_path, dir) < 0)
 				{
-					DEBUG_LOG("%s: failed to readdir of '%s'", __FUNCTION__, mount_img);
+					DEBUG_LOG("%s: failed to image content of '%s'", __FUNCTION__, mount_img);
 					msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
 				}
 				int revers = 0;
