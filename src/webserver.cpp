@@ -587,11 +587,11 @@ static FRESULT f_unlink_full(string path, string &msg)
 	DIR dir;
 	FILINFO fi;
 	FRESULT res;
-	string npath;
+	string npath = path;
 
 	res = f_opendir(&dir, path.c_str());
 	if (res != FR_OK)
-		return res;
+		goto out;
 	while (((res = f_readdir(&dir, &fi)) == FR_OK) && (fi.fname[0] != 0))
 	{	
 		npath = path + '/' + fi.fname;
@@ -615,8 +615,9 @@ static FRESULT f_unlink_full(string path, string &msg)
 	}
 	if (res == FR_OK)
 	{
-		DEBUG_LOG("%s: unlink dir '%s'", __FUNCTION__, path.c_str());
-		msg += (string("successfully unlinked dir <i>") + npath + "</i><br />");
+	out:		
+		DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
+		msg += (string("successfully unlinked <i>") + npath + "</i><br />");
 		res = f_unlink(path.c_str());
 	}
 	f_closedir(&dir);
