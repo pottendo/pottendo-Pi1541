@@ -73,12 +73,12 @@
 			<h3 style="text-align: left">Status</h3>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8"
-				enctype="multipart/form-data">
+			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<h4 style="text-align: left;">Select Diskimage for upload</h4>
 				<div class="form-group">
+					<input type="hidden" id="xpath" name="xpath" value="%s">
 					<div class="custom-file">
-						<input type="file" class="custom-file-input" id="UploadFile" name="diskimage">
+						<input type="file" class="custom-file-input" id="UploadFile" name="diskimage" />
 						<label class="custom-file-label" for="UploadFile">Choose file</label>
 					</div>
 					<br /> <br />
@@ -87,7 +87,13 @@
 						<label for="am-cb1">Automount-image</label>
 					</div>
 					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
-					<input type="hidden" id="xpath" name="xpath" value="%s">
+					<br />
+					<h4 style="text-align: left;">Select Directory for upload</h4>
+					<div class="custom-file">
+						<input type="file" name="directory" id="UploadDir" webkitdirectory="" directory="" multiple="" class="custom-dir-input" />
+						<label class="custom-file-label" for="UploadDir">Choose directory</label>
+					</div>
+					<input type="submit" class="btn btn-success" name="buttsubmitdir" value="Upload Directory" />
 				</div>
 			</form>
 			<table>
@@ -140,6 +146,16 @@
 					var fileName = document.getElementById("UploadFile").files[0].name;
 					var nextSibling = e.target.nextElementSibling;
 					nextSibling.innerText = fileName;
+				});
+				document.querySelector('.custom-dir-input').addEventListener('change', function (e) {
+
+					var dirName = document.getElementById("UploadDir").files[0].name;
+					const index = dirName.indexOf('/');
+					console.log("1- dirname = " + dirName + " idx = " + index);
+					dirName = (index !== -1) ? dirName.substring(0, index) : dirName;
+					console.log("2- dirname = " + dirName + " idx = " + index);
+					var nextSibling = e.target.nextElementSibling;
+					nextSibling.innerText = dirName;
 				});
 			});
 		</script>

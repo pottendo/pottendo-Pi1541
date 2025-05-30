@@ -47,7 +47,7 @@ static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
 
-#define MAX_CONTENT_SIZE	4000000
+#define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
 
 // our content
 static const char s_Index[] =
@@ -266,10 +266,12 @@ static int direntry_table(const string header, string &res, string &path, string
 	return 0;
 }
 
-static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension)
+static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)
 {
 	assert(pPartHeader != 0);
 	char *startpos = strstr(pPartHeader, field);
+
+	// special filename handling
 	if (startpos != 0)
 	{
 		startpos += strlen(field);
@@ -284,6 +286,8 @@ static char *extract_field(const char *field, const char *pPartHeader, char *fil
 			fnl++;
 		}
 		filename[fnl] = '\0';
+		if (!extension)
+			return filename;
 		while (extensionStart > 0 && extensionStart < fnl && exl < 9)
 		{
 			u8 tmp = filename[extensionStart + exl];
@@ -296,6 +300,8 @@ static char *extract_field(const char *field, const char *pPartHeader, char *fil
 		//Kernel.log("found filename: '%s' %i", filename, strlen(filename));
 		//Kernel.log("found extension: '%s' %i", extension, strlen(extension));
 	}
+	else
+		filename[0] = '\0';
 	return filename;
 }
 
@@ -324,6 +330,41 @@ static bool write_file(const char *fn, const u8 *pPartData, unsigned nPartLength
 		ret = true;
 	}
 	f_close(&fp);
+	return ret;
+}
+
+static bool write_image(string fn, char *extension, const u8 *pPartData, unsigned nPartLength, string &msg)
+{
+	bool ret = false;
+	if ((strcmp(extension, "d64") == 0) ||
+		(strcmp(extension, "g64") == 0) ||
+		(strcmp(extension, "d81") == 0) ||
+		(strcmp(extension, "nib") == 0) ||
+		(strcmp(extension, "nbz") == 0) ||
+		(strcmp(extension, "t64") == 0) ||
+		(strcmp(extension, "png") == 0) ||
+		(strcmp(extension, "lst") == 0) ||
+		(strcmp(extension, "txt") == 0) ||
+		(strcmp(extension, "nfo") == 0) ||
+		(strcmp(extension, "prg") == 0))
+	{
+		DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
+		FILINFO fi;
+		UINT bw;
+		string _x = string(def_prefix + fn);
+		if (write_file(_x.c_str(), pPartData, nPartLength))
+		{
+			msg += (string ("successfully wrote <i>") + _x + "</i><br />");
+			ret = true;
+		}
+		else
+			msg += (string("file operation failed for <i>") + _x + "</i><br />");
+	}
+	else
+	{
+		Kernel.log("%s: invalid filetype: '.%s'...", __FUNCTION__, extension);
+		msg += (string("invalid filetype for <i>") + fn + "</i><br />");
+	}
 	return ret;
 }
 
@@ -504,6 +545,43 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 	return ret;
 }
 
+FRESULT f_mkdir_full(const char *path, string &msg)
+{
+	FRESULT ret = FR_OK;
+	FILINFO fi;
+	size_t idx;
+	string p = path;
+	string cpath;
+	bool done = false;
+	idx = p.find_first_of('/');
+	if (idx == string::npos) return ret;
+	cpath = p.substr(0, idx);
+	do
+	{
+		string ndir = def_prefix + cpath;
+		idx = p.substr(cpath.length() + 1, p.length()).find_first_of('/');
+		if (idx != string::npos)
+			cpath += p.substr(cpath.length(), idx + 1);
+		else
+		{
+			ndir = def_prefix + p; // finally we can do the full path;
+			done = true;
+		}
+		DEBUG_LOG("%s: need to create '%s'", __FUNCTION__, ndir.c_str());
+		if (f_stat(ndir.c_str(), &fi) != FR_OK)
+			if ((ret = f_mkdir(ndir.c_str())) != FR_OK)
+			{
+				msg += (string("failed to mkdir <i>") + ndir + "</i><br />");
+				break;
+			}
+			else
+				msg += (string("created <i>") + ndir + "</i><br />");
+
+	} while (!done);
+	DEBUG_LOG("msg = %s", msg.c_str());
+	return ret;
+}
+
 static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
 static int read_dir(string name, list<string> &dir)
@@ -586,18 +664,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	unsigned nLength = 0;
 	char filename[255];
 	char extension[10];
+	char field[255];
 	filename[0] = '\0';
 	extension[0] = '\0';
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
-	DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams);
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
 		assert (pFormData != 0);
-		char msg[1024];
+		string msg = "";
+		char msg_str[1024];
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
@@ -615,12 +695,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned int temp;
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		snprintf(msg, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>", 
+		snprintf(msg_str, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>", 
 			options.GetAutoMountImageName(),
 			def_prefix.c_str(), 
 			temp / 1000,
 			CPUThrottle.GetClockRate() / 1000000L,
 			t->c_str());
+		msg += msg_str;
 		delete t;
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		DEBUG_LOG("type = %s", type.c_str());
@@ -631,9 +712,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
-				snprintf(msg, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
+				snprintf(msg_str, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
-				snprintf(msg, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
+				snprintf(msg_str, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
+			msg = msg_str;
 		}
 		if (fops == "[DEL]")
 		{	
@@ -642,9 +724,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_unlink(fullndir.c_str())) != FR_OK)
-				snprintf(msg, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
+				snprintf(msg_str, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
-			snprintf(msg, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+				snprintf(msg_str, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+			msg = msg_str;
 		}
 		if (fops == "[NEWDISK]")
 		{
@@ -667,9 +750,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
 			}
 			if (ret)
-				snprintf(msg, 1023,"Failed to create new %c64 image <i>%s</i>", dt, fullndir.c_str());
+				snprintf(msg_str, 1023,"Failed to create new %c64 image <i>%s</i>", dt, fullndir.c_str());
 			else
-				snprintf(msg, 1023,"Successfully created new %c64 image <i>%s</i>", dt, fullndir.c_str());
+				snprintf(msg_str, 1023,"Successfully created new %c64 image <i>%s</i>", dt, fullndir.c_str());
+			msg = msg_str;
 		}
 		if (fops == "[NEWLST]")
 		{
@@ -678,98 +762,99 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: create new lst file '%s'", __FUNCTION__, fullndir.c_str());
 			if (!fileBrowser->MakeLSTFromDir((def_prefix + curr_path).c_str(), fullndir.c_str()))
-				snprintf(msg, 1023,"Failed to create new LST file <i>%s</i>", fullndir.c_str());
+				snprintf(msg_str, 1023,"Failed to create new LST file <i>%s</i>", fullndir.c_str());
 			else
-				snprintf(msg, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
+				snprintf(msg_str, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
+			msg = msg_str;
 		}
-		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
 		{
 			noFormParts = false;
+			extract_field(" name=\"", pPartHeader, field);
 			extract_field("filename=\"", pPartHeader, filename, extension);
 			const char *pPartHeaderCB;
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
 			const char *targetfn = filename;
 			bool do_remount = false;
-			//DEBUG_LOG("%s: pPartHeader = '%s' - filename = '%s'", __FUNCTION__, pPartHeader, filename);
-			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
+			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
+
+			if ((nPartLength > 0) && (strcmp(field, "xpath") == 0) && (nPartLength < 256))
 			{
-				if ((strstr(pPartHeaderCB, "name=\"am-cb1\"") != 0) &&
-					(pPartDataCB[0] == '1'))
+				char tmp[256];
+				memcpy(tmp, pPartData, nPartLength);
+				tmp[nPartLength] = '\0';
+				DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
+				curr_path = string(tmp);
+				direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
+			}
+			msg = "Uploading...<br />";
+			while (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
+			{
+				extract_field(" name=\"", pPartHeaderCB, field);
+				extract_field("filename=\"", pPartHeaderCB, filename, extension);
+				DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
+				if ((nPartLengthCB > 0) && (strcmp(field, "directory") == 0))
 				{
-					const char *_t = options.GetAutoMountImageName();
-					if (_t && (_t = strrchr(_t, '.')) && (strcasecmp(_t + 1, extension) == 0))
+					string fn, dir;
+					char *fp = strrchr(filename, '/');
+					if (fp)
 					{
-						Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
-						targetfn = options.GetAutoMountImageName();
-						do_remount = true;
+						*fp = '\0';
+						fn = string(fp + 1);
+						dir = curr_path + "/" + string(filename) + "/";
 					}
 					else
 					{
-						DEBUG_LOG("%s: automount image extension doesn't match '%s' vs. '.%s'", __FUNCTION__, _t, extension);
-						targetfn = filename;
+						fn = string(filename);
+						dir = curr_path + "/";
 					}
+					DEBUG_LOG("%s: dirname = '%s', fn = '%s'", __FUNCTION__, dir.c_str(), fn.c_str());
+					FRESULT fr;
+					f_mkdir_full(dir.c_str(), msg);
+					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, (dir + fn).c_str());
+					write_image(dir + fn, extension, pPartDataCB, nPartLengthCB, msg);
 				}
-			}
-
-			if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
-			{
-				//DEBUG_LOG("%s: pPartHeaderCB = '%s'", __FUNCTION__, pPartHeaderCB);
-				if (strstr(pPartHeaderCB, "name=\"xpath\"") != 0)
+				if ((nPartLengthCB > 0) && (strcmp(field, "diskimage") == 0))
 				{
-					char tmp[256];
-					memcpy(tmp, pPartDataCB, nPartLengthCB);
-					tmp[nPartLengthCB] = '\0';
-					curr_path = string(tmp);
-					direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
-				}
-			}			
+					targetfn = filename;
 
-			if ((strstr(pPartHeader, "name=\"diskimage\"") != 0) &&
-				(nPartLength > 0))
-			{
-				snprintf(msg, 1023, "file operation failed!");
-				if ((strcmp(extension, "d64") == 0) ||
-					(strcmp(extension, "g64") == 0) ||
-					(strcmp(extension, "d81") == 0) ||
-					(strcmp(extension, "nib") == 0) ||
-					(strcmp(extension, "nbz") == 0) ||
-					(strcmp(extension, "t64") == 0) ||
-					(strcmp(extension, "png") == 0) ||
-					(strcmp(extension, "lst") == 0) ||
-					(strcmp(extension, "prg") == 0))
-				{
-					DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);
-					const char *fn;
-					FILINFO fi;
-					UINT bw;
-					string sep="";
-					if (curr_path != "") sep = "/";
-					string _x = string(def_prefix + "/" + curr_path + sep + targetfn);
-					if (write_file(_x.c_str(), pPartData, nPartLength))
-					{
-						snprintf(msg, 1023, "successfully wrote: %s", _x.c_str());
-						if (do_remount)
-							webserver_upload = true;	// this re-mounts the automount image
+					if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
+					{	
+						extract_field(" name=\"", pPartHeader, field);
+						if ((strcmp(field, "am-cb1") == 0) && (pPartData[0] == '1'))
+						{
+							DEBUG_LOG("%s: automount requested for diskimage '%s'", __FUNCTION__, filename);
+							const char *_t = options.GetAutoMountImageName();
+							if (_t && (_t = strrchr(_t, '.')) && (strcasecmp(_t + 1, extension) == 0))
+							{
+								Kernel.log("%s: image '%s' shall be used as automount image", __FUNCTION__, filename);
+								targetfn = options.GetAutoMountImageName();
+								do_remount = true;
+								msg += "automounting<br />";
+							}
+							else
+							{	
+								DEBUG_LOG("%s: automount image extension doesn't match '%s' vs. '.%s'", __FUNCTION__, _t, extension);
+								msg += (string("automount extension mismatch, uploading image <i>") + filename + "</i><br />");
+								targetfn = filename;
+							}
+						}
 					}
 					else
-						snprintf(msg, 255, "file operation failed.");
+						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn);
+					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, (curr_path + '/' + targetfn).c_str());
+					write_image(curr_path + '/' + targetfn, extension, pPartDataCB, nPartLengthCB, msg);
+	
+					if (do_remount)
+						webserver_upload = true; // this re-mounts the automount image
+					break;
 				}
-				else
-				{
-					Kernel.log("%s: invalid filetype: '.%s'...", __FUNCTION__, extension);
-					snprintf(msg, 1023, "invalid image extension!");
-				}
-			}
-			else
-			{
-				Kernel.log("%s: upload failed due to unkown reasons...", __FUNCTION__);
-				snprintf(msg, 1023, "upload failed!");
 			}
 		}
+		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR);
 		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
-		String.Format(s_Index, msg, curr_path.c_str(), (
+		String.Format(s_Index, msg.c_str(), curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
 			Kernel.get_version(), mem.c_str(), 
 			curr_path.c_str(), // mkdir script
