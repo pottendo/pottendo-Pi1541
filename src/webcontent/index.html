@@ -22,10 +22,7 @@
 		table.dirs tr:nth-child(odd) {
 			background-color: #657272;
 		}
-
-		table.dirs tr:hover {
-			background-color: #639494;
-		}
+		table.dirs tr:hover {background-color: #6a7575;}
 		a:link {
  			color: rgb(255, 255, 255);
   			background-color: transparent;
@@ -59,16 +56,22 @@
 <body>
 	<br />
 	<div class="container">
-		<div class="container"
-			style="background-color: #3a3a3a; text-align: center; padding-bottom: 8px; padding-top: 8px;">
-			<a href="index.html">
-				<img src="/pi1541-logo.png" style="height: 256px; width: 1024px; cursor:pointer;" />
-			</a>
+		<div class="container" style="background-color: #000000; text-align: center; padding-bottom: 8px; padding-top: 8px;">
+			<table>
+				<td>
+					<h1 style="text-align:left">Pi1541</h1>
+					<p style="text-align:left">by pottendo</p>
+					<h3 style="text-align:left">Upload/Manage SDCard</h3>
+				</td>
+				<td>
+					<a href="index.html">
+						<img src="/pi1541-logo.png" style="height: 160px; width: 720px; cursor:pointer;" />
+					</a>
+				</td>
+			</table>
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<h1 style="text-align:center">Pi1541 Upload/Manage SDCard</h1>
-			<p style="text-align:center"> by pottendo</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<h3 style="text-align: left">Menu</h3>
 			<table style="width: 100%;">
@@ -97,7 +100,7 @@
 				<input type="hidden" id="xpath" name="xpath" value="%s">
 				<div class="form-group">
 					<table style="width: 100%;">
-						<tr><th>Select Diskimage for upload</th><th>Select Directory for upload</th></tr>
+						<tr><th>Select Diskimage for upload</th><th>Select Directory for upload (limit <15MB!)</th></tr>
 						<td valign="top">
 							<div class="custom-file" style="margin: 8px auto;">
 								<input type="file" class="custom-file-input" id="UploadFile" name="diskimage" />
