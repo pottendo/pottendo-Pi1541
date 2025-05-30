@@ -24,7 +24,27 @@
 		}
 
 		table.dirs tr:hover {
-			background-color: #6a7575;
+			background-color: #639494;
+		}
+		a:link {
+ 			color: rgb(255, 255, 255);
+  			background-color: transparent;
+  			text-decoration: none;
+		}		
+		a:visited {
+ 			color: rgb(247, 239, 239);
+  			background-color: transparent;
+  			text-decoration: none;
+		}
+		a:active {
+ 			color: rgb(238, 255, 0);
+  			background-color: transparent;
+  			text-decoration: none;
+		}
+		a:hover {
+ 			color: rgb(238, 255, 0);
+  			background-color: transparent;
+  			text-decoration: none;
 		}
 	</style>
 	<meta charset="utf-8">
@@ -75,27 +95,34 @@
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<form action="index.html" method="post" name="upload_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<input type="hidden" id="xpath" name="xpath" value="%s">
-				<h4 style="text-align: left;">Select Diskimage for upload</h4>
 				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input" id="UploadFile" name="diskimage" />
-						<label class="custom-file-label" for="UploadFile">Choose file</label>
-					</div>
-					<br /> <br />
-					<div class="custom-checkbox">
-						<input type="checkbox" unchecked id="am-cb1" name="am-cb1" value="1">
-						<label for="am-cb1">Automount-image</label>
-					</div>
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
-					<br />
-					<h4 style="text-align: left;">Select Directory for upload</h4>
-					<div class="custom-file">
-						<input type="file" name="directory" id="UploadDir" webkitdirectory="" directory="" multiple="" class="custom-dir-input" />
-						<label class="custom-file-label" for="UploadDir">Choose directory</label>
-					</div>
-					<input type="submit" class="btn btn-success" name="buttsubmitdir" value="Upload Directory" />
+					<table style="width: 100%;">
+						<tr><th>Select Diskimage for upload</th><th>Select Directory for upload</th></tr>
+						<td valign="top">
+							<div class="custom-file" style="margin: 8px auto;">
+								<input type="file" class="custom-file-input" id="UploadFile" name="diskimage" />
+								<label class="custom-file-label" for="UploadFile">Choose file</label>
+							</div>
+							<br />
+							<div class="custom-checkbox">
+								<input type="checkbox" unchecked id="am-cb1" name="am-cb1" value="1">
+								<label for="am-cb1">Automount-image</label>
+							</div>
+							<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Diskimage" />
+						</td>
+						<td valign="top">
+							<div class="custom-file" style="margin: 8px auto;">
+								<input type="file" name="directory" id="UploadDir" webkitdirectory="" directory="" multiple=""
+									class="custom-dir-input" />
+								<label class="custom-file-label" for="UploadDir">Choose directory</label>
+							</div>
+							<br />
+							<input type="submit" class="btn btn-success" name="buttsubmitdir" value="Upload Directory" />
+						</td>
+					</table>
 				</div>
 			</form>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<table>
 				<tr>
 					<td>
