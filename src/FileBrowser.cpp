@@ -1350,6 +1350,7 @@ bool FileBrowser::MakeLST(const char* filenameLST)
 	return retcode;
 }
 
+#if defined (__CIRCLE__)
 bool FileBrowser::MakeLSTFromDir(const char* dir, const char *lstfn)
 {
 	bool retcode=false;
@@ -1403,6 +1404,7 @@ bool FileBrowser::MakeLSTFromDir(const char* dir, const char *lstfn)
 
 	return retcode;
 }
+#endif
 
 bool FileBrowser::SelectLST(const char* filenameLST)
 {
@@ -1549,7 +1551,11 @@ void FileBrowser::ShowDeviceAndROM( const char* ROMName )
 	}
 }
 
+#if defined(__CIRCLE__)
 void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon, std::list<std::string>* image_dir)
+#else
+void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon)
+#endif
 {
 #if not defined(EXPERIMENTALZERO)
 	// Ideally we should not have to load the entire disk to read the directory.
@@ -1717,25 +1723,31 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 
 		x = 0;
 		y = 0;
-		std::string dir_line;
 		snprintf(bufferOut, 128, "0 ");
+#if defined(__CIRCLE__)		
+		std::string dir_line;
 		if (image_dir)
 			dir_line += std::string(bufferOut);
 		else
+#endif		
 			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		x = 16;
 		snprintf(bufferOut, 128, "\"%s\" %c%c%c%c%c%c", name, buffer[162], buffer[163], buffer[164], buffer[165], buffer[166], buffer[167]);
+#if defined(__CIRCLE__)		
 		if (image_dir)
 			dir_line += std::string(bufferOut);
 		else
-			screenMain->PrintText(true, x, y, bufferOut, bgColour, textColour);
+#endif
+		screenMain->PrintText(true, x, y, bufferOut, bgColour, textColour);
 		x = 0;
 		y += fontHeight;
+#if defined(__CIRCLE__)		
 		if (image_dir)
 		{
 			image_dir->push_back(dir_line);
 			dir_line = "";
 		}
+#endif
 		if (track != 0)
 		{
 			unsigned trackPrev = 0xff;
@@ -1797,15 +1809,19 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 
 								//DEBUG_LOG("%d name = %s %x\r\n", blocks, name, fileType);
 								snprintf(bufferOut, 128, "%-4d ", blocks);
+#if defined(__CIRCLE__)		
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
+#endif
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 5 * 8;
 								snprintf(bufferOut, 128, "\"%s ", name);
+#if defined(__CIRCLE__)		
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
+#endif
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								x += 19 * 8;
 								char modifier = 0x20;
@@ -1814,16 +1830,20 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 								else if (fileType & 0x40)
 									modifier = screen2petscii(60);
 								snprintf(bufferOut, 128, "%s%c", fileTypes[fileType & 7], modifier);
+#if defined(__CIRCLE__)		
 								if (image_dir)
 									dir_line += std::string(bufferOut);
 								else
+#endif
 									screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 								y += fontHeight;
+#if defined(__CIRCLE__)		
 								if (image_dir)
 								{
 									image_dir->push_back(dir_line);
 									dir_line = "";
 								}
+#endif
 							}
 						}
 						entryOffset += 32;
@@ -1839,6 +1859,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 		x = 0;
 		//DEBUG_LOG("%d blocks free\r\n", blocksFree);
 		snprintf(bufferOut, 128, "%d BLOCKS FREE.\r\n", blocksFree);
+#if defined(__CIRCLE__)		
 		if (image_dir)
 		{
 			// overrule line end for web output
@@ -1847,12 +1868,14 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 			image_dir->push_back(dir_line);
 		}
 		else
+#endif
 			screenMain->PrintText(true, x, y, bufferOut, textColour, bgColour);
 		y += fontHeight;
 	}
-
+#if defined(__CIRCLE__)		
 	if (image_dir)
 		return;
+#endif
 	DisplayStatusBar();
 
 	if (filenameForIcon)
