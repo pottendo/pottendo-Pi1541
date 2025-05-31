@@ -568,7 +568,7 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 			ndir = def_prefix + p; // finally we can do the full path;
 			done = true;
 		}
-		DEBUG_LOG("%s: need to create '%s'", __FUNCTION__, ndir.c_str());
+		//DEBUG_LOG("%s: need to create '%s'", __FUNCTION__, ndir.c_str());
 		if (f_stat(ndir.c_str(), &fi) != FR_OK)
 			if ((ret = f_mkdir(ndir.c_str())) != FR_OK)
 			{
@@ -579,7 +579,6 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 				msg += (string("created <i>") + ndir + "</i><br />");
 
 	} while (!done);
-	DEBUG_LOG("msg = %s", msg.c_str());
 	return ret;
 }
 
@@ -610,13 +609,13 @@ static FRESULT f_unlink_full(string path, string &msg)
 		}
 		else
 		{
-			DEBUG_LOG("%s: successfully unlinked '%s'", __FUNCTION__, npath.c_str());
+			//DEBUG_LOG("%s: successfully unlinked '%s'", __FUNCTION__, npath.c_str());
 			msg += (string("Deleted <i>") + npath + "</i><br />");
 		}			
 	}
 	if (res == FR_OK)
 	{
-		DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
+		//DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
 		msg += (string("Deleted <i>") + npath + "</i><br />");
 	out:
 		res = f_unlink(path.c_str());
@@ -713,7 +712,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
@@ -735,14 +734,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, ndir, '&');
 		curr_path = urlDecode(curr_path);
 		bool noFormParts = true;
-		DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		DEBUG_LOG("type = %s", type.c_str());
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("type = %s", type.c_str());
 		if (fops == "[MKDIR]")
 		{	
 			FRESULT ret;
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
-			DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
+			//DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
@@ -755,7 +754,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			msg = "";
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
-			DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, fullndir.c_str());
+			//DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_unlink_full(fullndir, msg)) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
@@ -809,14 +808,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			const u8 *pPartDataCB;
 			unsigned nPartLengthCB;
 			bool do_remount = false;
-			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
+			//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
 
 			if ((nPartLength > 0) && (strcmp(field, "xpath") == 0) && (nPartLength < 256))
 			{
 				char tmp[256];
 				memcpy(tmp, pPartData, nPartLength);
 				tmp[nPartLength] = '\0';
-				DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
+				//DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
 				curr_path = string(tmp);
 				//direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
 			}
@@ -825,7 +824,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			{
 				extract_field(" name=\"", pPartHeaderCB, field);
 				extract_field("filename=\"", pPartHeaderCB, filename, extension);
-				DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
+				//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
 				if ((nPartLengthCB > 0) && (strcmp(field, "directory") == 0))
 				{
 					string fn, dir;
@@ -874,7 +873,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					}
 					else
 						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn);
-					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
+					//DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
 					write_image(targetfn, extension, pPartDataCB, nPartLengthCB, msg);
 	
 					if (do_remount)
@@ -1104,7 +1103,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			// store for main emulation
 			strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
 			strncpy(mount_img, img.c_str(), 255);
-			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
+			//DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
 			content = "";
 			// check if it's really an image
 			if (DiskImage::IsPicFileExtention(mount_img))
@@ -1191,7 +1190,7 @@ extern int reboot_req;
 		fn = urlDecode(string(pPath));
 		if (fn.find(def_prefix) == string::npos)
 			fn = def_prefix + fn;
-		DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
+		//DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
 		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
 		{
 			f_read(&fp, (void *)icon_buf, MAX_ICON_SIZE, &br);
