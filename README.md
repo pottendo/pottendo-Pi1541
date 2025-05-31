@@ -76,6 +76,8 @@ _Note_: not all error cases of e.g. wrongly supplied paths could be handled, so 
 
 Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the default automount image automatically inserts it in the caddy. This allows an efficient development workflow, IMHO.
 
+When uploading directories, the browser may ask if you're sure. You still need to click the `Upload Directory` button to really upload!
+
 ![](docs/mount.png)
 <br />
 
@@ -309,7 +311,7 @@ network={
     key_mgmt=WPA-PSK
 }
 ```
-## Building the original verision
+## Building the original version
 
 One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/works with gcc > 10.x).
 
@@ -327,7 +329,7 @@ One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/work
 # if you switch from legacy build to circle build 'make clean' is mandatory
 ```
 
-Copy the resulting `kernel.img` to your SDCard and adjust the appropriate section _[pi3]_ to load this image by uncommenting the lines
+Copy the resulting `kernel.img` to your SDCard and adjust the appropriate section (e.g. _[pi3]_) to load this image by uncommenting the lines
 ```
 kernel_address=0x1f00000
 kernel=kernel.img

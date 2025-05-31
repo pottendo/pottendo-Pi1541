@@ -606,19 +606,19 @@ static FRESULT f_unlink_full(string path, string &msg)
 		if (res != FR_OK)
 		{
 			DEBUG_LOG("%s: failed to unlink '%s'", __FUNCTION__, npath.c_str());
-			msg += (string("failed to unlink <i>") + npath + "</i><br />");
+			msg += (string("Failed to delete <i>") + npath + "</i><br />");
 		}
 		else
 		{
 			DEBUG_LOG("%s: successfully unlinked '%s'", __FUNCTION__, npath.c_str());
-			msg += (string("successfully unlinked <i>") + npath + "</i><br />");
+			msg += (string("Deleted <i>") + npath + "</i><br />");
 		}			
 	}
 	if (res == FR_OK)
 	{
-	out:		
 		DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
-		msg += (string("successfully unlinked <i>") + npath + "</i><br />");
+		msg += (string("Deleted <i>") + npath + "</i><br />");
+	out:
 		res = f_unlink(path.c_str());
 	}
 	f_closedir(&dir);
@@ -759,7 +759,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if ((ret = f_unlink_full(fullndir, msg)) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to delete <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
-				snprintf(msg_str, 1023,"Successfully deleted <i>%s</i>", fullndir.c_str());
+				snprintf(msg_str, 1023,"Deleted <i>%s</i>", fullndir.c_str());
 			msg += msg_str;
 		}
 		if (fops == "[NEWDISK]")
