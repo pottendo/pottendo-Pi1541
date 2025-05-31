@@ -735,17 +735,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, ndir, '&');
 		curr_path = urlDecode(curr_path);
 		bool noFormParts = true;
-		unsigned int temp;
-		GetTemperature(temp);
-		CString *t = Kernel.get_timer()->GetTimeString();
-		snprintf(msg_str, 1023, "Automount image-name: <i>%s</i><br />Path-prefix: <i>%s</i><br />Pi Temperature: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>", 
-			options.GetAutoMountImageName(),
-			def_prefix.c_str(), 
-			temp / 1000,
-			CPUThrottle.GetClockRate() / 1000000L,
-			t->c_str());
-		msg += msg_str;
-		delete t;
 		DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		DEBUG_LOG("type = %s", type.c_str());
 		if (fops == "[MKDIR]")
@@ -903,6 +892,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			curr_path.c_str(), // newD64 script
 			curr_path.c_str()); // newLST script
 
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/pistats.html") == 0)
+	{
+		unsigned int temp;
+		GetTemperature(temp);
+		CString *t = Kernel.get_timer()->GetTimeString();
+		String.Format("Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+				 temp / 1000,
+				 CPUThrottle.GetClockRate() / 1000000L,
+				 t->c_str());
+		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

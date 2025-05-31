@@ -4,20 +4,16 @@
 <head>
 	<style>
 		table.dirs {
-		  border-collapse: collapse;
-		  width: 100%;
+			border-collapse: collapse;
+			width: 100%;
 		}
 		table.dirs th, table.dirs td {
-		  text-align: left;
-		  padding: 4px;
-		  border-bottom: 1px solid #DDD;				
+			text-align: left;
+			padding: 4px;
+			border-bottom: 1px solid #DDD;
 		}
-		table.dirs tr:nth-child(even) {
-		  background-color: #525c5c;
-		}
-		table.dirs tr:nth-child(odd) {
-		  background-color: #657272;
-		}
+		table.dirs tr:nth-child(even) {background-color: #525c5c;}
+		table.dirs tr:nth-child(odd) {background-color: #657272;}
 		table.dirs tr:hover {background-color: #6a7575;}
 		@font-face {
       		font-family: 'C64 Pro Mono';
@@ -63,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Mount Images</h3>
+					<h3 style="text-align:left">Upload/Manage SDCard</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -74,8 +70,8 @@
 		</div>
 		<div class="container bg-dark">
 			<br />
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h3 style="text-align: left">Menu</h3>
+			<!--	<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;"> 
+					<h3 style="text-align: left">Menu</h3>	-->
 			<table style="width: 100%;">
 				<tr>
 					<td>
@@ -95,7 +91,14 @@
 				</tr>
 			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h3 style="text-align: left">Status</h3>
+			<table style="width: 100%;">
+				<tr><td>
+					<div style="display: flex; justify-content: space-between; width: 100%;">
+						<h4 style="text-align: left">Status</h4>
+						<div style="text-align: right" id="externalText">Loading...</div>
+					</div>
+				</td></tr>
+			</table>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<form action="mount-imgs.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
@@ -150,6 +153,20 @@
 					return false;
 				}
 			};
+		</script>
+		<script>
+			fetch('/pistats.html')
+			  .then(response => {
+				if (!response.ok) throw new Error("Network error");
+				return response.text();
+			  })
+			  .then(html => {
+				document.getElementById('externalText').innerHTML = html;
+			  })
+			  .catch(err => {
+				document.getElementById('externalText').textContent = "Failed to load content.";
+				console.error(err);
+			  });
 		</script>
 	</div>
 </body>
