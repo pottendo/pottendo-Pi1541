@@ -86,7 +86,7 @@
 									value="Change Config" /></a>
 							<a href="update.html"><input type="submit" class="btn btn-success"
 									value="Update Pi1541" /></a>
-							<a href="reset.html"><input type="submit" class="btn btn-success"
+							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)"
 									value="Reset Pi1541" /></a>
 						</div>
 					</td>
@@ -218,6 +218,17 @@
 						ext = "";
 					let nurl = "index.html?[DIR]&" + "%s" + "&[NEWLST]&" + encodeURIComponent(dname.trim() + ext);
 					window.location.href = nurl;
+				}
+			};
+		</script>
+		<script>
+			function delConfirm(envent) {
+			  	if (confirm("Are you sure?"))
+				  	return true;
+				else 
+				{
+					event.preventDefault();
+				  	return false;
 				}
 			};
 		</script>

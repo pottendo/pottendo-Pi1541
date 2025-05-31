@@ -88,7 +88,7 @@
 									value="Change Config" /></a>
 							<a href="update.html"><input type="submit" class="btn btn-success"
 									value="Update Pi1541" /></a>
-							<a href="reset.html"><input type="submit" class="btn btn-success"
+							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)"
 									value="Reset Pi1541" /></a>
 						</div>
 					</td>
@@ -142,15 +142,15 @@
 			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
 			crossorigin="anonymous"></script>
 		<script>
-			$(document).ready(function () {
-				document.querySelector('.custom-file-input').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadFile").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-			});
+			function delConfirm(envent) {
+				if (confirm("Are you sure?"))
+					return true;
+				else {
+					event.preventDefault();
+					return false;
+				}
+			};
 		</script>
-
 	</div>
 </body>
 

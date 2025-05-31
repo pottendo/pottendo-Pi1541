@@ -82,7 +82,7 @@
 									value="Change Config" /></a>
 							<a href="update.html"><input type="submit" class="btn btn-success"
 									value="Update Pi1541" /></a>
-							<a href="reset.html"><input type="submit" class="btn btn-success"
+							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)"
 									value="Reset Pi1541" /></a>
 						</div>
 					</td>
@@ -130,22 +130,16 @@
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
 			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
 			crossorigin="anonymous"></script>
-
 		<script>
-			$(document).ready(function () {
-				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadKernel").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-				document.querySelector('.custom-file-input2').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadOptions").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-			});
+			function delConfirm(envent) {
+				if (confirm("Are you sure?"))
+					return true;
+				else {
+					event.preventDefault();
+					return false;
+				}
+			};
 		</script>
-
 	</div>
 </body>
 

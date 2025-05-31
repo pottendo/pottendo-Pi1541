@@ -5,8 +5,8 @@ This is an optional port of Pi1541 (V1.24) to the current Circle bare metal libr
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A simple web-server features
 - Manage Upload and SDCard
-  - upload of images to the SDCard
-  - delete of diskimage
+  - upload of images and directory trees to the SDCard
+  - delete of files & directories
   - create directory
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
   - create LST files from current directory
@@ -14,14 +14,14 @@ A simple web-server features
 - Mount Images
   - mount images, LST files
   - image content preview, including D81 images
+  - image preview
 - edit of _options.txt_ and _config.txt_
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - reboot of Pi1541
 
 Some further ideas:
-- Enhance webserver to support image administration (copy, move, rename, delete directories, upload directories, etc.)
+- Enhance webserver to support image administration (copy, move, rename, etc.)
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
-- _.lst_ file handling
 - ...
 
 Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
@@ -69,7 +69,7 @@ curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&my-diskimage.d64 >/dev/null
 # to mount an image which resides in SD:/1541/demos/deus
 curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64 >/dev/null
 ```
-_Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect
+_Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect. Scripting in general (e.g. with other commands [DEL], etc.), may work but you can mess up your SDCard easily.
 
 ![](docs/upload-manage.png)
 <br />
