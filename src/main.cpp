@@ -1529,8 +1529,8 @@ extern int mount_new;
 						if (mount_new == 2)/* .LST */
 						{
 							fileBrowser->FolderChanged();
-							fileBrowser->SelectLST(mount_img);
-							fileBrowser->SetSelectionsMade(true);
+							if (fileBrowser->SelectLST(mount_img))
+								fileBrowser->SetSelectionsMade(true);
 						}
 						mount_new = 0;
 					}

@@ -1527,15 +1527,12 @@ void FileBrowser::ShowDeviceAndROM( const char* ROMName )
 	u32 y;
 
 #if not defined(EXPERIMENTALZERO)
-	y = screenMain->ScaleY(STATUS_BAR_POSITION_Y) - 20;
-
-	snprintf(buffer, 256, "Device %2d %*s"
-		, *deviceID
-		, roms->GetLongestRomNameLen()
-		, ROMName
-		);
-
-	screenMain->PrintText(false, x, y, buffer, textColour, bgColour);
+	if (screenMain)
+	{
+		y = screenMain->ScaleY(STATUS_BAR_POSITION_Y) - 20;
+		snprintf(buffer, 256, "Device %2d %*s", *deviceID, roms->GetLongestRomNameLen(), ROMName);
+		screenMain->PrintText(false, x, y, buffer, textColour, bgColour);
+	}
 #endif
 	if (screenLCD)
 	{
