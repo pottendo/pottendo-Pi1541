@@ -35,9 +35,14 @@ public:
 	{
 		return ROMImages[currentROMIndex][address & 0x3fff];
 	}
+	inline u8 ReadMPS802(u16 address)
+	{
+		return ROMImageMPS802[address & 0x1fff];
+	}	
 	void ResetCurrentROMIndex();
 
 	static const int ROM_SIZE = 16384;
+	static const int ROM_MPS802_SIZE = 8192;
 #if	defined(PI1581SUPPORT)
 	inline u8 Read1581(u16 address)
 	{
@@ -53,9 +58,11 @@ public:
 #endif
 
 	unsigned char ROMImages[MAX_ROMS][ROM_SIZE];
+	unsigned char ROMImageMPS802[ROM_MPS802_SIZE];
 	char ROMNames[MAX_ROMS][256];
 	bool ROMValid[MAX_ROMS];
-
+	unsigned ROMHash[MAX_ROMS];
+	
 	unsigned currentROMIndex;
 	unsigned lastManualSelectedROMIndex;
 
@@ -65,6 +72,11 @@ public:
 	const char* GetSelectedROMName() const
 	{
 		return ROMNames[currentROMIndex];
+	}
+
+	unsigned GetHash() const
+	{
+		return ROMHash[currentROMIndex]; 
 	}
 protected:
 	unsigned longestRomNameLen;

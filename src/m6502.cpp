@@ -233,13 +233,13 @@ void M6502::brk_5_4_T4(void)
 	addressModeCycleFn = &M6502::brk_5_4_T5;
 }
 
-// It is possible for a BRK/IRQ to mask a NMI for short burts of NMI assertions.
+// It is possible for a BRK/IRQ to mask a NMI for short bursts of NMI assertions.
 // If the NMI asserts and un-asserts between IRQ_T4 and IRQ_T6 this will occur.
 // This occurs on real hardware and it will be emulated correctly.
-// The processor has already commited to fetching the interrupt vectors and will now complete this process.
+// The processor has already committed to fetching the interrupt vectors and will now complete this process.
 // If the NMI now un-asserts between now and the end of IRQ_T6 it will be missed/masked.
 // The ability for a BRK/IRQ to turn into a NMI shows how the designers of the 6502 anticipated this masking and kept it to a minimum of only four 1/2 cycles!
-// But then again, perhpas not, as a NMI that asserts after IRQ_T4 and remains asserted will not be processed until the first instruction of the IRQ routine has completed (see InstructionFetchIRQ).
+// But then again, perhaps not, as a NMI that asserts after IRQ_T4 and remains asserted will not be processed until the first instruction of the IRQ routine has completed (see InstructionFetchIRQ).
 void M6502::IRQ_T4(void)
 {
 #ifdef  SUPPORT_NMI

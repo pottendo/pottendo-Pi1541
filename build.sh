@@ -187,7 +187,7 @@ for a in ${archs} ; do
     sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
     echo "building circle-stdlib, may take a while..."
     if make -j12 2>&1 >>make-${a}.log; then
-	    echo "success fully built circle: ${a} ${opts}"
+	    echo "successfully built circle: ${a} ${opts}"
     else
 	    echo "fail for ${a}"
 	    exit 1
@@ -196,7 +196,7 @@ for a in ${archs} ; do
     make clean 2>&1 > /dev/null
     echo "building pottendo-Pi1541..."
     if make -j12 >>make-${a}.log; then
-	    echo "success fully built pottendo-Pi1541: ${a} ${opts}"
+	    echo "successfully built pottendo-Pi1541: ${a} ${opts}"
     else
 	    echo "fail for ${a}"
 	exit 1

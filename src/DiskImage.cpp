@@ -304,7 +304,7 @@ bool DiskImage::OpenD64(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 		unsigned char* dest = tracks[halfTrackIndex];
 #endif
 
-	trackLengths[halfTrackIndex] = trackSize[GetSpeedZoneIndexD64(track)];
+		trackLengths[halfTrackIndex] = trackSize[GetSpeedZoneIndexD64(track)];
 
 		if ((halfTrackIndex & 1) == 0)
 		{
@@ -1300,7 +1300,10 @@ bool DiskImage::OpenT64(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 
 	attachedImageSize = size;
 
-	if ((memcmp(diskImage, "C64 tape image file", 20) == 0) || (memcmp(diskImage, "C64s tape image file", 21) == 0))
+	if ((memcmp(diskImage, "C64 tape image file", 20) == 0) 
+		|| (memcmp(diskImage, "C64S tape file", 14) == 0)
+		|| (memcmp(diskImage, "C64S tape image file", 21) == 0)
+		)
 	{
 		u16 version = diskImage[0x20] | (diskImage[0x21] << 8);
 		u16 entries = diskImage[0x22] | (diskImage[0x23] << 8);
@@ -1312,6 +1315,11 @@ bool DiskImage::OpenT64(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 		}
 
 		unsigned char* newDiskImage = (unsigned char*)malloc(READBUFFER_SIZE);
+
+		DEBUG_LOG("T64 %d %d %d %s\r\n", version, entries, entriesUsed, name);
+
+		if (entriesUsed == 0)
+			entriesUsed = 1;
 
 		if (newDiskImage)
 		{
@@ -1328,7 +1336,9 @@ bool DiskImage::OpenT64(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 					int offset = 0x40 + entryIndex * 32;
 					u8 type = diskImage[offset];
 					u8 fileType = diskImage[offset + 1];
-					if (fileType == DIRECTRY_ENTRY_FILE_TYPE_PRG)
+					DEBUG_LOG("type=%d\r\n", fileType);
+
+					//if (fileType == DIRECTRY_ENTRY_FILE_TYPE_PRG)
 					{
 						u16 startAddress = diskImage[offset + 2] | (diskImage[offset + 3] << 8);
 						u16 endAddress = diskImage[offset + 4] | (diskImage[offset + 5] << 8);
@@ -1338,6 +1348,9 @@ bool DiskImage::OpenT64(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 						strncpy(nameEntry, (const char*)(diskImage + offset + 0x10), 16);
 
 						unsigned char* data = (unsigned char*)malloc(length + 2);
+
+						DEBUG_LOG("sa=%04x ea=%04x l=%d\r\n", startAddress, endAddress, length);
+						DEBUG_LOG("n=%s\r\n", nameEntry);
 
 						if (data)
 						{

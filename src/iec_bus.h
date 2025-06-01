@@ -381,6 +381,7 @@ public:
 #if defined (__CIRCLE__)
 			_mask = ((1 << PIGPIO_OUT_LED) | (1 << PIGPIO_OUT_SOUND));			
 #if defined (CIRCLE_GPIO)
+			DEBUG_LOG("%s: using circle GPIO", __FUNCTION__);
 			IEC_Bus::IO_led.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_led.SetMode(GPIOModeOutput, false);
 			IEC_Bus::IO_sound.AssignPin(PIGPIO_OUT_SOUND); IEC_Bus::IO_sound.SetMode(GPIOModeOutput, false);
 			IEC_Bus::IO_CLK.AssignPin(PIGPIO_CLOCK); IEC_Bus::IO_CLK.SetMode(GPIOModeInput, false);
@@ -388,6 +389,8 @@ public:
 			IEC_Bus::IO_DAT.AssignPin(PIGPIO_DATA); IEC_Bus::IO_DAT.SetMode(GPIOModeInput, false);
 			IEC_Bus::IO_SRQ.AssignPin(PIGPIO_SRQ); IEC_Bus::IO_SRQ.SetMode(GPIOModeInput, false);
 			IEC_Bus::IO_RST.AssignPin(PIGPIO_RESET); IEC_Bus::IO_RST.SetMode(GPIOModeInput, false);
+#else
+			DEBUG_LOG("%s: using register GPIO", __FUNCTION__);
 #endif			
 			for (int i = 0; i < 5; i++) {
 				IO_buttons[i].AssignPin(ButtonPins[i]);
@@ -442,8 +445,6 @@ public:
 #if !defined(__PICO2__) && !defined(ESP32)
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
-			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_SOUND, FS_OUTPUT);
-			//RPI_SetGpioPinFunction((rpi_gpio_pin_t)PIGPIO_OUT_LED, FS_OUTPUT);
 #endif			
 		}
 		else
@@ -564,39 +565,7 @@ public:
 	}
 #endif
 
-	static void UpdateButton(int index, unsigned gplev0)
-	{
-		bool inputcurrent = (gplev0 & ButtonPinFlags[index]) == 0;
-
-		InputButtonPrev[index] = InputButton[index];
-		inputRepeatPrev[index] = inputRepeat[index];
-
-		if (inputcurrent)
-		{
-			//Kernel.log("%s: button %d fired", __FUNCTION__, index);
-			validInputCount[index]++;
-			if (validInputCount[index] == INPUT_BUTTON_DEBOUNCE_THRESHOLD)
-			{
-				InputButton[index] = true;
-				inputRepeatThreshold[index] = INPUT_BUTTON_DEBOUNCE_THRESHOLD + INPUT_BUTTON_REPEAT_THRESHOLD;
-				inputRepeat[index]++;
-			}
-
-			if (validInputCount[index] == inputRepeatThreshold[index])
-			{
-				inputRepeat[index]++;
-				inputRepeatThreshold[index] += INPUT_BUTTON_REPEAT_THRESHOLD / inputRepeat[index];
-			}
-		}
-		else
-		{
-			InputButton[index] = false;
-			validInputCount[index] = 0;
-			inputRepeatThreshold[index] = INPUT_BUTTON_REPEAT_THRESHOLD;
-			inputRepeat[index] = 0;
-			inputRepeatPrev[index] = 0;
-		}
-	}
+	static void UpdateButton(int index);
 
 	
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
@@ -640,7 +609,7 @@ public:
 
 
 	static void ReadBrowseMode(void);
-	static void ReadGPIOUserInput(void);
+	static void ReadGPIOUserInput(bool minimalCheck = false);
 	static void ReadEmulationMode1541(void);
 	static void ReadEmulationMode1581(void);
 
@@ -676,7 +645,169 @@ public:
 	// Out going
 	static void PortB_OnPortOut(void* pUserData, unsigned char status);
 
-	static void RefreshOuts1541(void);
+	static inline void RefreshOuts1541(void)
+	{
+	#if defined(__PICO2__)		
+		if (!splitIECLines)
+		{
+			if (AtnaDataSetToOut || DataSetToOut)
+				set |= PIGPIO_MASK_IN_DATA;
+			if (ClockSetToOut)
+				set |= PIGPIO_MASK_IN_CLOCK;
+			gpio_set_dir_masked(PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK, set);
+		}
+		else
+		{
+			not_implemented("refreshOuts1541 - splitIECLines");
+			return;
+		}
+		set = 0;
+		if (OutputLED)
+			set |= PIGPIO_MASK_OUT_LED;
+		if (OutputSound)
+			set |= PIGPIO_MASK_OUT_SOUND;
+		gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
+	#elif defined(ESP32)
+		//DEBUG_LOG("%s: ATN: %d, Data: %d, Clock: %d\n", __FUNCTION__, AtnaDataSetToOut, DataSetToOut, ClockSetToOut);
+		if (!splitIECLines)
+		{
+			if (AtnaDataSetToOut || DataSetToOut) {
+				gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_OUTPUT);
+			}
+			else {
+				gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_INPUT);
+			}
+			
+			if (ClockSetToOut) {
+				gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_OUTPUT);
+			}
+			else {
+				gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_INPUT);
+			}
+		}	
+		else
+		{
+			not_implemented("refreshOuts1541 - splitIECLines");
+			return;
+		}
+		if (OutputLED)
+			gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 1);
+		else
+			gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 0);
+		if (OutputSound)
+			gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 1);
+		else
+			gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 0);
+	#else
+		if (!splitIECLines)
+		{
+			// time_fn_arm();
+#if !defined(CIRCLE_GPIO)
+			static const unsigned outlist[4] = {
+				0,
+				FS_OUTPUT << ((PIGPIO_DATA - 10) * 3),
+				FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3),
+				FS_OUTPUT << ((PIGPIO_DATA - 10) * 3) |
+					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
+			register unsigned sel =
+				AtnaDataSetToOut | DataSetToOut |
+				(ClockSetToOut << 1);
+
+			write32(ARM_GPIO_GPFSEL1, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
+#else
+			u32 im = 0, om = 0;
+			if (AtnaDataSetToOut || DataSetToOut)
+				om |= (1 << PIGPIO_DATA);
+			else
+				im |= (1 << PIGPIO_DATA);
+			if (ClockSetToOut)
+				om |= (1 << PIGPIO_CLOCK);
+			else
+				im |= (1 << PIGPIO_CLOCK);
+#if RASPPI == 5		
+			if (im)
+				write32 (RIO0_OE (0, RIO_CLR_OFFSET), im);
+			if (om)
+				write32 (RIO0_OE (0, RIO_SET_OFFSET), om);
+#else			
+			CGPIOPin::SetModeAll(im, om);
+#endif /* RASPPI */
+#endif /* CIRCLE_GPIO */
+			//time_fn_eval(1, __FUNCTION__);
+		}
+		else
+		{
+			static const unsigned setlist[4] = {
+				0,
+				1 << PIGPIO_OUT_DATA,
+				1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_DATA | 1 << PIGPIO_OUT_CLOCK};
+			static const unsigned clearlist[4] = {
+				1 << PIGPIO_OUT_DATA | 1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_DATA,
+				0};
+			register unsigned sel =
+				AtnaDataSetToOut | DataSetToOut |
+				(ClockSetToOut << 1);
+
+#if !defined(CIRCLE_GPIO)
+			if (invertIECOutputs)
+			{
+				/*7406 etal - inverters*/
+				write32(ARM_GPIO_GPCLR0, clearlist[sel]);
+				write32(ARM_GPIO_GPSET0, setlist[sel]);
+			}
+			else
+			{
+				/*7407 etal - buffers*/
+				write32(ARM_GPIO_GPCLR0, setlist[sel]);
+				write32(ARM_GPIO_GPSET0, clearlist[sel]);
+			}
+#else
+#if RASPPI == 5
+			write32(RIO0_OUT(0, RIO_CLR_OFFSET), clearlist[sel]);
+			write32(RIO0_OUT(0, RIO_SET_OFFSET), setlist[sel]);
+#else
+			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK));
+			CGPIOPin::WriteAll(setlist[sel], _mask);
+#endif
+#endif /* CIRCLE_GPIO */
+#endif /* __PICO2__ */
+		}
+	}
+
+#if defined(CIRCLE_GPIO)
+	// Added these two functions so these don't need to be done in the
+	// RefreshOuts*() functions.
+	static inline void RefreshOutLED(void)
+	{
+		if (OutputLED) 
+			IEC_Bus::IO_led.Write(HIGH);
+		else
+			IEC_Bus::IO_led.Write(LOW);
+
+	}
+	static inline void RefreshOutSound(void)
+	{
+		if(OutputSound) 
+			IEC_Bus::IO_sound.Write(HIGH);
+		else
+			IEC_Bus::IO_sound.Write(LOW);
+	}
+#else
+	static inline void RefreshOutLED(void)
+	{
+		if(OutputLED) write32(ARM_GPIO_GPSET0, 1<<PIGPIO_OUT_LED);
+		else          write32(ARM_GPIO_GPCLR0, 1<<PIGPIO_OUT_LED);
+	}
+	static inline void RefreshOutSound(void)
+	{
+		if(OutputSound) write32(ARM_GPIO_GPSET0, 1<<PIGPIO_OUT_SOUND);
+		else            write32(ARM_GPIO_GPCLR0, 1<<PIGPIO_OUT_SOUND);
+	}
+#endif 	/* CIRCLE_GPIO */
+
 #if defined(PI1581SUPPORT)
 	static inline void RefreshOuts1581(void)
 	{
@@ -716,9 +847,6 @@ public:
 		}
 		else
 		{
-#if defined (CIRCLE_GPIO)		
-			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
-#endif	
 			if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
 			else clear |= 1 << PIGPIO_OUT_DATA;
 
@@ -734,13 +862,6 @@ public:
 				clear = tmp;
 			}
 		}
-
-		if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
-		else clear |= 1 << PIGPIO_OUT_LED;
-
-		if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
-		else clear |= 1 << PIGPIO_OUT_SOUND;
-
 #if !defined (CIRCLE_GPIO)
 		write32(ARM_GPIO_GPSET0, set);
 		write32(ARM_GPIO_GPCLR0, clear);
@@ -749,11 +870,13 @@ public:
 		write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
 		write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
 #else
+		_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
 		CGPIOPin::WriteAll(set, _mask);
 #endif
 #endif
 	}			
 #endif /* PI1581SUPPORT */	
+
 	static void WaitMicroSeconds(u32 amount)
 	{
 		u32 count;

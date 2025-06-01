@@ -524,6 +524,7 @@ public:
 	u8 GetX() const { return x;	}
 	u8 GetY() const { return y; }
 	u8 GetStatus() const { return status; }
+	u8 GetSP() const { return sp; }
 	// Emulate the 6502's SYNC signal and pin
 	bool SYNC(void) const { return addressModeCycleFn == &M6502::InstructionFetch; }
 
