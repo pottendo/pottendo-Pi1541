@@ -62,6 +62,7 @@ $(error RPi1 not supported for Circle builds)
 else ifeq ($(strip $(RASPPI)),3)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8.img
+#XFLAGS += -DHEAP_DEBUG
 else
 TARGET_CIRCLE ?= kernel8-32.img
 COMMON_OBJS += SpinLock.o
@@ -71,6 +72,7 @@ else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8-rpi4.img
 #XFLAGS += -DCIRCLE_GPIO=1
+#XFLAGS += -DHEAP_DEBUG
 else
 TARGET_CIRCLE ?= kernel7l.img
 #XFLAGS += -DCIRCLE_GPIO=1
