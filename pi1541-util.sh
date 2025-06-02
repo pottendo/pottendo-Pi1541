@@ -24,7 +24,7 @@
 # Generate your index file using:
 # find /mnt/tmp/1541/ -type f |egrep -v '(.sid|.txt)$' | sed 's_/mnt/tmp/1541/__' > 1541.txt
 index="1541.txt"
-pi="http://pi1541.lan"
+pi="${PI1541}"
 search=$1
 num=$2
 
@@ -50,11 +50,16 @@ while [ ! x"${opts}" = x"break" ] ; do
       src="$1"
       break
       ;;
+    -d) 
+      shift
+      dst="$1"
+      shift
+      ;;
   	-h)
 	    echo "Usage: mount from index: $0 [-i <index-file>] [-pi http://my.pi.local.address ] search [num]"
       echo "Defaults: -i 1541.txt -pi http://pi1541.lan"
-      echo "Usage: upload files/directories: $0 [-pi http://my.pi.local.address ] [-u] file [files...]"
-      echo "uploads (-u) are pushed to /1541"
+      echo "Usage: upload files/directories: $0 [-pi http://my.pi1541.local.address ] [-d dest-dir] [-u] file [files...]"
+      echo "uploads (-u) are pushed to /1541 or below if defined (-d), (-u) must be the last option before the files on the cmdline"
 	    shift
 	    exit 0
 	    ;;
@@ -64,17 +69,45 @@ while [ ! x"${opts}" = x"break" ] ; do
     esac
 done
 
+if [ -z ${pi} ] ; then
+  pi="http://pi1541.lan"
+fi
+
+echo "Using ${pi}..."
+export dst pi
+
+upload_file() {
+  file=$1
+  if [ -d "${file}" ] ; then
+    echo creating directory ${dst}/${file}
+    _d=$(printf %s "${dst}" | jq -sRr @uri)
+    _f=$(printf %s "${file}" | jq -sRr @uri)
+    curl -s ${pi}/index.html?%5BDIR%5D\&/${_d}\&%5BMKDIR%5D\&${_f}\& > /dev/null
+  else
+    dir=`dirname "${file}"`
+    fn=`basename "${file}"`
+    _d=$(printf %s "${dst}/${dir}" | jq -sRr @uri)
+    _d="?%5BDIR%5D\&/${_d}"
+    echo uploading ${fn} to ${dst}/${dir}
+    curl -s -F "diskimage=@${file}" ${pi}/index.html${_d} >/dev/null
+  fi
+}
+
+export -f upload_file
+
 if [ ! -z "$src" ] ; then
-  echo "$@"
   for f in "$@" ; do 
-    echo $f
     if [ -d "$f" ] ; then
-      echo "uploading directory $f..."
+      echo "uploading directory ${f}..."
+      find ${f} -name "*" -exec /bin/bash -c 'upload_file "$0"' {} ${dst} \;
     else
-      echo "uploading file $f"
-      uimage=$(printf %s "$f" | jq -sRr @uri)
-      echo $uimage
-      echo curl POST -F \"diskimage=@${f}\" ${pi}
+      echo "uploading file $f to ${dst}"
+      if [ ! -z ${dst} ] ; then
+        targetdir=$(printf %s "${dst}" | jq -sRr @uri)
+        targetdir="?%5BDIR%5D\&/${targetdir}"
+        echo $targetdir
+      fi
+      curl -s -F "diskimage=@${f}" ${pi}/index.html${targetdir} >/dev/null
     fi
   done
   exit 0

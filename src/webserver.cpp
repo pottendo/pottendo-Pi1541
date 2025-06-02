@@ -712,8 +712,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	string mem;
 	mem_stat(__FUNCTION__, mem, true);
 
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
-	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -723,6 +723,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
+		const char *pPartHeaderCB;
+		const u8 *pPartDataCB;
+		unsigned nPartLengthCB;
 		string curr_dir, files;
 		string curr_path = urlDecode(pParams);
 		string page = "index.html";
@@ -732,20 +735,23 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		getline(ss, fops, '&');
 		getline(ss, ndir, '&');
+		type = urlDecode(type);
 		curr_path = urlDecode(curr_path);
+		fops = urlDecode(fops);
 		bool noFormParts = true;
-		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		//DEBUG_LOG("type = %s", type.c_str());
+		//DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
+		//DEBUG_LOG("type = '%s'", type.c_str());
+		//DEBUG_LOG("fops = '%s'", fops.c_str());
 		if (fops == "[MKDIR]")
 		{	
 			FRESULT ret;
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
-			//DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
 				snprintf(msg_str, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
+			DEBUG_LOG("%s: mkdir '%s' returned %d", __FUNCTION__, fullndir.c_str(), ret);
 			msg = msg_str;
 		}
 		if (fops == "[DEL]")
@@ -799,18 +805,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg_str, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
 			msg = msg_str;
 		}
-		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
+		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 		{
+			bool xpath_set = false;
 			noFormParts = false;
-			extract_field(" name=\"", pPartHeader, field);
-			extract_field("filename=\"", pPartHeader, filename, extension);
-			const char *pPartHeaderCB;
-			const u8 *pPartDataCB;
-			unsigned nPartLengthCB;
+			extract_field(" name=\"", pPartHeaderCB, field);
+			extract_field("filename=\"", pPartHeaderCB, filename, extension);
 			bool do_remount = false;
-			//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
+			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLength);
 
-			if ((nPartLength > 0) && (strcmp(field, "xpath") == 0) && (nPartLength < 256))
+			if ((nPartLengthCB > 0) && (strcmp(field, "xpath") == 0) && (nPartLengthCB < 256))
 			{
 				char tmp[256];
 				memcpy(tmp, pPartData, nPartLength);
@@ -818,10 +822,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				//DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
 				curr_path = string(tmp);
 				//direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
+				xpath_set=true;
 			}
 			msg = "Uploading...<br />";
-			while (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
+			while (!xpath_set || GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
 			{
+				xpath_set = true; // from now, get new part
 				extract_field(" name=\"", pPartHeaderCB, field);
 				extract_field("filename=\"", pPartHeaderCB, filename, extension);
 				//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
@@ -872,8 +878,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 						}
 					}
 					else
-						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn);
-					//DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
+						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn.c_str());
+					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
 					write_image(targetfn, extension, pPartDataCB, nPartLengthCB, msg);
 	
 					if (do_remount)
