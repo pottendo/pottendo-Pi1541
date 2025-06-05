@@ -624,6 +624,29 @@ static FRESULT f_unlink_full(string path, string &msg)
 	return res;
 }
 
+static FRESULT gen_index(string &index, string path)
+{
+	DIR dir;
+	FILINFO fi;
+	FRESULT res;
+	string npath;
+	res = f_opendir(&dir, (def_prefix + "/" + path).c_str());
+	if (res != FR_OK)
+		return res;
+	while (((res = f_readdir(&dir, &fi)) == FR_OK) && (fi.fname[0] != 0))
+	{	
+		npath = path + '/' + fi.fname;
+		if (DiskImage::IsDiskImageExtention(fi.fname) ||
+			DiskImage::IsLSTExtention(fi.fname))
+		{
+			index += ("\n" + npath);
+		}
+		if (fi.fattrib & AM_DIR)
+			res = gen_index(index, npath);
+	}
+	return f_closedir(&dir);
+}
+
 static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
 static int read_dir(string name, list<string> &dir)
@@ -913,6 +936,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/getindex.html") == 0)
+	{
+		string index;
+		gen_index(index, string(""));
+		pContent = (const u8 *)index.c_str();
+		nLength = index.length();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
 	else if (strcmp(pPath, "/update.html") == 0)

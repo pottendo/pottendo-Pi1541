@@ -23,15 +23,15 @@
 
 # Generate your index file using:
 # find /mnt/tmp/1541/ -type f |egrep -v '(.sid|.txt)$' | sed 's_/mnt/tmp/1541/__' > 1541.txt
+# or get it from pi1541 using option -g
 index="1541.txt"
 pi="${PI1541}"
-search=$1
-num=$2
 
 if ! jq --help > /dev/null ; then 
   echo "need \"jq\" - giving up."
   exit 1
 fi
+#set -x 
 
 while [ ! x"${opts}" = x"break" ] ; do
     case "$1" in 
@@ -46,8 +46,8 @@ while [ ! x"${opts}" = x"break" ] ; do
 	    shift
 	    ;;
     -u)
+      upload=1
       shift
-      src="$1"
       break
       ;;
     -d) 
@@ -55,16 +55,27 @@ while [ ! x"${opts}" = x"break" ] ; do
       dst="$1"
       shift
       ;;
+    -g)
+      getindex=1
+      shift
+      ;;
+
   	-h)
 	    echo "Usage: mount from index: $0 [-i <index-file>] [-pi http://my.pi.local.address ] search [num]"
       echo "Defaults: -i 1541.txt -pi http://pi1541.lan"
+      echo "Usage: generate image from running Pi1541: $0 [-g] [-i]"
+      echo "writes a file ${index} in the current host directory, using filename specified by (-i)"
       echo "Usage: upload files/directories: $0 [-pi http://my.pi1541.local.address ] [-d dest-dir] [-u] file [files...]"
-      echo "uploads (-u) are pushed to /1541 or below if defined (-d), (-u) must be the last option before the files on the cmdline"
+      echo "uploads (-u) are pushed to /1541 or below if specified with (-d)"
+      echo "Use export PI1541=http://my.pi1541.local.address to avoid option [pi]"
 	    shift
 	    exit 0
 	    ;;
     *)
       opts="break"
+      src=$@
+      search=$1
+      num=$2
       ;;
     esac
 done
@@ -95,7 +106,8 @@ upload_file() {
 
 export -f upload_file
 
-if [ ! -z "$src" ] ; then
+if [[ ! (-z "$src") && (${upload} == 1) ]] ; then
+#if [ ! -z "$src" ] ; then
   for f in "$@" ; do 
     if [ -d "$f" ] ; then
       echo "uploading directory ${f}..."
@@ -113,6 +125,12 @@ if [ ! -z "$src" ] ; then
   exit 0
 fi
 
+# generate index
+if [ ${getindex} == 1 ] ; then
+  curl -s ${pi}/getindex.html >${index}
+fi
+
+echo searching for ${search}
 echo
 echo Matching images:
 echo
