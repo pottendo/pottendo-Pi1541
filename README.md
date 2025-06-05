@@ -261,7 +261,7 @@ over_voltage=4
 sdram_freq=500
 sdram_over_voltage=1
 boot_delay=1
-gpu_mem=16
+gpu_mem=0
 hdmi_group=2
 hdmi_mode=16
 # select 32- or 64-bit mode
@@ -280,7 +280,7 @@ sdram_over_voltage=1
 temp_soft_limit=70
 temp_limit=80
 boot_delay=1
-gpu_mem=16
+gpu_mem=0
 hdmi_group=2
 hdmi_mode=16
 # select 32- or 64-bit mode
