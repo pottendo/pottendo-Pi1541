@@ -11,6 +11,8 @@ A simple web-server features
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
   - create LST files from current directory
   - show icons (.png) if exists for images
+  - script to upload files or directories via commandline
+  - script to mount from an index via commandline, index can be generated
 - Mount Images
   - mount images, LST files
   - image content preview, including D81 images
@@ -56,18 +58,46 @@ The IP address is briefly shown on the LCD, once received. One can check the IP 
 
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 
-One can also use `curl` to script the upload - this may be usefull to be included in your build-process or bulk upload into `/1541` or other directories. The commandlines to be used looks like this:
+One can also use `curl` to script the upload - this may be usefull to be included in your build-process or bulk upload into `/1541` or other directories. 
+For your convenience a shell-script `pi1541-util.sh` is provided to hide the complex commandline:
 ```
-# replace a.b.c.d with you Pi1541 IP address
-# this uploads to SD:/1541 on your SDCard
-curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html >/dev/null
-# this uploads to /1541/demos/deus
-curl POST -F "diskimage=@/path/to/my-diskimage.d64" http://a.b.c.d/index.html?%5BDIR%5D\&demos/deus >/dev/null
+$ ./pi1541-util.sh -h
+Usage: mount from index: ./pi1541-util.sh [-i <index-file>] [-pi http://my.pi.local.address ] search [num]
+Defaults: -i 1541.txt -pi http://pi1541.lan
+Usage: generate image from running Pi1541: ./pi1541-util.sh -g [-i <index-file> ]
+writes a file 1541.txt in the current host directory, using filename specified by (-i)
+Usage: upload files/directories: ./pi1541-util.sh [-pi http://my.pi1541.local.address ] [-d dest-dir] -u dir|file [dir|file ...]
+uploads (-u) are pushed to /1541 or below if specified with (-d)
+Use export PI1541=http://my.pi1541.local.address to avoid option [pi]
 
-# to mount an image which resides in SD:/1541
-curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&my-diskimage.d64 >/dev/null
-# to mount an image which resides in SD:/1541/demos/deus
-curl http://a.b.c.d/manage-imgs.html?%5BMOUNT%5D\&demos/deus/my-diskimage.d64 >/dev/null
+e.g. upload
+$ ./pi1541-util.sh -d test-dir4 -u wonderland_xiv Xetris\ -\ Destiny.d64 
+Using http://192.168.1.31...
+uploading directory wonderland_xiv...
+creating directory test-dir4/wonderland_xiv
+uploading wonderland_xiv_s1.d64 to test-dir4/wonderland_xiv
+uploading wonderland_xiv_s1.png to test-dir4/wonderland_xiv
+uploading wonderland_xiv_s2.d64 to test-dir4/wonderland_xiv
+uploading wonderland_xiv_s4.d64 to test-dir4/wonderland_xiv
+uploading wonderland_xiv_s3.d64 to test-dir4/wonderland_xiv
+uploading file Xetris - Destiny.d64 to test-dir4
+
+e.g. mount
+$ ./pi1541-util.sh -g armalyte
+Using http://192.168.1.31...
+generating index 1541.txt
+searching for armalyte
+
+Matching images:
+
+1:/armalyte.d64
+2:/demos/deus/armalyte.d64
+3:/Games/armalyte.d64
+
+Disk: 2
+
+mounting /demos/deus/armalyte.d64
+curl -s http://192.168.1.31/mount-imgs.html?%5BMOUNT%5D&SD%3A%2F1541%2F%2Fdemos%2Fdeus%2Farmalyte.d64
 ```
 _Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect. Scripting in general (e.g. with other commands [DEL], etc.), may work but you can mess up your SDCard easily.
 

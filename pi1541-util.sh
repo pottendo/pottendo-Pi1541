@@ -63,9 +63,9 @@ while [ ! x"${opts}" = x"break" ] ; do
   	-h)
 	    echo "Usage: mount from index: $0 [-i <index-file>] [-pi http://my.pi.local.address ] search [num]"
       echo "Defaults: -i 1541.txt -pi http://pi1541.lan"
-      echo "Usage: generate image from running Pi1541: $0 [-g] [-i]"
+      echo "Usage: generate image from running Pi1541: $0 -g [-i <index-file> ]"
       echo "writes a file ${index} in the current host directory, using filename specified by (-i)"
-      echo "Usage: upload files/directories: $0 [-pi http://my.pi1541.local.address ] [-d dest-dir] [-u] file [files...]"
+      echo "Usage: upload files/directories: $0 [-pi http://my.pi1541.local.address ] [-d dest-dir] -u dir|file [dir|file ...]"
       echo "uploads (-u) are pushed to /1541 or below if specified with (-d)"
       echo "Use export PI1541=http://my.pi1541.local.address to avoid option [pi]"
 	    shift
@@ -73,7 +73,6 @@ while [ ! x"${opts}" = x"break" ] ; do
 	    ;;
     *)
       opts="break"
-      src=$@
       search=$1
       num=$2
       ;;
@@ -106,8 +105,7 @@ upload_file() {
 
 export -f upload_file
 
-if [[ ! (-z "$src") && (${upload} == 1) ]] ; then
-#if [ ! -z "$src" ] ; then
+if [[ ! (-z "$@") && (${upload} == 1) ]] ; then
   for f in "$@" ; do 
     if [ -d "$f" ] ; then
       echo "uploading directory ${f}..."
@@ -117,7 +115,6 @@ if [[ ! (-z "$src") && (${upload} == 1) ]] ; then
       if [ ! -z ${dst} ] ; then
         targetdir=$(printf %s "${dst}" | jq -sRr @uri)
         targetdir="?%5BDIR%5D\&/${targetdir}"
-        echo $targetdir
       fi
       curl -s -F "diskimage=@${f}" ${pi}/index.html${targetdir} >/dev/null
     fi
@@ -127,6 +124,7 @@ fi
 
 # generate index
 if [ ${getindex} == 1 ] ; then
+  echo "generating index ${index}"
   curl -s ${pi}/getindex.html >${index}
 fi
 
