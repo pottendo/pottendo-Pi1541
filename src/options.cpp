@@ -287,12 +287,15 @@ void Options::Process(char* buffer)
 		else if ((strcasecmp(pOption, "LCDName") == 0))
 		{
 			strncpy(LCDName, pValue, 255);
+			//DEBUG_LOG("%s: lcd selected: '%s'", __FUNCTION__, LCDName);
 			if (strcasecmp(pValue, "ssd1306_128x64") == 0)
 				i2cLcdModel = LCD_1306_128x64;
 			else if (strcasecmp(pValue, "ssd1306_128x32") == 0)
 				i2cLcdModel = LCD_1306_128x32;
 			else if (strcasecmp(pValue, "sh1106_128x64") == 0)
 				i2cLcdModel = LCD_1106_128x64;
+			else if (strcasecmp(pValue, "sh1107_128x128") == 0)
+				i2cLcdModel = LCD_1107_128x128;
 		}
 		else if ((strcasecmp(pOption, "ROM1581") == 0))
 		{

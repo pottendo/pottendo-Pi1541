@@ -12,6 +12,7 @@ splitIECLines = 1
 LCDName = ssd1306_128x64
 //LCDName = ssd1306_128x32
 //LCDName = sh1106_128x64
+//LCDName = sh1107_128x128
 // If you are using a LCD screen and you would like PageUp and PageDown keys to work with it (rather than the HDMI screen) then specify this option
 //KeyboardBrowseLCDScreen = 1
 

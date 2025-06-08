@@ -20,7 +20,11 @@
 #define SCREENLCD_H
 
 #include "ScreenBase.h"
+#if defined(CIRCLE_HMI)
+#include "circle-hmi.h"
+#else
 #include "SSD1306.h"
+#endif
 #include "options.h"
 
 class ScreenLCD : public ScreenBase
@@ -62,7 +66,11 @@ public:
 	bool IsLCD();
 	bool UseCBMFont();
 private:
+#if defined(CIRCLE_HMI)
+	circle_hmi *ssd1306 = 0;
+#else
 	SSD1306* ssd1306 = 0;
+#endif	
 	bool useCBMFont;
 };
 

@@ -30,6 +30,7 @@ typedef enum {
 	LCD_1306_128x64,
 	LCD_1306_128x32,
 	LCD_1106_128x64,
+	LCD_1107_128x128,
 } LCD_MODEL;
 
 typedef enum {

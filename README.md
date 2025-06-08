@@ -39,7 +39,7 @@ Copy the content of the release bundle to your boot partition of your Pi1541 SDC
 ------
 The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
-- LCD Display SSD1306
+- LCD Display SSD1306, SH1107 (128x128)
 - Rotary Input
 - Option A HW Support 
 - Option B HW Support *)
@@ -132,6 +132,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - new option `headLess`, see below
 - new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
+- added support for a SH1107 based LCD featuring 128x128 pixel resolution
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
