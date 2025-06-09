@@ -7,6 +7,7 @@ A simple web-server features
 - Manage Upload and SDCard
   - upload of images and directory trees to the SDCard
   - delete of files & directories
+  - download files
   - create directory
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
   - create LST files from current directory

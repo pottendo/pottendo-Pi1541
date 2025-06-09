@@ -176,7 +176,7 @@ static const string header_NT = string("<tr><th>Name</th><th>Type</th>");
 
 static int direntry_table(const string header, string &res, string &path, string &page, int type_filter, bool file_ops = false)
 {
-	res = string("<table class=\"dirs\">") + header + (file_ops ? "<th>Delete</th>" : "") + "</tr>";
+	res = string("<table class=\"dirs\">") + header + (file_ops ? "<th>File Ops</th>" : "") + "</tr>";
    	FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
@@ -252,11 +252,16 @@ static int direntry_table(const string header, string &res, string &path, string
 			if (file_ops)
 			{
 				res += "<td>" +
-					    string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + ">"
-						"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Delete</button></a>" +
-					   "</td>";
+					string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + ">"
+					"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Delete</button></a>";
+				if (type_filter != AM_DIR)
+				{
+					res += string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DOWNLOAD]&" + urlEncode(it.fname) + " download=\"" + urlEncode(it.fname) + "\">"
+					"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Download</button></a>";
+				}
+				res += string("</td>");
 			}
-			res += "</tr>";
+			res += string("</tr>");
         } else {
 			/* file*/
             //DEBUG_LOG("[FILE] %s\t(%lu bytes)", it.fname, (unsigned long)it.fsize);
@@ -828,6 +833,40 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg_str, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
 			msg = msg_str;
 		}
+		if (fops == "[DOWNLOAD]")
+		{
+			int ret;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: download file '%s'", __FUNCTION__, fullndir.c_str());
+			FILINFO fileinfo;
+			FIL fp;
+			FRESULT res = FR_OK;
+			UINT bytesRead;
+			msg = "";			
+			if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
+				msg = "open of " + fullndir + " failed (" + to_string(res) + ")";
+			else
+			{
+				SetACTLed(true);
+				if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
+					msg = "read failed for " + fullndir + " (" + to_string(res) + ")";
+				SetACTLed(false);
+				f_close(&fp);
+			}
+			if (res == FR_OK)
+			{
+				pContent = img_buf;
+				nLength = bytesRead;
+			}
+			else
+			{
+				pContent = (const u8*) msg.c_str();
+				nLength = msg.length();
+			}
+			*ppContentType = "application/octet-stream";
+			goto out;
+		}
 		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 		{
 			bool xpath_set = false;
@@ -1259,7 +1298,7 @@ extern int reboot_req;
 	{
 		return HTTPNotFound;
 	}
-
+out:
 	assert (pLength != 0);
 	if (*pLength < nLength)
 	{
