@@ -1119,6 +1119,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "mount-imgs.html";
+		string cwd, img;
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
@@ -1128,106 +1129,128 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
-		if (type == "[MOUNT]")
-		{
-			FILINFO fi;
-			if (f_stat(curr_path.c_str(), &fi) == FR_OK)
-			{
-				type = "[DIR]";
-				msg = "No Image selected, nothing mounted";
-				if (fi.fattrib & ~AM_DIR)
-				{
-					type = "[FILE]";
-					mount_it = true;
-				}
-				if (curr_path.find(def_prefix) != string::npos)
-					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
-				if (curr_path[0] != '/') curr_path = "/" + curr_path;
-			}
-			else
-				return HTTPNotFound;
-		}
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, curr_path, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
 		} 
-
-		if (type == "[FILE]")
+		else
 		{
+			if (type == "[MOUNT]")
+			{
+				FILINFO fi;
+				if (f_stat(curr_path.c_str(), &fi) == FR_OK)
+				{
+					type = "[DIR]";
+					msg = "No Image selected, nothing mounted";
+					if (fi.fattrib & ~AM_DIR)
+					{
+						type = "[FILE]";
+						mount_it = true;
+					}
+				}
+				else
+					return HTTPNotFound;
+			}
+			if (curr_path.find(def_prefix) != string::npos)
+				curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
+			if (curr_path[0] != '/') curr_path = "/" + curr_path;
 			const size_t idx = curr_path.rfind('/');
-			string cwd, img;
 			if (idx == string::npos)
 			{
 				img = curr_path;
 				cwd = "";
 				curr_path = "/" + curr_path;
-			} else {
-				cwd = curr_path.substr(0, idx);
-			 	img = curr_path.substr(idx + 1, curr_path.length());
 			}
+			else
+			{
+				cwd = curr_path.substr(0, idx);
+				img = curr_path.substr(idx + 1, curr_path.length());
+			}
+			DEBUG_LOG("%s: CWD = '%s'", __FUNCTION__, cwd.c_str());
 			string fullname = def_prefix + curr_path;
 			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
-			if (mount_it)
-				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
-			else
-				msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
-			// store for main emulation
-			strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
-			strncpy(mount_img, img.c_str(), 255);
-			//DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
-			content = "";
-			// check if it's really an image
-			if (DiskImage::IsPicFileExtention(mount_img))
+
+			if (type == "[DELETE]")
 			{
-				content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
+				string fullname = def_prefix + curr_path;
+				DEBUG_LOG("%s: delete of '%s'", __FUNCTION__, fullname.c_str());
 			}
-			else if (!DiskImage::IsTextFileExtention(mount_img))
+			if (type == "[DOWNLOAD]")
 			{
-				if (read_dir(def_prefix + curr_path, dir) < 0)
-				{
-					DEBUG_LOG("%s: failed to image content of '%s'", __FUNCTION__, mount_img);
-					msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
-				}
-				int revers = 0;
-				for (auto it = dir.begin(); it != dir.end(); it++)
-				{
-					// ugly special first line handling to show revers
-					if (it == dir.begin())
-						revers = 128;
-					else 
-						revers = 0;
-					for (long unsigned int i = 0; i < it->length(); i++)
-					{
-						char buf[16];
-						sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i])+revers);
-						content+=string(buf);
-					}
-					content += "<br />";
-				}
+				string fullname = def_prefix + curr_path;
+				DEBUG_LOG("%s: DOWNLOAD of '%s'", __FUNCTION__, fullname.c_str());
+			}
+			if (type == "[FILE]")
+			{
 				if (mount_it)
-					mount_new = 1;
-			}
-			else
-			{
-				// assume a textfile to show, e.g. .LST file
-				string tmp;
-				read_file(fullname, tmp, content);
-				msg = msg + tmp;
-				replaceAll(content, "\r\n", "<br />");
-				content = curr_path + ":<br /><br />" + content;
-				if (mount_it) 
+					msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
+				else
+					msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
+				// store for main emulation
+				strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
+				strncpy(mount_img, img.c_str(), 255);
+				// DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
+				content = "";
+				// check if it's really an image
+				if (DiskImage::IsPicFileExtention(mount_img))
 				{
-					mount_new = 2;/* indicate .lst mount */
+					content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
+				}
+				else if (!DiskImage::IsTextFileExtention(mount_img))
+				{
+					if (read_dir(def_prefix + curr_path, dir) < 0)
+					{
+						DEBUG_LOG("%s: failed to image content of '%s'", __FUNCTION__, mount_img);
+						msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
+					}
+					int revers = 0;
+					for (auto it = dir.begin(); it != dir.end(); it++)
+					{
+						// ugly special first line handling to show revers
+						if (it == dir.begin())
+							revers = 128;
+						else
+							revers = 0;
+						for (long unsigned int i = 0; i < it->length(); i++)
+						{
+							char buf[16];
+							sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i]) + revers);
+							content += string(buf);
+						}
+						content += "<br />";
+					}
+					if (mount_it)
+						mount_new = 1;
+				}
+				else
+				{
+					// assume a textfile to show, e.g. .LST file
+					string tmp;
+					read_file(fullname, tmp, content);
+					msg = msg + tmp;
+					replaceAll(content, "\r\n", "<br />");
+					content = curr_path + ":<br /><br />" + content;
+					if (mount_it)
+					{
+						mount_new = 2; /* indicate .lst mount */
+					}
 				}
 			}
 		}
+		static char _t[256];
+		const char *encURL = urlEncode(def_prefix + curr_path).c_str();
+		strcpy(_t, encURL);
+		DEBUG_LOG("%s: encURL = '%s'", __FUNCTION__, encURL);
 		String.Format(s_mount, msg.c_str(), 
-					(def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(),
+					(def_prefix + curr_path).c_str(), 
+					_t, // Mount
+					_t, // Delete
+					_t, img.c_str(), // Download
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
