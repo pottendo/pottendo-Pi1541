@@ -629,6 +629,39 @@ static FRESULT f_unlink_full(string path, string &msg)
 	return res;
 }
 
+static unsigned char img_buf[READBUFFER_SIZE];
+extern FileBrowser *fileBrowser;
+
+FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
+{
+	FILINFO fileinfo;
+	FIL fp;
+	FRESULT res = FR_OK;
+	UINT bytesRead;
+	msg = "";
+	if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
+		msg = "Open of " + fullndir + " failed (" + to_string(res) + ")";
+	else
+	{
+		SetACTLed(true);
+		if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
+			msg = "Read failed for " + fullndir + " (" + to_string(res) + ")";
+		SetACTLed(false);
+		f_close(&fp);
+	}
+	if (res == FR_OK)
+	{
+		pContent = img_buf;
+		nLength = bytesRead;
+	}
+	else
+	{
+		pContent = (const u8 *)msg.c_str();
+		nLength = msg.length();
+	}
+	return res;
+}
+
 static FRESULT gen_index(string &index, string path)
 {
 	DIR dir;
@@ -652,8 +685,6 @@ static FRESULT gen_index(string &index, string path)
 	return f_closedir(&dir);
 }
 
-static unsigned char img_buf[READBUFFER_SIZE];
-extern FileBrowser *fileBrowser;
 static int read_dir(string name, list<string> &dir)
 {
 	FILINFO fileinfo;
@@ -839,31 +870,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: download file '%s'", __FUNCTION__, fullndir.c_str());
-			FILINFO fileinfo;
-			FIL fp;
-			FRESULT res = FR_OK;
-			UINT bytesRead;
-			msg = "";			
-			if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
-				msg = "open of " + fullndir + " failed (" + to_string(res) + ")";
-			else
-			{
-				SetACTLed(true);
-				if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
-					msg = "read failed for " + fullndir + " (" + to_string(res) + ")";
-				SetACTLed(false);
-				f_close(&fp);
-			}
-			if (res == FR_OK)
-			{
-				pContent = img_buf;
-				nLength = bytesRead;
-			}
-			else
-			{
-				pContent = (const u8*) msg.c_str();
-				nLength = msg.length();
-			}
+			download_file(fullndir, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
 			goto out;
 		}
@@ -874,14 +881,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			extract_field(" name=\"", pPartHeaderCB, field);
 			extract_field("filename=\"", pPartHeaderCB, filename, extension);
 			bool do_remount = false;
-			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLength);
+			DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
 
 			if ((nPartLengthCB > 0) && (strcmp(field, "xpath") == 0) && (nPartLengthCB < 256))
 			{
 				char tmp[256];
-				memcpy(tmp, pPartData, nPartLength);
-				tmp[nPartLength] = '\0';
-				//DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
+				memcpy(tmp, pPartDataCB, nPartLengthCB);
+				tmp[nPartLengthCB] = '\0';
+				DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
 				curr_path = string(tmp);
 				//direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
 				xpath_set=true;
@@ -892,7 +899,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				xpath_set = true; // from now, get new part
 				extract_field(" name=\"", pPartHeaderCB, field);
 				extract_field("filename=\"", pPartHeaderCB, filename, extension);
-				//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
+				DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
 				if ((nPartLengthCB > 0) && (strcmp(field, "directory") == 0))
 				{
 					string fn, dir;
@@ -1125,6 +1132,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		stringstream ss(pParams);
 		string type;
 		bool mount_it = false;
+		FILINFO fi;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
@@ -1135,24 +1143,26 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, curr_path, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
-		} 
+		}
+		else if (f_stat((def_prefix + curr_path).c_str(), &fi) != FR_OK)
+		{
+			msg = "No Image selected, nothing mounted";
+			return HTTPNotFound;
+		}
 		else
 		{
 			if (type == "[MOUNT]")
 			{
-				FILINFO fi;
-				if (f_stat(curr_path.c_str(), &fi) == FR_OK)
+				if (fi.fattrib & ~AM_DIR)
 				{
-					type = "[DIR]";
-					msg = "No Image selected, nothing mounted";
-					if (fi.fattrib & ~AM_DIR)
-					{
-						type = "[FILE]";
-						mount_it = true;
-					}
+					type = "[FILE]";
+					mount_it = true;
 				}
 				else
-					return HTTPNotFound;
+				{
+					msg = "No Image selected, nothing mounted";
+					curr_path += '/';
+				}
 			}
 			if (curr_path.find(def_prefix) != string::npos)
 				curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
@@ -1171,19 +1181,21 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 			DEBUG_LOG("%s: CWD = '%s'", __FUNCTION__, cwd.c_str());
 			string fullname = def_prefix + curr_path;
-			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
-				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
-				return HTTPNotFound;
-
-			if (type == "[DELETE]")
+			if (type == "[DEL]")
 			{
-				string fullname = def_prefix + curr_path;
+				FRESULT ret;
 				DEBUG_LOG("%s: delete of '%s'", __FUNCTION__, fullname.c_str());
+				if ((ret = f_unlink_full(fullname, msg)) != FR_OK)
+					msg += "Failed to delete <i>" + fullname + "</i> ("+ to_string(ret) + ")";
+				else
+					msg += "Successfully deleted <i>" + fullname + "</i>";
 			}
 			if (type == "[DOWNLOAD]")
 			{
-				string fullname = def_prefix + curr_path;
 				DEBUG_LOG("%s: DOWNLOAD of '%s'", __FUNCTION__, fullname.c_str());
+				download_file(fullname, pContent, nLength, msg);
+				*ppContentType = "application/octet-stream";
+				goto out;
 			}
 			if (type == "[FILE]")
 			{
@@ -1194,7 +1206,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				// store for main emulation
 				strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
 				strncpy(mount_img, img.c_str(), 255);
-				// DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
+				DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
 				content = "";
 				// check if it's really an image
 				if (DiskImage::IsPicFileExtention(mount_img))
@@ -1241,9 +1253,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					}
 				}
 			}
+			DEBUG_LOG("%s: cwd = '%s'", __FUNCTION__, cwd.c_str());
+			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
+				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
+				return HTTPNotFound;
 		}
 		static char _t[256];
-		const char *encURL = urlEncode(def_prefix + curr_path).c_str();
+		const char *encURL = urlEncode(curr_path).c_str();
 		strcpy(_t, encURL);
 		DEBUG_LOG("%s: encURL = '%s'", __FUNCTION__, encURL);
 		String.Format(s_mount, msg.c_str(), 

@@ -103,35 +103,37 @@
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<form action="mount-imgs.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
-					<h4 style="text-align: left;">Mount Images</h4>
-					<div>
-						<table class="dirs">
-							<tr valign="center"><td>SDCard %s</td>
-								<td style="text-align:right;">
-									<a href="mount-imgs.html?[MOUNT]&%s">
-										<button type="button" class = "btn btn-success">Mount</button>	
-									</a>
-									<a href="mount-imgs.html?[DELETE]&%s">
-										<button type="button" class = "btn btn-success">Delete</button>	
-									</a>
-									<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
-										<button type="button" class = "btn btn-success">Download</button>	
-									</a>
-								</td>
-							</tr>
-						</table>
-						<br /><br />
-						<table class="dirs">
-							<tr>
-								<th>Directories</th>
-								<th>Files</th>
-								<th>Image content</th>
-							</tr>
-							<tr valign="top"><td>%s</td><td>%s</td>
-								<td style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">%s</td>
-							</tr>
-						</table>
-					</div>
+					<table class="dirs">
+						<tr valign="center">
+							<td>%s</td>
+							<td style="text-align:right;">
+								<a href="mount-imgs.html?[MOUNT]&%s">
+									<button type="button" class="btn btn-success">Mount</button>
+								</a>
+								<a href="mount-imgs.html?[DEL]&%s">
+									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Delete</button>
+								</a>
+								<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
+									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
+								</a>
+							</td>
+						</tr>
+					</table>
+					<br /><br />
+					<table class="dirs">
+						<tr>
+							<th>Directories</th>
+							<th>Files</th>
+							<th>Image content</th>
+						</tr>
+						<tr valign="top">
+							<td>%s</td>
+							<td>%s</td>
+							<td
+								style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">
+								%s</td>
+						</tr>
+					</table>
 				</div>
 			</form>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
