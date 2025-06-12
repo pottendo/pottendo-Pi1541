@@ -48,7 +48,6 @@ while [ ! x"${opts}" = x"break" ] ; do
     -u)
       upload=1
       shift
-      break
       ;;
     -d) 
       shift
@@ -144,5 +143,5 @@ uimage=$(printf %s "$image" | jq -sRr @uri)
 
 echo
 echo mounting $image
-echo curl -s $pi/mount-imgs.html?%5BMOUNT%5D\&SD%3A%2F1541%2F"$uimage"
-curl -s $pi/mount-imgs.html?%5BMOUNT%5D\&SD%3A%2F1541%2F"$uimage" >/dev/null
+echo curl -s $pi/mount-imgs.html?%5BMOUNT%5D\&2F"$uimage"
+curl -s $pi/mount-imgs.html?%5BMOUNT%5D\&%2F"$uimage" >/dev/null
