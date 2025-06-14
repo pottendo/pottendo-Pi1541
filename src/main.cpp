@@ -353,22 +353,24 @@ void InitialiseLCD()
 		int height = 64;
 		if (i2cLcdModel == LCD_1306_128x32)
 			height = 32;
+		if (i2cLcdModel == LCD_1107_128x128)
+			height = 128;
 		screenLCD = new ScreenLCD();
 		screenLCD->Open(width, height, 1, i2cBusMaster, i2cLcdAddress, i2cLcdFlip, i2cLcdModel, i2cLcdUseCBMChar);
 		screenLCD->SetContrast(i2cLcdOnContrast);
 		screenLCD->ClearInit(0); // sh1106 needs this
 
 		bool logo_done = false;
-		if ( (height == 64) && (strcasecmp(options.GetLcdLogoName(), "1541ii") == 0) )
+		if ( (height >= 64) && (strcasecmp(options.GetLcdLogoName(), "1541ii") == 0) )
 		{
-			screenLCD->PlotRawImage(logo_ssd_1541ii, 0, 0, width, height);
+			screenLCD->PlotRawImage(logo_ssd_1541ii, 0, 0, width, 64);
 			snprintf(tempBuffer, tempBufferSize, "Pi1541 V%d.%02d" CV, versionMajor, versionMinor);
 			screenLCD->PrintText(false, 16, 0, tempBuffer, 0xffffffff);
 			logo_done = true;
 		}
-		else if (( height == 64) && (strcasecmp(options.GetLcdLogoName(), "1541classic") == 0) )
+		else if (( height >= 64) && (strcasecmp(options.GetLcdLogoName(), "1541classic") == 0) )
 		{
-			screenLCD->PlotRawImage(logo_ssd_1541classic, 0, 0, width, height);
+			screenLCD->PlotRawImage(logo_ssd_1541classic, 0, 0, width, 64);
 			logo_done = true;
 		}
 		else if (f_stat(options.GetLcdLogoName(), &filLcdIcon) == FR_OK && filLcdIcon.fsize <= LCD_LOGO_MAX_SIZE)
@@ -395,6 +397,7 @@ void InitialiseLCD()
 			screenLCD->PrintText(false, x, y, tempBuffer, 0x0);
 		}
 		screenLCD->RefreshScreen();
+		if (!options.QuickBoot()) MsDelay(3000);
 	}
 	else
 	{
@@ -1333,8 +1336,24 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			resetCount++;
 		else
 			resetCount = 0;
-
-		if ((emulating == IEC_COMMANDS)|| (resetCount > 10) || exitEmulation || exitDoAutoLoad)
+#if defined(__CIRCLE__)
+		extern bool webserver_upload;
+		if (webserver_upload)
+		{
+			DEBUG_LOG("%s: webserver upload done.", __FUNCTION__);
+			webserver_upload = false;
+			exitDoAutoLoad = true;
+		}
+		extern char mount_img[256];
+		extern int mount_new;
+		if (mount_new)
+		{
+			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
+			emulating = IEC_COMMANDS;
+			exitEmulation = true;
+		}
+#endif
+		if ((emulating == IEC_COMMANDS) || (resetCount > 10) || exitEmulation || exitDoAutoLoad)
 		{
 			if (reset)
 				exitReason = EXIT_RESET;
@@ -1585,7 +1604,7 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
@@ -1600,8 +1619,8 @@ extern int mount_new;
 						if (mount_new == 2)/* .LST */
 						{
 							fileBrowser->FolderChanged();
-							fileBrowser->SelectLST(mount_img);
-							fileBrowser->SetSelectionsMade(true);
+							if (fileBrowser->SelectLST(mount_img))
+								fileBrowser->SetSelectionsMade(true);
 						}
 						mount_new = 0;
 					}
@@ -1620,7 +1639,7 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
@@ -1636,7 +1655,8 @@ extern int mount_new;
 						{
 							fileBrowser->FolderChanged();
 							fileBrowser->SelectLST(mount_img);
-							fileBrowser->SetSelectionsMade(true);
+							if (fileBrowser->SelectLST(mount_img))
+								fileBrowser->SetSelectionsMade(true);
 						}
 						mount_new = 0;						
 					}

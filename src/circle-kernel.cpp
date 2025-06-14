@@ -477,11 +477,12 @@ int CKernel::usb_massstorage_available(void)
 
 void CKernel::run_tempmonitor(bool run)
 {
+#if 0	
     unsigned tmask = SystemStateUnderVoltageOccurred | SystemStateFrequencyCappingOccurred |
 					 SystemStateThrottlingOccurred | SystemStateSoftTempLimitOccurred;
 	CPUThrottle.RegisterSystemThrottledHandler(tmask, monitorhandler, nullptr);
 	CPUThrottle.Update();
-	// CPUThrottle.DumpStatus(true);
+#endif	
 	do {
 		if (CPUThrottle.SetOnTemperature() == false)
 			log("temperature monitor failed...");
@@ -494,6 +495,7 @@ void CKernel::run_tempmonitor(bool run)
 			CPUThrottle.IsDynamic() ? " " : " not ",
 			CPUThrottle.GetClockRate() / 1000000L, 
 			CPUThrottle.GetMaxClockRate() / 1000000L);
+		CMemorySystem::Get()->DumpStatus();
 	} while (run);
 }
 

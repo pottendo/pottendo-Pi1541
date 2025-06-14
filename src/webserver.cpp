@@ -176,17 +176,17 @@ static const string header_NT = string("<tr><th>Name</th><th>Type</th>");
 
 static int direntry_table(const string header, string &res, string &path, string &page, int type_filter, bool file_ops = false)
 {
-	res = string("<table class=\"dirs\">") + header + (file_ops ? "<th>Delete</th>" : "") + "</tr>";
+	res = string("<table class=\"dirs\">") + header + (file_ops ? "<th>File Ops</th>" : "") + "</tr>";
    	FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
 	vector<FILINFO> list;
     // Open the directory
 	
-	const char *x = (def_prefix + "/" + path).c_str();
-    fr = f_opendir(&dir, x);
+	string x = (def_prefix + "/" + path);
+    fr = f_opendir(&dir, x.c_str());
     if (fr != FR_OK) {
-        DEBUG_LOG("Failed to open directory '%s': %d", x, fr);
+        DEBUG_LOG("%s: Failed to open directory '%s': %d", __FUNCTION__, x.c_str(), fr);
         return -1;
     }
     while (1) {
@@ -251,12 +251,22 @@ static int direntry_table(const string header, string &res, string &path, string
 					((type_filter != AM_DIR) ? "<td>" + print_human_readable_time(it.fdate, it.ftime) + "</td>" : "");
 			if (file_ops)
 			{
-				res += "<td>" +
-					    string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + ">"
-						"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Delete</button></a>" +
-					   "</td>";
+				res += "<td>";
+				if (type_filter != AM_DIR)
+				{
+					res += string("<a href=mount-imgs.html?[MOUNT]&") + urlEncode(path + sep + it.fname) + ">"
+						"<button type=\"button\" class=\"btb btn-success\">Mount</button></a>";
+				}
+				res += string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DEL]&" + urlEncode(it.fname) + ">"
+					"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Delete</button></a>";
+				if (type_filter != AM_DIR)
+				{
+					res += string("<a href=") + page + "?[DIR]&"+ urlEncode(path) + "&[DOWNLOAD]&" + urlEncode(it.fname) + " download=\"" + it.fname + "\">"
+					"<button type=\"button\" class=\"btb btn-success\" onClick=\"return delConfirm(event)\">Download</button></a>";
+				}
+				res += string("</td>");
 			}
-			res += "</tr>";
+			res += string("</tr>");
         } else {
 			/* file*/
             //DEBUG_LOG("[FILE] %s\t(%lu bytes)", it.fname, (unsigned long)it.fsize);
@@ -626,6 +636,60 @@ static FRESULT f_unlink_full(string path, string &msg)
 
 static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
+
+FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
+{
+	FILINFO fileinfo;
+	FIL fp;
+	FRESULT res = FR_OK;
+	UINT bytesRead;
+	msg = "";
+	if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
+		msg = "Open of " + fullndir + " failed (" + to_string(res) + ")";
+	else
+	{
+		SetACTLed(true);
+		if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
+			msg = "Read failed for " + fullndir + " (" + to_string(res) + ")";
+		SetACTLed(false);
+		f_close(&fp);
+	}
+	if (res == FR_OK)
+	{
+		pContent = img_buf;
+		nLength = bytesRead;
+	}
+	else
+	{
+		pContent = (const u8 *)msg.c_str();
+		nLength = msg.length();
+	}
+	return res;
+}
+
+static FRESULT gen_index(string &index, string path)
+{
+	DIR dir;
+	FILINFO fi;
+	FRESULT res;
+	string npath;
+	res = f_opendir(&dir, (def_prefix + "/" + path).c_str());
+	if (res != FR_OK)
+		return res;
+	while (((res = f_readdir(&dir, &fi)) == FR_OK) && (fi.fname[0] != 0))
+	{	
+		npath = path + '/' + fi.fname;
+		if (DiskImage::IsDiskImageExtention(fi.fname) ||
+			DiskImage::IsLSTExtention(fi.fname))
+		{
+			index += ("\n" + npath);
+		}
+		if (fi.fattrib & AM_DIR)
+			res = gen_index(index, npath);
+	}
+	return f_closedir(&dir);
+}
+
 static int read_dir(string name, list<string> &dir)
 {
 	FILINFO fileinfo;
@@ -680,7 +744,7 @@ static int read_dir(string name, list<string> &dir)
 	}	
 	if (ret > 0)
 	{
-		DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
+		//DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
 		fileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
 	}
 	else
@@ -723,6 +787,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeader;
 		const u8 *pPartData;
 		unsigned nPartLength;
+		const char *pPartHeaderCB;
+		const u8 *pPartDataCB;
+		unsigned nPartLengthCB;
 		string curr_dir, files;
 		string curr_path = urlDecode(pParams);
 		string page = "index.html";
@@ -732,20 +799,23 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		getline(ss, fops, '&');
 		getline(ss, ndir, '&');
+		type = urlDecode(type);
 		curr_path = urlDecode(curr_path);
+		fops = urlDecode(fops);
 		bool noFormParts = true;
-		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		//DEBUG_LOG("type = %s", type.c_str());
+		//DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
+		//DEBUG_LOG("type = '%s'", type.c_str());
+		//DEBUG_LOG("fops = '%s'", fops.c_str());
 		if (fops == "[MKDIR]")
 		{	
 			FRESULT ret;
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
-			//DEBUG_LOG("%s: mkdir '%s'", __FUNCTION__, fullndir.c_str());
 			if ((ret = f_mkdir(fullndir.c_str())) != FR_OK)
 				snprintf(msg_str, 1023,"Failed to create <i>%s</i> (%d)", fullndir.c_str(), ret);
 			else
 				snprintf(msg_str, 1023,"Successfully created <i>%s</i>", fullndir.c_str());
+			DEBUG_LOG("%s: mkdir '%s' returned %d", __FUNCTION__, fullndir.c_str(), ret);
 			msg = msg_str;
 		}
 		if (fops == "[DEL]")
@@ -799,29 +869,39 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				snprintf(msg_str, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
 			msg = msg_str;
 		}
-		if (GetMultipartFormPart (&pPartHeader, &pPartData, &nPartLength))
+		if (fops == "[DOWNLOAD]")
 		{
+			int ret;
+			ndir = urlDecode(ndir);
+			string fullndir = def_prefix + curr_path + "/" + ndir;
+			DEBUG_LOG("%s: download file '%s'", __FUNCTION__, fullndir.c_str());
+			download_file(fullndir, pContent, nLength, msg);
+			*ppContentType = "application/octet-stream";
+			goto out;
+		}
+		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
+		{
+			bool xpath_set = false;
 			noFormParts = false;
-			extract_field(" name=\"", pPartHeader, field);
-			extract_field("filename=\"", pPartHeader, filename, extension);
-			const char *pPartHeaderCB;
-			const u8 *pPartDataCB;
-			unsigned nPartLengthCB;
+			extract_field(" name=\"", pPartHeaderCB, field);
+			extract_field("filename=\"", pPartHeaderCB, filename, extension);
 			bool do_remount = false;
-			//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeader, field, filename, nPartLength);
+			//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
 
-			if ((nPartLength > 0) && (strcmp(field, "xpath") == 0) && (nPartLength < 256))
+			if ((nPartLengthCB > 0) && (strcmp(field, "xpath") == 0) && (nPartLengthCB < 256))
 			{
 				char tmp[256];
-				memcpy(tmp, pPartData, nPartLength);
-				tmp[nPartLength] = '\0';
+				memcpy(tmp, pPartDataCB, nPartLengthCB);
+				tmp[nPartLengthCB] = '\0';
 				//DEBUG_LOG("%s: setting path from POST action to '%s'", __FUNCTION__, tmp);
 				curr_path = string(tmp);
 				//direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
+				xpath_set=true;
 			}
 			msg = "Uploading...<br />";
-			while (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
+			while (!xpath_set || GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB)) 
 			{
+				xpath_set = true; // from now, get new part
 				extract_field(" name=\"", pPartHeaderCB, field);
 				extract_field("filename=\"", pPartHeaderCB, filename, extension);
 				//DEBUG_LOG("%s: pPartHeader = '%s', field = '%s', filename = '%s', length = %d", __FUNCTION__, pPartHeaderCB, field, filename, nPartLengthCB);
@@ -872,8 +952,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 						}
 					}
 					else
-						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn);
-					//DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
+						DEBUG_LOG("%s: missing automount checkbox section for '%s'", __FUNCTION__, targetfn.c_str());
+					DEBUG_LOG("%s: going to write '%s'", __FUNCTION__, targetfn.c_str());
 					write_image(targetfn, extension, pPartDataCB, nPartLengthCB, msg);
 	
 					if (do_remount)
@@ -907,6 +987,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/getindex.html") == 0)
+	{
+		string index;
+		gen_index(index, string(""));
+		pContent = (const u8 *)index.c_str();
+		nLength = index.length();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
 	else if (strcmp(pPath, "/update.html") == 0)
@@ -1043,115 +1131,177 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "mount-imgs.html";
+		string cwd, img;
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
 		string type;
 		bool mount_it = false;
+		bool is_dir = false;
+		FILINFO fi;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
 		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
-		if (type == "[MOUNT]")
-		{
-			FILINFO fi;
-			if (f_stat(curr_path.c_str(), &fi) == FR_OK)
-			{
-				type = "[DIR]";
-				msg = "No Image selected, nothing mounted";
-				if (fi.fattrib & ~AM_DIR)
-				{
-					type = "[FILE]";
-					mount_it = true;
-				}
-				if (curr_path.find(def_prefix) != string::npos)
-					curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
-				if (curr_path[0] != '/') curr_path = "/" + curr_path;
-			}
-			else
-				return HTTPNotFound;
-		}
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, curr_path, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
-		} 
-
-		if (type == "[FILE]")
+			is_dir = true;
+		}
+		else if (f_stat((def_prefix + curr_path).c_str(), &fi) != FR_OK)
 		{
+			msg = "No Image selected, nothing mounted";
+			return HTTPNotFound;
+		}
+		else
+		{
+			if (fi.fattrib & AM_DIR)
+				is_dir = true;
+			if (type == "[MOUNT]")
+			{
+				if (!is_dir)
+				{
+					type = "[FILE]";
+					mount_it = true;
+				}
+				else
+				{
+					msg = "No Image selected, nothing mounted";
+					curr_path += '/';
+				}
+			}
+			if (curr_path.find(def_prefix) != string::npos)
+				curr_path = curr_path.substr(def_prefix.length(), curr_path.length());
+			if (curr_path[0] != '/') curr_path = "/" + curr_path;
 			const size_t idx = curr_path.rfind('/');
-			string cwd, img;
 			if (idx == string::npos)
 			{
 				img = curr_path;
 				cwd = "";
 				curr_path = "/" + curr_path;
-			} else {
+			}
+			else
+			{
 				cwd = curr_path.substr(0, idx);
-			 	img = curr_path.substr(idx + 1, curr_path.length());
+				img = curr_path.substr(idx + 1, curr_path.length());
 			}
 			string fullname = def_prefix + curr_path;
+			if (type == "[DEL]")
+			{
+				if (is_dir)
+					msg += "Refusing to delete directory <i>" + fullname + "</i>";
+				else
+				{
+					FRESULT ret;
+					//DEBUG_LOG("%s: delete of '%s'", __FUNCTION__, fullname.c_str());
+					if ((ret = f_unlink_full(fullname, msg)) != FR_OK)
+						msg += "Failed to delete <i>" + fullname + "</i> (" + to_string(ret) + ")";
+					else
+						msg += "Successfully deleted <i>" + fullname + "</i>";
+				}
+			}
+			if (type == "[DOWNLOAD]")
+			{
+				if (is_dir)
+				{
+					msg = "Can't download directory '" + fullname + "'";
+					pContent = (const u8 *)msg.c_str();
+					nLength = msg.length();
+					*ppContentType = "text/html; charset=iso-8859-1";
+				}
+				else
+				{
+					//DEBUG_LOG("%s: DOWNLOAD of '%s'", __FUNCTION__, fullname.c_str());
+					download_file(fullname, pContent, nLength, msg);
+					*ppContentType = "application/octet-stream";
+				}
+				goto out;
+			}
+			if (type == "[FILE]")
+			{
+				// store for main emulation
+				strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
+				strncpy(mount_img, img.c_str(), 255);
+				//DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
+				content = "";
+				// check if it's really an image
+				if (DiskImage::IsPicFileExtention(mount_img))
+				{
+					content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
+				}
+				else if (DiskImage::IsTextFileExtention(mount_img)) // LSTs are also TextFiles
+				{
+					// assume a textfile to show, e.g. .LST file
+					string tmp;
+					read_file(fullname, tmp, content);
+					msg = msg + tmp;
+					replaceAll(content, "\r\n", "<br />");
+					content = curr_path + ":<br /><br />" + content;
+					if (mount_it && DiskImage::IsLSTExtention(mount_img))
+					{
+						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
+						mount_new = 2; /* indicate .lst mount */
+					}
+					else
+						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
+				}
+				else if (DiskImage::IsDiskImageExtention(mount_img))
+				{
+					if (read_dir(def_prefix + curr_path, dir) < 0)
+					{
+						//DEBUG_LOG("%s: failed to image content of '%s'", __FUNCTION__, mount_img);
+						msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
+					}
+					int revers = 0;
+					for (auto it = dir.begin(); it != dir.end(); it++)
+					{
+						// ugly special first line handling to show revers
+						if (it == dir.begin())
+							revers = 128;
+						else
+							revers = 0;
+						for (long unsigned int i = 0; i < it->length(); i++)
+						{
+							char buf[16];
+							sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i]) + revers);
+							content += string(buf);
+						}
+						content += "<br />";
+					}
+					if (mount_it)
+					{
+						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
+						mount_new = 1;	/* indicate image mount */
+					}
+					else
+						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
+				}
+				else
+				{
+					if (mount_it)
+						msg = "Refusing to mount unknown image type <it>" + fullname + "</i>";
+					else
+						msg = "Unknown image type <it>" + fullname + "</i>";
+				}
+			}
 			if ((direntry_table(header_NT, curr_dir, cwd, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, cwd, page, ~AM_DIR) < 0))
 				return HTTPNotFound;
-			if (mount_it)
-				msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
-			else
-				msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
-			// store for main emulation
-			strncpy(mount_path, (def_prefix + cwd).c_str(), 255);
-			strncpy(mount_img, img.c_str(), 255);
-			//DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, fullname.c_str());
-			content = "";
-			// check if it's really an image
-			if (DiskImage::IsPicFileExtention(mount_img))
-			{
-				content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
-			}
-			else if (!DiskImage::IsTextFileExtention(mount_img))
-			{
-				if (read_dir(def_prefix + curr_path, dir) < 0)
-				{
-					DEBUG_LOG("%s: failed to image content of '%s'", __FUNCTION__, mount_img);
-					msg = "Failed to read image content of <i>'" + string(mount_img) + "'</i>.";
-				}
-				int revers = 0;
-				for (auto it = dir.begin(); it != dir.end(); it++)
-				{
-					// ugly special first line handling to show revers
-					if (it == dir.begin())
-						revers = 128;
-					else 
-						revers = 0;
-					for (long unsigned int i = 0; i < it->length(); i++)
-					{
-						char buf[16];
-						sprintf(buf, "&#x0ee%02x;", petscii2screen((*it)[i])+revers);
-						content+=string(buf);
-					}
-					content += "<br />";
-				}
-				if (mount_it)
-					mount_new = 1;
-			}
-			else
-			{
-				// assume a textfile to show, e.g. .LST file
-				string tmp;
-				read_file(fullname, tmp, content);
-				msg = msg + tmp;
-				replaceAll(content, "\r\n", "<br />");
-				content = curr_path + ":<br /><br />" + content;
-				if (mount_it) 
-				{
-					mount_new = 2;/* indicate .lst mount */
-				}
-			}
 		}
+		static char _t[256];
+		const char *encURL = urlEncode(curr_path).c_str();
+		strcpy(_t, encURL);
 		String.Format(s_mount, msg.c_str(), 
-					(def_prefix + curr_path).c_str(), urlEncode(def_prefix + curr_path).c_str(),
+					(def_prefix + curr_path).c_str(), 
+					(is_dir ? "<!--" : ""),
+					_t, // Mount
+					_t, // Delete
+					_t, img.c_str(), // Download
+					(is_dir ? "-->" : ""),
+
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
@@ -1222,7 +1372,7 @@ extern int reboot_req;
 	{
 		return HTTPNotFound;
 	}
-
+out:
 	assert (pLength != 0);
 	if (*pLength < nLength)
 	{

@@ -35,14 +35,20 @@ void ScreenLCD::Open(u32 widthDesired, u32 heightDesired, u32 colourDepth, int B
 		heightDesired = 32;
 	if (widthDesired > 128)
 		widthDesired = 128;
-	if (heightDesired > 64)
+	if ((LCDType == LCD_1306_128x64) && (heightDesired > 64))
 		heightDesired = 64;
+	if ((LCDType == LCD_1107_128x128) && (heightDesired > 128))
+		heightDesired = 128;
 
 	width = widthDesired;
 	height = heightDesired;
 	useCBMFont = luseCBMFont;
  
+#if !defined(CIRCLE_HMI)	
 	ssd1306 = new SSD1306(BSCMaster, LCDAddress, width, height, LCDFlip, LCDType);
+#else
+	ssd1306 = new circle_hmi(BSCMaster, LCDAddress, width, height, LCDFlip, LCDType);
+#endif	
 	ssd1306->ClearScreen();
 	ssd1306->RefreshScreen();
 	ssd1306->DisplayOn();
