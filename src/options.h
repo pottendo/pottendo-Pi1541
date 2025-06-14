@@ -63,6 +63,7 @@ public:
 	inline unsigned int HDMIGraphIEC() const { return hdmiGraphIEC; }
 	inline unsigned int HDMIDisplayIECActivity() const { return hdmiDisplayIECActivity; }
 	inline unsigned int DisplayTracks() const { return displayTracks; }
+	inline unsigned int QuickBoot() const { return quickBoot; }
 	inline unsigned int LogoDisplayDelay() const { return logoDisplayDelay; }
 	inline unsigned int ShowOptions() const { return showOptions; }
 	inline unsigned int DisplayPNGIcons() const { return displayPNGIcons; }
@@ -146,6 +147,7 @@ private:
 	unsigned int hdmiGraphIEC;
 	unsigned int hdmiDisplayIECActivity;
 	unsigned int displayTracks;
+	unsigned int quickBoot;
 	unsigned int logoDisplayDelay;
 	unsigned int showOptions;
 	unsigned int displayPNGIcons;
