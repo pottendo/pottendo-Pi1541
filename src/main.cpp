@@ -1533,7 +1533,7 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
@@ -1568,7 +1568,7 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: websever requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)

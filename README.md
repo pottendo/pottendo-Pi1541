@@ -98,7 +98,7 @@ Matching images:
 Disk: 2
 
 mounting /demos/deus/armalyte.d64
-curl -s http://192.168.1.31/mount-imgs.html?%5BMOUNT%5D&SD%3A%2F1541%2F%2Fdemos%2Fdeus%2Farmalyte.d64
+curl -s http://192.168.1.31/mount-imgs.html?%5BMOUNT%5D&2F%2Fdemos%2Fdeus%2Farmalyte.d64
 ```
 _Note_: not all error cases of e.g. wrongly supplied paths could be handled, so curl may report success without the desired effect. Scripting in general (e.g. with other commands [DEL], etc.), may work but you can mess up your SDCard easily.
 
