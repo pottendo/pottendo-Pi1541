@@ -145,6 +145,7 @@ CKernel::CKernel(void) :
 		log("screen initialization failed...  trying headless");
 	strcpy(ip_address, "<n/a>");
 	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
+	version_extra[0] = '\0';
 }
 
 static void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
@@ -249,6 +250,11 @@ TShutdownMode CKernel::Run (void)
 	const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
 	Kernel.append2version(pi1541HWOption);
 	DEBUG_LOG("%s: options selected %s", __FUNCTION__, pi1541HWOption);
+	char dsp[24] = "Display not found";
+	if (i2c_scan(options.I2CBusMaster(), options.I2CLcdAddress()))
+		snprintf(dsp, 23, "Display I2C%d@0x%02x", options.I2CBusMaster(), options.I2CLcdAddress());
+	append2version(dsp);
+
 	// launch everything
 	Kernel.launch_cores();
 	if (options.GetHeadLess() == false)
@@ -522,8 +528,8 @@ char *CKernel::get_version(void)
 	extern unsigned int versionMajor, versionMinor;
 	CMachineInfo *mi = CMachineInfo::Get();
 	int rev = mi->GetModelRevision();
-	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %s/Rev%d@%ldMHz", 
-		PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev, CPUThrottle.GetClockRate() / 1000000L);
+	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s, %s), Pi1541 V%d.%02d on %s/Rev%d@%ldMHz%s", 
+		PPI1541VERSION, arch, versionMajor, versionMinor, mi->GetMachineName(), rev, CPUThrottle.GetClockRate() / 1000000L, version_extra);
 	return pPi1541Version;
 }
 
