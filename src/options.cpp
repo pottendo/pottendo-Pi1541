@@ -151,6 +151,7 @@ Options::Options(void)
 	, i2cLcdOnContrast(127)
 	, i2cLcdUseCBMChar(0)
 	, i2cLcdModel(LCD_UNKNOWN)
+	, i2cLcdModelName("LCD unknown")
 	, scrollHighlightRate(0.125f)
 	, keyboardBrowseLCDScreen(0)
         , buttonEnter(1)
@@ -289,13 +290,25 @@ void Options::Process(char* buffer)
 			strncpy(LCDName, pValue, 255);
 			//DEBUG_LOG("%s: lcd selected: '%s'", __FUNCTION__, LCDName);
 			if (strcasecmp(pValue, "ssd1306_128x64") == 0)
+			{
 				i2cLcdModel = LCD_1306_128x64;
+				i2cLcdModelName = "LCD_1306_128x64";
+			}
 			else if (strcasecmp(pValue, "ssd1306_128x32") == 0)
+			{
 				i2cLcdModel = LCD_1306_128x32;
+				i2cLcdModelName = "LCD_1306_128x32";
+			}
 			else if (strcasecmp(pValue, "sh1106_128x64") == 0)
+			{
 				i2cLcdModel = LCD_1106_128x64;
+				i2cLcdModelName = "LCD_1106_128x64";
+			}
 			else if (strcasecmp(pValue, "sh1107_128x128") == 0)
+			{
 				i2cLcdModel = LCD_1107_128x128;
+				i2cLcdModelName = "LCD_1107_128x128";
+			}
 		}
 		else if ((strcasecmp(pOption, "ROM1581") == 0))
 		{

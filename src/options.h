@@ -92,6 +92,7 @@ public:
 	inline unsigned int I2CLcdDimTime() const { return i2cLcdDimTime; }
 	inline unsigned int I2cLcdUseCBMChar() const { return i2cLcdUseCBMChar; }
 	inline LCD_MODEL I2CLcdModel() const { return i2cLcdModel; }
+	inline const char *I2CLcdModelName() const { return i2cLcdModelName; }
 
 	inline const char* GetLcdLogoName() const { return LcdLogoName; }
 
@@ -166,6 +167,7 @@ private:
 	unsigned int i2cLcdDimTime;
 	unsigned int i2cLcdUseCBMChar;
 	LCD_MODEL i2cLcdModel = LCD_UNKNOWN;
+	const char *i2cLcdModelName;
 
 	float scrollHighlightRate;
 

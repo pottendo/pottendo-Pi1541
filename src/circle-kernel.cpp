@@ -250,9 +250,9 @@ TShutdownMode CKernel::Run (void)
 	const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
 	Kernel.append2version(pi1541HWOption);
 	DEBUG_LOG("%s: options selected %s", __FUNCTION__, pi1541HWOption);
-	char dsp[24] = "Display not found";
+	char dsp[64] = "Display not found";
 	if (i2c_scan(options.I2CBusMaster(), options.I2CLcdAddress()))
-		snprintf(dsp, 23, "Display I2C%d@0x%02x", options.I2CBusMaster(), options.I2CLcdAddress());
+		snprintf(dsp, 63, "Display %s (I2C%d@0x%02x)", options.I2CLcdModelName(), options.I2CBusMaster(), options.I2CLcdAddress());
 	append2version(dsp);
 
 	// launch everything
