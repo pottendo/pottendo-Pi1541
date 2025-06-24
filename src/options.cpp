@@ -151,7 +151,6 @@ Options::Options(void)
 	, i2cLcdOnContrast(127)
 	, i2cLcdUseCBMChar(0)
 	, i2cLcdModel(LCD_UNKNOWN)
-	, i2cLcdModelName("LCD unknown")
 	, scrollHighlightRate(0.125f)
 	, keyboardBrowseLCDScreen(0)
         , buttonEnter(1)
@@ -186,6 +185,7 @@ Options::Options(void)
 	ROMNameSlot8[0] = 0;
 	ROMName1581[0] = 0;
 	newDiskType[0] = 0;
+	i2cLcdModelName = "LCD_UNKNOWN";
 }
 
 #define ELSE_CHECK_DECIMAL_OPTION(Name) \
@@ -308,6 +308,11 @@ void Options::Process(char* buffer)
 			{
 				i2cLcdModel = LCD_1107_128x128;
 				i2cLcdModelName = "LCD_1107_128x128";
+			}
+			else 
+			{
+				i2cLcdModel = LCD_UNKNOWN;
+				i2cLcdModelName = "LCD_UNKNOWN";
 			}
 		}
 		else if ((strcasecmp(pOption, "ROM1581") == 0))
