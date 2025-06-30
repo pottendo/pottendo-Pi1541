@@ -40,23 +40,25 @@ Copy the content of the release bundle to your boot partition of your Pi1541 SDC
 ------
 The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
-- LCD Display SSD1306, SH1107 (128x128)
-- Rotary Input
 - Option A HW Support 
 - Option B HW Support *)
+- LCD Display SSD1306, SH1107 (128x128 pixel resolution) **)
+- Rotary Input
 - Buzzer sound output
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
 
 *) Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
+
+**) The display may have some pull-up resistors installed on its I2C data/clock lines (SDA/SCL lines). These won't work on I2C-1 of Raspberry PIs, as I2C-1 there already features 1.8kOhm pull-ups, which probably conflict with other pull-ups on this I2C-1 bus. Pi1541 HW hats often default to I2C-1. If your display isn't working, try to move it to I2C-0. Your Pi1541-hat may support this with solder bridges.
+
 <br />
 
 If enabled (see below), network is activated in the background. For Wifi it may take a few seconds to connect and retreive the IP Address via DHCP. One can chose a static network configuration for faster startup, see below.
 The IP address is briefly shown on the LCD, once received. One can check the IP address on the screen (HDMI).
 
 <br />
-
 The webserver controls the main emulation loop (e.g. uploads finished) by global variables. Access to the SDCard Filesystem is not synchronized or otherwise protected. If an (C64-) application writes to its disk, respectivley to the disk-image on Pi1541 and in parallel the webserver is used to upload the very same image, file-corruption or even file-system corruption may occur. The server and parallel emulation seems quite independent. I've tested a critical fastloader(Ghost'n'Goblins Arcade) and uploading in parallel successfully.
 
 One can also use `curl` to script the upload - this may be usefull to be included in your build-process or bulk upload into `/1541` or other directories. 
@@ -133,7 +135,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - new option `headLess`, see below
 - new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
-- added support for a SH1107 based LCD featuring 128x128 pixel resolution
+- added support for a SH1107 based LCD featuring 128x128 pixel resolution (see note above on I2Cs and pull-up resistors in case it doesn't work)
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
