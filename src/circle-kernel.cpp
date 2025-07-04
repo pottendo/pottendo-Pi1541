@@ -353,13 +353,16 @@ static void display_temp(void)
 	unsigned temp = 0;
 	RGBA BkColour = RGBA(0, 0, 0, 0xFF);
 	RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
-	char buf[128];
 	GetTemperature(temp);
+#if 1
+	char buf[128];
 	sprintf(buf, " %dC", temp / 1000);
 	core0RefreshingScreen.Acquire();
 	screenLCD->PrintText(false, 8 * 12, 0, buf, TextColour, BkColour);
 	screenLCD->SwapBuffers();
 	core0RefreshingScreen.Release();
+#endif	
+	//DEBUG_LOG("%s: temp = %d", __FUNCTION__, temp / 1000);
 }
 
 void CKernel::run_webserver(void) 
@@ -380,26 +383,31 @@ void CKernel::run_webserver(void)
 		DEBUG_LOG("%s: timezone set '%.0f'mins vs. UTC", __FUNCTION__, options.GetTZ() * 60.0);
 	else
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
-	new CNTPDaemon("152.53.132.244", m_Net);
-	new CWebServer (m_Net, &m_ActLED);
-	int temp_period = 0;
-	while(1)
 	{
-		mScheduler.MsSleep (100);
-		if (options.DisplayTemperature() && 
-			options.GetHeadLess() &&
-			!(temp_period++ % 10))	// every sec, display temp on LCD
+		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
+		CWebServer CWebServer(m_Net, &m_ActLED);
+		int temp_period = 0;
+		while (1)
 		{
-			CPUThrottle.Update();
-			display_temp();
+			mScheduler.MsSleep(100);
+			if (options.DisplayTemperature() &&
+				options.GetHeadLess() &&
+				!(temp_period++ % 50)) // every 5 sec, display temp on LCD
+			{
+				CPUThrottle.Update();
+				display_temp();
+			}
+			if (reboot_req && reboot_req++ > 4)
+			{
+				log("%s: rebooting now...", __FUNCTION__);
+				DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
+				mScheduler.MsSleep(20);
+				reboot_now();
+			}
+			if (!m_Net->IsRunning())
+				break;
 		}
-		if (reboot_req && reboot_req++ > 4)
-		{
-			log("%s: rebooting now...", __FUNCTION__);
-			DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
-			mScheduler.MsSleep(20);
-			reboot_now();
-		}
+		DEBUG_LOG("%s: network down, restarting...", __FUNCTION__);
 	}
 }
 
@@ -541,35 +549,43 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		case 1:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
 		emulator();
-	
+		break;
 	case 2:
 #if RASPPI >= 3
-		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
-		if (options.GetNetEthernet()) // cable network has priority over Wifi
+		do
 		{
-			if (!Kernel.run_ethernet()) {
-				Kernel.log("setup ethernet failed");
-				i = 0;
-			} else i = 1;
-		} 
-		if ((i == 0) && options.GetNetWifi()) 
-		{
-			i = 10;
-			do {
-				Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
-			} while (i-- && !Kernel.run_wifi());
-		}
-		if (i == 0) 
-		{
-			Kernel.log("network setup failed, giving up");
-		} 
-		else 
-		{
-			Kernel.log("launching webserver on core %d", core);
-			Kernel.run_webserver();
-		}
-	out:
+			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
+			if (options.GetNetEthernet()) // cable network has priority over Wifi
+			{
+				if (!Kernel.run_ethernet())
+				{
+					Kernel.log("setup ethernet failed");
+					i = 0;
+				}
+				else
+					i = 1;
+			}
+			if ((i == 0) && options.GetNetWifi())
+			{
+				i = 10;
+				do
+				{
+					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
+				} while (i-- && !Kernel.run_wifi());
+			}
+			if (i == 0)
+			{
+				Kernel.log("network setup failed, retrying in 5s");
+				MsDelay(5 * 1000);
+			}
+			else
+			{
+				Kernel.log("launching webserver on core %d", core);
+				Kernel.run_webserver();
+			}
+		} while (true);
+		out:
 #endif	
 		Kernel.log("disabling network support on core %d", core);
 		if (options.DisplayTemperature())
@@ -578,7 +594,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			while (1)
 			{
 				display_temp();
-				MsDelay(1000);
+				MsDelay(5000);
 			}
 		}
 		break;
