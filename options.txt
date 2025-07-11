@@ -121,7 +121,9 @@ LcdLogoName = 1541classic
 GraphIEC = 1
 
 // You can create 320x200 PNG files with the same name as your disk images. With this option turned on they will be displayed on the Pi's screen.
-//DisplayPNGIcons = 1
+DisplayPNGIcons = 1
+// Display Tracks on HDMI
+DisplayTrack = 0
 
 // If you would like to specify what file will be loaded by LOAD"*" in browse mode then specify it here
 //StarFileName = somefile

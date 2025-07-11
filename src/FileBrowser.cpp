@@ -46,8 +46,8 @@ extern IEC_Commands *_m_IEC_Commands;
 extern Options options;
 
 
-#define PNG_WIDTH 320
-#define PNG_HEIGHT 200
+#define PNG_WIDTH 384
+#define PNG_HEIGHT 272
 
 extern void GlobalSetDeviceID(u8 id);
 extern void CheckAutoMountImage(EXIT_TYPE reset_reason , FileBrowser* fileBrowser);
@@ -548,7 +548,7 @@ FileBrowser::FileBrowser(InputMappings* inputMappings, DiskCaddy* diskCaddy, ROM
 	folder.scrollHighlightRate = scrollHighlightRate;
 
 #if not defined(EXPERIMENTALZERO)
-	u32 columns = screenMain->ScaleX(80);
+	u32 columns = screenMain->ScaleX(76);
 	u32 rows = (int)(38.0f * screenMain->GetScaleY());
 	u32 positionX = 0;
 	u32 positionY = 17;
@@ -558,8 +558,8 @@ FileBrowser::FileBrowser(InputMappings* inputMappings, DiskCaddy* diskCaddy, ROM
 
 	folder.AddView(screenMain, inputMappings, columns, rows, positionX, positionY, false);
 
-	positionX = screenMain->ScaleX(1024 - 320);
-	columns = screenMain->ScaleX(40);
+	positionX = screenMain->ScaleX(screenMain->Width() - PNG_WIDTH);
+	columns = screenMain->ScaleX(48);
 	caddySelections.AddView(screenMain, inputMappings, columns, rows, positionX, positionY, false);
 
 
@@ -865,7 +865,10 @@ bool FileBrowser::CheckForPNG(const char* filename, FILINFO& filIcon)
 			strcat(fileName, ".png");
 
 			if (f_stat(fileName, &filIcon) == FR_OK)
+			{
 				foundValid = true;
+				DEBUG_LOG("%s: found icon %s", __FUNCTION__, fileName);
+			}
 		}
 	}
 	return foundValid;
@@ -896,14 +899,14 @@ void FileBrowser::DisplayPNG(FILINFO& filIcon, int x, int y)
 				stbi_uc* image = stbi_load_from_memory((stbi_uc const*)PNG, bytesRead, &w, &h, &channels_in_file, 4);
 #if not defined(EXPERIMENTALZERO)
 
-				if (image && (w == PNG_WIDTH && h == PNG_HEIGHT))
+				if (image && (w <= PNG_WIDTH && h <= PNG_HEIGHT))
 				{
-					//DEBUG_LOG("Opened PNG %s w = %d h = %d cif = %d\r\n", fileName, w, h, channels_in_file);
+					DEBUG_LOG("Opened PNG %s w = %d h = %d cif = %d\r\n", filIcon.fname, w, h, channels_in_file);
 					screenMain->PlotImage((u32*)image, x, y, w, h);
 				}
 				else
 				{
-					//DEBUG_LOG("Invalid PNG size %d x %d\r\n", w, h);
+					DEBUG_LOG("Invalid PNG size %d x %d\r\n", w, h);
 				}
 #endif
 				free(PNG);
@@ -912,7 +915,7 @@ void FileBrowser::DisplayPNG(FILINFO& filIcon, int x, int y)
 	}
 	else
 	{
-		//DEBUG_LOG("Cannot find PNG %s\r\n", fileName);
+		//DEBUG_LOG("%s: Cannot find PNG %s\r\n", __FUNCTION__, filIcon.fname);
 	}
 }
 
@@ -1695,7 +1698,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 				blocksFree += buffer[bamOffset + bamTrack * BAM_ENTRY_SIZE];
 
 			y_px = 0;
-			for (u32 bit = 0; image_dir && (bit < DiskImage::SectorsPerTrackD64(bamTrack)); bit++)
+			for (u32 bit = 0; bit < DiskImage::SectorsPerTrackD64(bamTrack); bit++)
 			{
 				u32 bits = buffer[bamOffset + 1 + (bit >> 3) + bamTrack * BAM_ENTRY_SIZE];
 
@@ -1880,7 +1883,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 		FILINFO filIcon;
 		if (CheckForPNG(filenameForIcon, filIcon))
 		{
-			x = screenMain->ScaleX(1024) - 320;
+			x = screenMain->ScaleX(1024) - PNG_WIDTH;
 			y = screenMain->ScaleY(0);
 			DisplayPNG(filIcon, x, y);
 		}

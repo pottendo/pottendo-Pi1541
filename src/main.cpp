@@ -704,8 +704,6 @@ void UpdateScreen()
 				caddyIndexChangedTimer--;
 			}
 		}
-
-
 		//if (options.GetSupportUARTInput())
 		//	UpdateUartControls(refreshUartStatusDisplay, oldLED, oldMotor, oldATN, oldDATA, oldCLOCK, oldTrack, romIndex);
 
@@ -765,7 +763,7 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s", __FUNCTION__, diskImage->GetName());
+	DEBUG_LOG("%s: name = %s, IconName='%s'", __FUNCTION__, diskImage->GetName(), filenameForIcon);
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -1543,7 +1541,7 @@ extern int mount_new;
 							strncpy(fi.fname, mount_img, 255);
 							diskCaddy.Insert(&fi, false);
 							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+							emulating = BeginEmulating(fileBrowser, mount_img);
 						}
 						if (mount_new == 2)/* .LST */
 						{

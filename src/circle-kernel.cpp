@@ -261,7 +261,6 @@ TShutdownMode CKernel::Run (void)
 	if (options.GetHeadLess() == false)
 	{
 		UpdateScreen();
-		CPUThrottle.Update();
 		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
 	} 
 	else 

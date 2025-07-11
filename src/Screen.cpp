@@ -151,6 +151,9 @@ void Screen::PlotPixel24(u32 pixel_offset, RGBA Colour)
 	framebuffer[pixel_offset++] = RED(Colour);
 #endif
 }
+#if defined(__CIRCLE__)
+#include <circle/screen.h>
+#endif
 void Screen::PlotPixel16(u32 pixel_offset, RGBA Colour)
 {
 #if !defined (__CIRCLE__)
@@ -158,7 +161,8 @@ void Screen::PlotPixel16(u32 pixel_offset, RGBA Colour)
 	*(unsigned short*)&framebuffer[pixel_offset] = ((RED(Colour) >> 3) << 11) | ((GREEN(Colour) >> 2) << 5) | (BLUE(Colour) >> 3);
 #endif
 #else
-	Kernel.set_pixel((pixel_offset % pitch) / 2, pixel_offset / pitch, Colour);
+	TScreenColor c = COLOR16((RED(Colour)>>3), (GREEN(Colour) >> 3), (BLUE(Colour)>>3));
+	Kernel.set_pixel((pixel_offset % pitch) / 2, pixel_offset / pitch, c);
 #endif
 }
 
