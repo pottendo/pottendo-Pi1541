@@ -252,7 +252,9 @@ arm_freq=1100
 over_voltage=8
 sdram_freq=500
 sdram_over_voltage=2
-force_turbo=1
+# force_turbo = 1 in combination with over_voltage invalidates warranty!
+# may improve compatibility, and needed for Steve's original kernels
+force_turbo=1 
 boot_delay=1
 arm_64bit=0
 kernel_address=0x1f00000
@@ -277,6 +279,9 @@ kernel=kernel8.img
 
 # all Pi3 variants
 [pi3]
+# force_turbo = 1 in combination with over_voltage invalidates warranty!
+# may improve compatibility, and needed for Steve's original kernels
+force_turbo=1
 arm_freq=1400
 over_voltage=4
 sdram_freq=500
