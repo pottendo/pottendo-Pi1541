@@ -1585,7 +1585,9 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 	u32 x_px = 0;
 	u32 y_px = 0;
 
+#if defined(__CIRCLE__)
 	if (!image_dir)
+#endif	
 	{
 		ClearScreen();
 
