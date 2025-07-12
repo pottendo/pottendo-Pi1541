@@ -867,7 +867,7 @@ bool FileBrowser::CheckForPNG(const char* filename, FILINFO& filIcon)
 			if (f_stat(fileName, &filIcon) == FR_OK)
 			{
 				foundValid = true;
-				DEBUG_LOG("%s: found icon %s", __FUNCTION__, fileName);
+//				DEBUG_LOG("%s: found icon %s", __FUNCTION__, fileName);
 			}
 		}
 	}

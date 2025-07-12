@@ -1576,7 +1576,7 @@ extern int mount_new;
 							strncpy(fi.fname, mount_img, 255);
 							diskCaddy.Insert(&fi, false);
 							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, fileBrowser->LastSelectionName());
+							emulating = BeginEmulating(fileBrowser, mount_img);
 						}
 						if (mount_new == 2)/* .LST */
 						{

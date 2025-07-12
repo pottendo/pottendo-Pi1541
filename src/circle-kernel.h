@@ -87,7 +87,7 @@ public:
 	void yield(void) { mScheduler.Yield(); }
 	bool run_wifi(void);
 	bool run_ethernet(void);
-	void run_webserver(void);
+	void run_webserver(bool isWifi);
 	void i2c_init(int BSCMaster, int fast);
 	void i2c_setclock(int BSCMaster, int clock_freq);
 	int i2c_read(int BSCMaster, unsigned char slaveAddress, void* buffer, unsigned count);

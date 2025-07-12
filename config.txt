@@ -59,7 +59,7 @@ kernel=kernel8.img
 [pi4]
 hdmi_force_hotplug=1   # Force HDMI output even if no monitor detected
 hdmi_group=2           # Set display mode to DMT (monitor)
-hdmi_mode=82           # Set resolution to 1920x1080 @ 60Hz
+hdmi_mode=16           # Set resolution to 1024x768 @ 60Hz
 max_framebuffers=2
 # select 32- or 64-bit mode
 arm_64bit=1

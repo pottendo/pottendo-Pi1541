@@ -364,7 +364,7 @@ static void display_temp(void)
 	//DEBUG_LOG("%s: temp = %d", __FUNCTION__, temp / 1000);
 }
 
-void CKernel::run_webserver(void) 
+void CKernel::run_webserver(bool isWifi) 
 {
 	CString IPString;
 	while (!m_Net->IsRunning())
@@ -378,6 +378,9 @@ void CKernel::run_webserver(void)
 	new_ip = true;
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
 	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
+	if (isWifi)
+		DEBUG_LOG("%s: Wifi IsConnected = %d", __FUNCTION__, m_WPASupplicant.IsConnected());
+
 	if (mTimer.SetTimeZone(options.GetTZ() * 60))
 		DEBUG_LOG("%s: timezone set '%.0f'mins vs. UTC", __FUNCTION__, options.GetTZ() * 60.0);
 	else
@@ -403,8 +406,8 @@ void CKernel::run_webserver(void)
 				mScheduler.MsSleep(20);
 				reboot_now();
 			}
-			if (!m_Net->IsRunning())
-				break;
+			//if (!m_Net->IsRunning())
+			//	break;
 		}
 		DEBUG_LOG("%s: network down, restarting...", __FUNCTION__);
 	}
@@ -554,6 +557,9 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
 		do
 		{
+			bool run_wifi;
+
+			run_wifi = false;
 			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
 			if (options.GetNetEthernet()) // cable network has priority over Wifi
 			{
@@ -572,6 +578,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				{
 					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
 				} while (i-- && !Kernel.run_wifi());
+				run_wifi = true;
 			}
 			if (i == 0)
 			{
@@ -581,7 +588,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			else
 			{
 				Kernel.log("launching webserver on core %d", core);
-				Kernel.run_webserver();
+				Kernel.run_webserver(run_wifi);
 			}
 		} while (true);
 		out:
