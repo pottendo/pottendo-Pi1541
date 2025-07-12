@@ -711,7 +711,7 @@ void UpdateScreen()
 					if (temperature != oldTemperature)
 					{
 						oldTemperature = temperature;
-						//DEBUG_LOG("%0x %d %d\r\n", temp, temp, temp / 1000);
+						//DEBUG_LOG("Temperature: %d\r\n", temperature);
 						snprintf(tempBuffer, tempBufferSize, "%02d", temperature);
 						screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
 						refreshLCDStatusDisplay = true;
@@ -2344,7 +2344,7 @@ extern "C"
 		start_core(2, _spin_core);
 #ifdef USE_MULTICORE
 		start_core(1, _init_core);
-		if (options.GetHeadLess())
+		if (options.GetHeadLess() && options.GetDisableHDMI())
 		{
 			while (1) 
 				MsDelay(1000*3600);
