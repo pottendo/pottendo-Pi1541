@@ -89,11 +89,18 @@ if [ x${tag} != "xnone" ] ; then
     mkdir ${RELEASE} 2>/dev/null
     # Check if legacy build still works
     cd ${PPI1541}
+    if make RASPPI=3 legacy > make-Pi3-legacy.log; then
+	    echo "successully built for Pi3, legacy code base"
+    else
+	    echo "failed to build legacy codebase for Pi3"
+	    exit 1
+    fi
+    make clean 2>&1 >/dev/null
     if make RASPPI=0 legacy > make-PiZero.log; then
 	    echo "successully built for PiZero, legacy code base"
 	    cp kernel.img ${RELEASE}
     else
-	    echo "failed to build legacy codebase"
+	    echo "failed to build legacy codebase for PiZero"
 	    exit 1
     fi
     make clean 2>&1 >/dev/null

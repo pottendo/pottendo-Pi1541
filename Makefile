@@ -125,4 +125,4 @@ clean:
 	$(MAKE) -C $(SRCDIR)/webcontent -f Makefile clean
 
 distclean: clean
-	rm *.log
+	rm -f *.log
