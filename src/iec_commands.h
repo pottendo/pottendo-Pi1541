@@ -102,6 +102,9 @@ public:
 	int CreateNewDisk(char* filenameNew, const char* ID, bool automount);
 
 	void SetDisplayingDevices(bool displayingDevices) { this->displayingDevices = displayingDevices; }
+	void SetCDSlashSlashToRoot(bool value) { cdSlashSlashToRoot = value; }
+
+	void MountFailed();
 
 protected:
 	enum ATNSequence 
@@ -154,11 +157,10 @@ protected:
 	void CloseAllChannels();
 	void SendError();
 
-
 	bool Enter(DIR& dir, FILINFO& filInfo);
 	bool FindFirst(DIR& dir, const char* matchstr, FILINFO& filInfo);
 
-	void FolderCommand(void);
+	void FolderCommand();
 	void CD(int partition, char* filename);
 	void MKDir(int partition, char* filename);
 	void RMDir(void);
@@ -173,6 +175,7 @@ protected:
 	void User(void);
 	void Extended(void);
 
+	//void ProcessCommandFolderOnly(bool early);
 	void ProcessCommand(void);
 
 	bool SendBuffer(Channel& channel, bool eoi);
@@ -203,8 +206,11 @@ protected:
 	const char* starFileName;
 	const char* C128BootSectorName;
 
+	u8 errorCodeEarly;
 	bool displayingDevices;
 	bool lowercaseBrowseModeFilenames;
+	bool cdSlashSlashToRoot;
+
 	DiskImage::DiskType newDiskType;
 };
 #endif

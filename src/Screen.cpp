@@ -174,15 +174,18 @@ void Screen::PlotPixel8(u32 pixel_offset, RGBA Colour)
 
 void Screen::DrawRectangle(u32 x1, u32 y1, u32 x2, u32 y2, RGBA colour)
 {
-	ClipRect(x1, y1, x2, y2);
-
-	for (u32 y = y1; y < y2; y++)
+	if (opened)
 	{
-		u32 line = y * pitch;
-		for (u32 x = x1; x < x2; x++)
+		ClipRect(x1, y1, x2, y2);
+
+		for (u32 y = y1; y < y2; y++)
 		{
-			u32 pixel_offset = (x * (bpp >> 3)) + line;
-			(this->*Screen::plotPixelFn)(pixel_offset, colour);
+			u32 line = y * pitch;
+			for (u32 x = x1; x < x2; x++)
+			{
+				u32 pixel_offset = (x * (bpp >> 3)) + line;
+				(this->*Screen::plotPixelFn)(pixel_offset, colour);
+			}
 		}
 	}
 }
@@ -286,29 +289,35 @@ void Screen::PlotPixel(u32 x, u32 y, RGBA colour)
 
 void Screen::DrawLine(u32 x1, u32 y1, u32 x2, u32 y2, RGBA colour)
 {
-	ClipRect(x1, y1, x2, y2);
-
-	int dx0, dy0, ox, oy, eulerMax;
-	dx0 = (int)(x2 - x1);
-	dy0 = (int)(y2 - y1);
-	eulerMax = abs(dx0);
-	if (abs(dy0) > eulerMax) eulerMax = abs(dy0);
-	for (int i = 0; i <= eulerMax; i++)
+	if (opened)
 	{
-		ox = ((dx0 * i) / eulerMax) + x1;
-		oy = ((dy0 * i) / eulerMax) + y1;
-		int pixel_offset = (ox * (bpp >> 3)) + (oy * pitch);
-		(this->*Screen::plotPixelFn)(pixel_offset, colour);
+		ClipRect(x1, y1, x2, y2);
+
+		int dx0, dy0, ox, oy, eulerMax;
+		dx0 = (int)(x2 - x1);
+		dy0 = (int)(y2 - y1);
+		eulerMax = abs(dx0);
+		if (abs(dy0) > eulerMax) eulerMax = abs(dy0);
+		for (int i = 0; i <= eulerMax; i++)
+		{
+			ox = ((dx0 * i) / eulerMax) + x1;
+			oy = ((dy0 * i) / eulerMax) + y1;
+			int pixel_offset = (ox * (bpp >> 3)) + (oy * pitch);
+			(this->*Screen::plotPixelFn)(pixel_offset, colour);
+		}
 	}
 }
 
 void Screen::DrawLineV(u32 x, u32 y1, u32 y2, RGBA colour)
 {
-	//ClipRect(x, y1, x, y2);
-	for (u32 y = y1; y <= y2; ++y)
+	if (opened)
 	{
-		int pixel_offset = (x * (bpp >> 3)) + (y * pitch);
-		(this->*Screen::plotPixelFn)(pixel_offset, colour);
+		//ClipRect(x, y1, x, y2);
+		for (u32 y = y1; y <= y2; ++y)
+		{
+			int pixel_offset = (x * (bpp >> 3)) + (y * pitch);
+			(this->*Screen::plotPixelFn)(pixel_offset, colour);
+		}
 	}
 }
 
@@ -318,6 +327,9 @@ u32 Screen::PrintText(bool petscii, u32 x, u32 y, char *ptr, RGBA TxtColour, RGB
 	int yCursor = y;
 	int len = 0;
 	u32 fontHeight;
+
+	if (!opened)
+		return 0;
 
 	if (petscii && CBMFont) fontHeight = 8;
 	else fontHeight = BitFontHt;
@@ -359,11 +371,15 @@ void Screen::PlotImage(u32* image, int x, int y, int w, int h)
 	int px;
 	int py;
 	int i = 0;
-	for (py = 0; py < h; ++py)
+
+	if (opened)
 	{
-		for (px = 0; px < w; ++px)
+		for (py = 0; py < h; ++py)
 		{
-			PlotPixel(x + px, y + py, image[i++]);
+			for (px = 0; px < w; ++px)
+			{
+				PlotPixel(x + px, y + py, image[i++]);
+			}
 		}
 	}
 }

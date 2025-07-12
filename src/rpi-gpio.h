@@ -212,10 +212,10 @@ extern void SetACTLed(int value);
 #if defined(RPI3)
 extern void RPI_TouchInit(void);
 extern void RPI_UpdateTouch(void);
+#endif
 
 extern uint32_t RPI_GpioVirtGetAddress(void);
 extern void RPI_GpioVirtInit(void);
 extern void RPI_GpioVirtSetLed(int value);
-#endif
 
 #endif

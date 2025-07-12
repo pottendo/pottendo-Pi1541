@@ -117,7 +117,7 @@ static void SetHeaderVersion()
 }
 
 #define ERROR_00_OK 0
-//01,FILES SCRATCHED,XX,00
+#define ERROR_SCRATCHED 1			//01,FILES SCRATCHED,XX,00
 //20,READ ERROR,TT,SS		header not found
 //21,READ ERROR,TT,SS		sync not found
 //22,READ ERROR,TT,SS		header checksum fail
@@ -154,10 +154,15 @@ static void SetHeaderVersion()
 void Error(u8 errorCode, u8 track = 0, u8 sector = 0)
 {
 	const char* msg = "UNKNOWN";
+
+	//DEBUG_LOG("ES %d\r\n", errorCode);
 	switch (errorCode)
 	{
 		case ERROR_00_OK:
 			msg = " OK";
+		break;
+		case ERROR_SCRATCHED:
+			msg = "FILES SCRATCHED";
 		break;
 		case ERROR_25_WRITE_ERROR:
 			msg = "WRITE ERROR";
@@ -193,6 +198,7 @@ void Error(u8 errorCode, u8 track = 0, u8 sector = 0)
 		break;
 	}
 	snprintf(ErrorMessage, sizeof(ErrorMessage)-1, "%02d,%s,%02d,%02d\r", errorCode, msg, track, sector);
+	//DEBUG_LOG("%d\r\n", errorCode);
 }
 
 static inline bool IsDirectory(FILINFO& filInfo)
@@ -232,6 +238,7 @@ IEC_Commands::IEC_Commands()
 	displayingDevices = false;
 	lowercaseBrowseModeFilenames = false;
 	newDiskType = DiskImage::D64;
+	cdSlashSlashToRoot = false;
 	selectedImageName[0] = '\0';
 }
 
@@ -387,6 +394,8 @@ bool IEC_Commands::ReadIECSerialPort(u8& byte)
 		WaitWhile(IEC_Bus::IsClockReleased());
 	}
 
+	//DEBUG_LOG("%02x\r\n", byte);
+
 	IEC_Bus::AssertData();
 	return false;
 }
@@ -396,6 +405,10 @@ void IEC_Commands::SimulateIECBegin(void)
 	SetHeaderVersion();
 	Reset();
 	IEC_Bus::ReadBrowseMode();
+	IEC_Bus::WaitWhileAtnAsserted();
+	IEC_Bus::ReleaseClock();
+	IEC_Bus::ReleaseData();
+	DEBUG_LOG("Begin\r\n");
 }
 
 // Paraphrasing Jim Butterfield
@@ -427,6 +440,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 {
 	if (IEC_Bus::IsReset())
 	{
+		//DEBUG_LOG("Wait for reset\r\n");
 		// If the computer is resetting then just wait until it has come out of reset.
 		do
 		{
@@ -509,6 +523,50 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 
 			//DEBUG_LOG("%s: %02x(%c)", __FUNCTION__, commandCode, isprint(commandCode) ? commandCode : '.');
 
+//cc=28
+//cc=ff
+//1 CD1 D64 ss=0
+//IDI 0
+//cc=28
+//cc=ef
+//0 CD1 D64 ss=0
+//IDI 0
+//CD2 d64
+//pattern = (null)
+//B attemting changing dir d64
+//cc=3f			- unlisten
+//cc=28			- 
+//cc=6f
+//cc=3f
+//cc=28
+//cc=f0
+//cc=3f
+//cc=48
+//cc=60
+//cc=5f
+//cc=28
+//cc=e0
+//cc=0
+//cc=3f
+
+
+
+//cc = 28
+//cc = f0
+//cc = 3f
+//cc = 48
+//cc = 60
+//$
+//cc = 28
+//cc = e0
+//cc = 0
+//cc = 3f
+//cc = 28
+//cc = 6f
+//cc = 3f
+//cc = 28
+//cc = 6f
+ 			
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
 				secondaryAddress = commandCode & 0x0f;
@@ -536,17 +594,32 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			else if ((commandCode & 0x60) == 0x60)	// Set secondary addresses for 6*, e* and f* commands
 			{
 				secondaryAddress = commandCode & 0x0f;
+
+				//DEBUG_LOG("Close %02x %02x\r\n", commandCode, secondaryAddress);
+
+				//if (secondaryAddress == 0xf)
+				//{
+				//	// If ProcessCommand is here then FB cd works
+				//	// but errors not report correctly
+				//	//ProcessCommand();
+				//	ProcessCommandFolderOnly(false);
+				////	DEBUG_LOG("Close\r\n");
+				//}
+
 				if ((commandCode & 0xf0) == 0xe0)	// Close
 				{
 					CloseFile(secondaryAddress);
 
 					if (IEC_Bus::IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
 					else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
+
+					//DEBUG_LOG("Cl %d %d\r\n", secondaryAddress, atnSequence);
 				}
 				else	// Open
 				{
 					atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 				}
+				//DEBUG_LOG("Cl %d %d\r\n", secondaryAddress, atnSequence);
 			}
 			else
 			{
@@ -557,6 +630,10 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 		break;
 		case ATN_SEQUENCE_HANDLE_COMMAND_CODE:
+			//DEBUG_LOG("CC %d sa=%d\r\n", deviceRole, secondaryAddress);
+
+			//DEBUG_LOG("T sa=%d\r\n", secondaryAddress);
+
 			IEC_Bus::WaitWhileAtnAsserted();
 			if (deviceRole == DEVICE_ROLE_LISTEN)
 			{
@@ -583,6 +660,8 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
+					// if CDing into a disk image it needs to happen now
+					//ProcessCommandFolderOnly(true);
 					ProcessCommand();
 				}
 				else
@@ -725,6 +804,7 @@ bool IEC_Commands::Enter(DIR& dir, FILINFO& filInfo)
 	}
 	else if (IsDirectory(filInfo))
 	{
+		DEBUG_LOG("!!!Enter\r\n");
 		if (f_chdir(filInfo.fname) == FR_OK) updateAction = DIR_PUSHED;
 		else Error(ERROR_62_FILE_NOT_FOUND);
 	}
@@ -743,26 +823,95 @@ static int ParsePartition(char** buf)
 	return 0;
 }
 
+/*
+T 60 00
+1 CD1 �RKANOID.G64
+Close
+
+T 60 00
+1 CD1 //1
+T 6f 0f
+0 CD1 //1
+CD2 \\1541\1
+1 CD1 //2
+T 6f 0f
+0 CD1 //2
+CD2 \\1541\2
+Close
+
+
+T 60 00
+1 CD1 //1/11 ss=0
+IDI 0
+T 6f 0f
+0 CD1 //1/11 ss=0
+IDI 0
+CD2 \\1541\1\11
+pattern = \11
+path = \\1541\1
+cwd2 = SD:/1541/1
+T 60 00
+
+T 60 00
+T 60 00
+1 CD1 // ss=0
+IDI 0
+T 6f 0f
+0 CD1 // ss=0
+IDI 0
+CD2 \\1541
+pattern = \1541
+path = \
+Close
+
+*/
 void IEC_Commands::CD(int partition, char* filename)
 {
 	char filenameEdited[256];
 
-	if (filename[0] == '/' && filename[1] == '/')
-		sprintf(filenameEdited, "\\\\1541\\%s", filename + 2);
+	//DEBUG_LOG("%d CD1 %s ss=%d\r\n", early, filename, cdSlashSlashToRoot);
+	Error(ERROR_00_OK);
+
+	if (displayingDevices)
+	{
+		if (filename[0] == '/' && filename[1] == '/')
+		{
+			SwitchDrive("SD:");
+			displayingDevices = false;
+			updateAction = DEVICE_SWITCHED;
+		}
+	}
+
+	if (filename[0] == '/' && filename[1] == '/' && !cdSlashSlashToRoot)
+	{
+		if (filename[2])
+			sprintf(filenameEdited, "\\\\1541\\%s", filename + 2);
+		else
+			sprintf(filenameEdited, "\\\\1541\\");
+	}
 	else
+	{
 		strcpy(filenameEdited, filename);
+	}
 
-	int len = strlen(filenameEdited);
+	int filenameEditedLength = strlen(filenameEdited);
 
-	for (int i = 0; i < len; i++)
+	for (int i = 0; i < filenameEditedLength; i++)
 	{
 		if (filenameEdited[i] == '/')
 			filenameEdited[i] = '\\';
 		filenameEdited[i] = petscii2ascii(filenameEdited[i]);
 	}
 
-	DEBUG_LOG("CD %s\r\n", filenameEdited);
-	if (filenameEdited[0] == '_' && len == 1)
+	//DEBUG_LOG("IDI %d\r\n", DiskImage::IsDiskImageExtention(filenameEdited));
+	//if (early && !DiskImage::IsDiskImageExtention(filenameEdited))
+	//{
+	//	//DEBUG_LOG("early out\r\n");
+	//	return;
+	//}
+
+	//DEBUG_LOG("CD2 %s\r\n", filenameEdited);
+	if (filenameEdited[0] == '_' && filenameEditedLength == 1)
 	{
 		updateAction = POP_DIR;
 	}
@@ -800,6 +949,8 @@ void IEC_Commands::CD(int partition, char* filename)
 			char path[256] = { 0 };
 			char* pattern = strrchr(filenameEdited, '\\');
 
+		//	DEBUG_LOG("pattern = %s\r\n", pattern);
+
 			if (pattern)
 			{
 				// Now we look for a folder
@@ -807,59 +958,75 @@ void IEC_Commands::CD(int partition, char* filename)
 				strncpy(path, filenameEdited, len);
 
 				pattern++;
+				//DEBUG_LOG("path = %s pattern = %s *pat = %c\r\n", path, pattern, *pattern);
 
-				if ((f_stat(path, &filInfo) != FR_OK) || !IsDirectory(filInfo))
-				{
-					Error(ERROR_62_FILE_NOT_FOUND);
-				}
-				else
+				//if ((f_stat(path, &filInfo) != FR_OK) || !IsDirectory(filInfo))
+				//{
+				//	DEBUG_LOG("E1\r\n");
+				//	Error(ERROR_62_FILE_NOT_FOUND);
+				//}
+				//else
 				{
 					char cwd[1024];
 					if (f_getcwd(cwd, 1024) == FR_OK)
 					{
 						f_chdir(path);
+						//DEBUG_LOG("changed dir %s\r\n", path);
 
-						char cwd2[1024];
-						f_getcwd(cwd2, 1024);
-
-						bool found = f_findfirst(&dir, &filInfo, ".", pattern) == FR_OK && filInfo.fname[0] != 0;
-
-						//DEBUG_LOG("%s pattern = %s\r\n", filInfo.fname, pattern);
-
-						if (found)
+						//if (*pattern)
+						if (pattern < (filenameEdited + filenameEditedLength))
 						{
-							if (DiskImage::IsDiskImageExtention(filInfo.fname))
+							char cwd2[1024];
+							f_getcwd(cwd2, 1024);
+
+							//DEBUG_LOG("cwd2 = %s\r\n", cwd2);
+
+							bool found = f_findfirst(&dir, &filInfo, ".", pattern) == FR_OK && filInfo.fname[0] != 0;
+
+							DEBUG_LOG("%s pattern = %s\r\n", filInfo.fname, pattern);
+
+							if (found)
 							{
-								if (f_stat(filInfo.fname, &filInfoSelectedImage) == FR_OK)
+								//DEBUG_LOG("found\r\n");
+								if (DiskImage::IsDiskImageExtention(filInfo.fname))
 								{
-									strcpy((char*)selectedImageName, filInfo.fname);
+									if (f_stat(filInfo.fname, &filInfoSelectedImage) == FR_OK)
+									{
+										strcpy((char*)selectedImageName, filInfo.fname);
+									}
+									else
+									{
+										f_chdir(cwd);
+										DEBUG_LOG("A fail\r\n");
+										Error(ERROR_62_FILE_NOT_FOUND);
+									}
 								}
 								else
 								{
-									f_chdir(cwd);
-									Error(ERROR_62_FILE_NOT_FOUND);
+									DEBUG_LOG("A attemting changing dir %s\r\n", filInfo.fname);
+									if (f_chdir(filInfo.fname) != FR_OK)
+									{
+										Error(ERROR_62_FILE_NOT_FOUND);
+										f_chdir(cwd);
+									}
+									else
+									{
+										updateAction = DIR_PUSHED;
+									}
 								}
 							}
 							else
 							{
-								//DEBUG_LOG("attemting changing dir %s\r\n", filInfo.fname);
-								if (f_chdir(filInfo.fname) != FR_OK)
-								{
-									Error(ERROR_62_FILE_NOT_FOUND);
-									f_chdir(cwd);
-								}
-								else
-								{
-									updateAction = DIR_PUSHED;
-								}
+								DEBUG_LOG("!!!2\r\n");
+								Error(ERROR_62_FILE_NOT_FOUND);
+								f_chdir(cwd);
 							}
 						}
 						else
 						{
-							Error(ERROR_62_FILE_NOT_FOUND);
-							f_chdir(cwd);
+							//DEBUG_LOG("Pushed\r\n");
+							updateAction = DIR_PUSHED;
 						}
-
 					}
 					//if (f_getcwd(cwd, 1024) == FR_OK)
 					//	DEBUG_LOG("CWD on exit = %s\r\n", cwd);
@@ -867,28 +1034,43 @@ void IEC_Commands::CD(int partition, char* filename)
 			}
 			else
 			{
+				//DEBUG_LOG("B attemting changing dir %s\r\n", filenameEdited);
 				bool found = FindFirst(dir, filenameEdited, filInfo);
 
 				if (found)
 				{
+					//DEBUG_LOG("C attemting changing dir %s\r\n", filInfo.fname);
 					if (DiskImage::IsDiskImageExtention(filInfo.fname))
 					{
+						DEBUG_LOG("disk image\r\n");
 						if (f_stat(filInfo.fname, &filInfoSelectedImage) == FR_OK)
 							strcpy((char*)selectedImageName, filInfo.fname);
 						else
+						{
+							//DEBUG_LOG("No image\r\n");
+							DEBUG_LOG("!!!3\r\n");
 							Error(ERROR_62_FILE_NOT_FOUND);
+						}
 					}
 					else
 					{
-						//DEBUG_LOG("attemting changing dir %s\r\n", filInfo.fname);
 						if (f_chdir(filInfo.fname) != FR_OK)
+						{
+							DEBUG_LOG("No such folder\r\n");
 							Error(ERROR_62_FILE_NOT_FOUND);
+						}
 						else
+						{
+							//DEBUG_LOG("Changed\r\n");
+							//DEBUG_LOG("C\r\n");
 							updateAction = DIR_PUSHED;
+						}
 					}
 				}
 				else
 				{
+					//DEBUG_LOG("ERROR_62_FILE_NOT_FOUND\r\n");
+					//DEBUG_LOG("!!!4 %s\r\n", filenameEdited);
 					Error(ERROR_62_FILE_NOT_FOUND);
 				}
 			}
@@ -900,13 +1082,22 @@ void IEC_Commands::MKDir(int partition, char* filename)
 {
 	char filenameEdited[256];
 
-	if (filename[0] == '/' && filename[1] == '/')
-		sprintf(filenameEdited, "\\\\1541\\%s", filename + 2);
+	if (filename[0] == '/' && filename[1] == '/' && !cdSlashSlashToRoot)
+	{
+		if (filename[2])
+			sprintf(filenameEdited, "\\\\1541\\%s", filename + 2);
+		else
+			sprintf(filenameEdited, "\\\\1541\\");
+	}
 	else
+	{
+		//DEBUG_LOG("SR %s\r\n", filename);
 		strcpy(filenameEdited, filename);
-	int len = strlen(filenameEdited);
+	}
 
-	for (int i = 0; i < len; i++)
+	int filenameEditedLength = strlen(filenameEdited);
+
+	for (int i = 0; i < filenameEditedLength; i++)
 	{
 		if (filenameEdited[i] == '/')
 			filenameEdited[i] = '\\';
@@ -945,6 +1136,7 @@ void IEC_Commands::RMDir(void)
 		}
 		else
 		{
+			DEBUG_LOG("!!!5\r\n");
 			Error(ERROR_62_FILE_NOT_FOUND);
 		}
 	}
@@ -954,9 +1146,11 @@ void IEC_Commands::RMDir(void)
 	}
 }
 
-void IEC_Commands::FolderCommand(void)
+void IEC_Commands::FolderCommand()
 {
 	Channel& channel = channels[15];
+
+	Error(ERROR_00_OK);
 
 	switch (toupper(channel.buffer[0]))
 	{
@@ -1025,40 +1219,75 @@ void IEC_Commands::Copy(void)
 	//DEBUG_LOG("Copy %s\r\n", filenameNew);
 	if (filenameNew[0] != 0)
 	{
-		res = f_stat(filenameNew, &filInfo);
-		if (res == FR_NO_FILE)
+		int fileCount = 0;
+		do
 		{
-			int fileCount = 0;
-			do
+			text = ParseNextName(text, filenameToCopy, true);
+			if (filenameToCopy[0] != 0)
 			{
-				text = ParseNextName(text, filenameToCopy, true);
-				if (filenameToCopy[0] != 0)
+				//DEBUG_LOG("Copy source %s\r\n", filenameToCopy);
+				res = f_stat(filenameToCopy, &filInfo);
+				if (res == FR_OK)
 				{
-					//DEBUG_LOG("Copy source %s\r\n", filenameToCopy);
-					res = f_stat(filenameToCopy, &filInfo);
-					if (res == FR_OK)
+					if (!IsDirectory(filInfo))
 					{
-						if (!IsDirectory(filInfo))
+						//DEBUG_LOG("copying %s to %s\r\n", filenameToCopy, filenameNew);
+						res = f_stat(filenameNew, &filInfo);
+						if (res == FR_NO_FILE)
 						{
-							//DEBUG_LOG("copying %s to %s\r\n", filenameToCopy, filenameNew);
 							if (CopyFile(filenameNew, filenameToCopy, fileCount != 0)) updateAction = REFRESH;
 							else Error(ERROR_25_WRITE_ERROR);
 						}
-					}
-					else
-					{
-						// If you want to copy the entire folder then implement that here.
-						Error(ERROR_62_FILE_NOT_FOUND);
+						else
+						{
+							DEBUG_LOG("Copy file exists\r\n");
+							Error(ERROR_63_FILE_EXISTS);
+						}
 					}
 				}
-				fileCount++;
-			} while (filenameToCopy[0] != 0);
-		}
-		else
-		{
-			DEBUG_LOG("Copy file exists\r\n");
-			Error(ERROR_63_FILE_EXISTS);
-		}
+				else
+				{
+					// If you want to copy the entire folder then implement that here.
+					DEBUG_LOG("!!!6\r\n");
+					Error(ERROR_62_FILE_NOT_FOUND);
+				}
+			}
+			fileCount++;
+		} while (filenameToCopy[0] != 0);
+		//res = f_stat(filenameNew, &filInfo);
+		//if (res == FR_NO_FILE)
+		//{
+		//	int fileCount = 0;
+		//	do
+		//	{
+		//		text = ParseNextName(text, filenameToCopy, true);
+		//		if (filenameToCopy[0] != 0)
+		//		{
+		//			//DEBUG_LOG("Copy source %s\r\n", filenameToCopy);
+		//			res = f_stat(filenameToCopy, &filInfo);
+		//			if (res == FR_OK)
+		//			{
+		//				if (!IsDirectory(filInfo))
+		//				{
+		//					//DEBUG_LOG("copying %s to %s\r\n", filenameToCopy, filenameNew);
+		//					if (CopyFile(filenameNew, filenameToCopy, fileCount != 0)) updateAction = REFRESH;
+		//					else Error(ERROR_25_WRITE_ERROR);
+		//				}
+		//			}
+		//			else
+		//			{
+		//				// If you want to copy the entire folder then implement that here.
+		//				Error(ERROR_62_FILE_NOT_FOUND);
+		//			}
+		//		}
+		//		fileCount++;
+		//	} while (filenameToCopy[0] != 0);
+		//}
+		//else
+		//{
+		//	DEBUG_LOG("Copy file exists\r\n");
+		//	Error(ERROR_63_FILE_EXISTS);
+		//}
 	}
 	else
 	{
@@ -1155,9 +1384,13 @@ void IEC_Commands::New(void)
 	char filenameNew[256];
 	char ID[256];
 
+	DEBUG_LOG("NEW\r\n");
+
 	if (ParseFilenames((char*)channel.buffer, filenameNew, ID))
 	{
 		FILINFO filInfo;
+
+		DEBUG_LOG("%s\r\n", filenameNew);
 
 		int ret = CreateNewDisk(filenameNew, ID, true);
 
@@ -1183,11 +1416,13 @@ void IEC_Commands::Rename(void)
 		FRESULT res;
 		FILINFO filInfo;
 
-		res = f_stat(filenameNew, &filInfo);
-		if (res == FR_NO_FILE)
+		//DEBUG_LOG("Renaming %s to %s\r\n", filenameOld, filenameNew);
+		// The real ROM first checks that filenameOld exists
+		res = f_stat(filenameOld, &filInfo);
+		if (res == FR_OK)
 		{
-			res = f_stat(filenameOld, &filInfo);
-			if (res == FR_OK)
+			res = f_stat(filenameNew, &filInfo);
+			if (res == FR_NO_FILE)
 			{
 				// Rename folders too.
 				//DEBUG_LOG("Renaming %s to %s\r\n", filenameOld, filenameNew);
@@ -1195,13 +1430,39 @@ void IEC_Commands::Rename(void)
 			}
 			else
 			{
-				Error(ERROR_62_FILE_NOT_FOUND);
+				Error(ERROR_63_FILE_EXISTS);
 			}
 		}
 		else
 		{
-			Error(ERROR_63_FILE_EXISTS);
+			DEBUG_LOG("!!!7\r\n");
+			Error(ERROR_62_FILE_NOT_FOUND);
 		}
+
+		//res = f_stat(filenameNew, &filInfo);
+		//if (res == FR_NO_FILE)
+		//{
+		//	res = f_stat(filenameOld, &filInfo);
+		//	if (res == FR_OK)
+		//	{
+		//		// Rename folders too.
+		//		//DEBUG_LOG("Renaming %s to %s\r\n", filenameOld, filenameNew);
+		//		f_rename(filenameOld, filenameNew);
+		//	}
+		//	else
+		//	{
+		//		Error(ERROR_62_FILE_NOT_FOUND);
+		//	}
+		//}
+		//else
+		//{
+		//	Error(ERROR_63_FILE_EXISTS);
+		//}
+	}
+	else
+	{
+		DEBUG_LOG("Rename error ERROR_30_SYNTAX_ERROR\r\n");
+		Error(ERROR_30_SYNTAX_ERROR);
 	}
 }
 
@@ -1230,7 +1491,7 @@ void IEC_Commands::Scratch(void)
 		{
 			if (filInfo.fname[0] != 0 && !IsDirectory(filInfo))
 			{
-				//DEBUG_LOG("Scratching %s\r\n", filInfo.fname);
+				DEBUG_LOG("Scratching %s\r\n", filInfo.fname);
 				f_unlink(filInfo.fname);
 			}
 			res = f_findnext(&dir, &filInfo);
@@ -1238,6 +1499,8 @@ void IEC_Commands::Scratch(void)
 		}
 		text = ParseNextName(text, filename, true);
 	}
+	// Regular ROM returns FILES SCRATCHED regardless of it the file existed or not.
+	Error(ERROR_SCRATCHED);
 }
 
 void IEC_Commands::User(void)
@@ -1328,14 +1591,39 @@ void IEC_Commands::Extended(void)
 	}
 }
 
+//void IEC_Commands::ProcessCommandFolderOnly(bool early)
+//{
+//	Error(ERROR_00_OK);
+//
+//	Channel& channel = channels[15];
+//
+//	//DEBUG_LOG("CMD %s %d\r\n", channel.buffer, channel.cursor);
+//
+//	if (channel.cursor > 0 && channel.buffer[channel.cursor - 1] == 0x0d)
+//		channel.cursor--;
+//
+//	if (channel.cursor == 0)
+//	{
+//		Error(ERROR_30_SYNTAX_ERROR);
+//	}
+//	else
+//	{
+//		//DEBUG_LOG("PCE %s\r\n", channel.buffer);
+//
+//		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
+//		{
+//			FolderCommand(early);
+//			return;
+//		}
+//	}
+//}
+
 // http://www.n2dvm.com/UIEC.pdf
 void IEC_Commands::ProcessCommand(void)
 {
-	Error(ERROR_00_OK);
+	DEBUG_LOG("PC\r\n");
 
 	Channel& channel = channels[15];
-
-	DEBUG_LOG("CMD %s %d\r\n", channel.buffer, channel.cursor);
 
 	if (channel.cursor > 0 && channel.buffer[channel.cursor - 1] == 0x0d)
 		channel.cursor--;
@@ -1346,14 +1634,25 @@ void IEC_Commands::ProcessCommand(void)
 	}
 	else
 	{
-		DEBUG_LOG("ProcessCommand %s\n", channel.buffer);
-
 		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
 		{
 			FolderCommand();
 			return;
 		}
+		//DEBUG_LOG("ProcessCommand %s %c%c\r\n", channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
 
+		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
+		{
+			//ProcessCommandEarly();
+
+			//Error(errorCodeEarly);
+			//FolderCommand(false);
+
+			return;
+		}
+
+		Error(ERROR_00_OK);
+ 
 		switch (toupper(channel.buffer[0]))
 		{
 			case 'B':
@@ -1464,6 +1763,15 @@ void IEC_Commands::Listen()
 
 void IEC_Commands::Talk()
 {
+	//DEBUG_LOG("Tk %02x %02x\r\n", commandCode, secondaryAddress);
+
+	//if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
+	//{
+	//	// if ProcessCommand is here the error setting works
+	//	// but it will not change folder when FB is used
+	//	ProcessCommand();
+	//}
+
 	if (commandCode == 0x6f)
 	{
 		SendError();
@@ -1653,6 +1961,7 @@ void IEC_Commands::LoadFile()
 	else
 	{
 		//DEBUG_LOG("Can't find %s", channel.buffer);
+		DEBUG_LOG("!!!8\r\n");
 		Error(ERROR_62_FILE_NOT_FOUND);
 	}
 }
@@ -1684,6 +1993,7 @@ void IEC_Commands::SendError()
 	int len = strlen(ErrorMessage);
 	int index = 0;
 	bool finalByte;
+	//DEBUG_LOG("SE %s\r\n", ErrorMessage);
 	do
 	{
 		finalByte = index == len;
@@ -1796,6 +2106,7 @@ void IEC_Commands::LoadDirectory()
 	memcpy(channel.buffer, DirectoryHeader, sizeof(DirectoryHeader));
 	channel.cursor = sizeof(DirectoryHeader);
 
+	DEBUG_LOG("$\r\n");
 
 	FileBrowser::BrowsableList::Entry entry;
 	std::vector<FileBrowser::BrowsableList::Entry> entries;
@@ -2083,6 +2394,7 @@ void IEC_Commands::OpenFile()
 				}
 				else
 				{
+					DEBUG_LOG("!!!9\r\n");
 					Error(ERROR_62_FILE_NOT_FOUND);
 				}
 
@@ -2186,4 +2498,10 @@ int IEC_Commands::WriteNewDiskInRAM(char* filenameNew, bool automount, unsigned 
 	{
 		return(ERROR_63_FILE_EXISTS);
 	}
+}
+
+void IEC_Commands::MountFailed()
+{
+	DEBUG_LOG("!!!10\r\n");
+	Error(ERROR_62_FILE_NOT_FOUND);
 }

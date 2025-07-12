@@ -57,11 +57,14 @@ public:
 	inline unsigned int GetExtraRAM() const { return extraRAM; }
 	inline unsigned int GetRAMBOard() const { return RAMBOard; }
 	inline unsigned int GetDisableSD2IECCommands() const { return disableSD2IECCommands; }
+	inline unsigned int GetDisableHDMI() const { return disableHDMI; }
 	inline unsigned int GetSupportUARTInput() const { return supportUARTInput; }
 
-	inline unsigned int GraphIEC() const { return graphIEC; }
+	inline unsigned int HDMIGraphIEC() const { return hdmiGraphIEC; }
+	inline unsigned int HDMIDisplayIECActivity() const { return hdmiDisplayIECActivity; }
 	inline unsigned int DisplayTracks() const { return displayTracks; }
 	inline unsigned int QuickBoot() const { return quickBoot; }
+	inline unsigned int LogoDisplayDelay() const { return logoDisplayDelay; }
 	inline unsigned int ShowOptions() const { return showOptions; }
 	inline unsigned int DisplayPNGIcons() const { return displayPNGIcons; }
 	inline unsigned int SoundOnGPIO() const { return soundOnGPIO; }
@@ -78,6 +81,10 @@ public:
 	inline unsigned int DisplayTemperature() const { return displayTemperature; }
 
 	inline unsigned int LowercaseBrowseModeFilenames() const { return lowercaseBrowseModeFilenames; }
+
+	inline unsigned int CDSlashSlashToRoot() const { return cdSlashSlashToRoot; }
+	inline unsigned int StartInUSBDrive() const { return startInUSBDrive; }
+
 	DiskImage::DiskType GetNewDiskType() const;
 
 	inline unsigned int ScreenWidth() const { return screenWidth; }
@@ -136,10 +143,13 @@ private:
 	unsigned int extraRAM;
 	unsigned int RAMBOard;
 	unsigned int disableSD2IECCommands;
+	unsigned int disableHDMI;
 	unsigned int supportUARTInput;
-	unsigned int graphIEC;
+	unsigned int hdmiGraphIEC;
+	unsigned int hdmiDisplayIECActivity;
 	unsigned int displayTracks;
 	unsigned int quickBoot;
+	unsigned int logoDisplayDelay;
 	unsigned int showOptions;
 	unsigned int displayPNGIcons;
 	unsigned int soundOnGPIO;
@@ -154,6 +164,9 @@ private:
 	unsigned int displayTemperature;
 
 	unsigned int lowercaseBrowseModeFilenames;
+
+	unsigned int cdSlashSlashToRoot;
+	unsigned int startInUSBDrive;
 
 	unsigned int screenWidth;
 	unsigned int screenHeight;

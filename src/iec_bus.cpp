@@ -116,18 +116,16 @@ CGPIOPin IEC_Bus::IO_OUT_SRQ;
 unsigned IEC_Bus::_mask;
 #endif
 
-void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)()
+void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)
 {
 #if !defined(__PICO2__)	&& !defined(ESP32)
+ 	int indexEnter = InputMappings::INPUT_BUTTON_ENTER;
+ 	int indexUp = InputMappings::INPUT_BUTTON_UP;
+	int indexDown = InputMappings::INPUT_BUTTON_DOWN;	
+
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 	if (IEC_Bus::rotaryEncoderEnable == true)
 	{
-		int indexEnter = InputMappings::INPUT_BUTTON_ENTER;
-		int indexUp = InputMappings::INPUT_BUTTON_UP;
-		int indexDown = InputMappings::INPUT_BUTTON_DOWN;
-		int indexBack = InputMappings::INPUT_BUTTON_BACK;
-		int indexInsert = InputMappings::INPUT_BUTTON_INSERT;
-
 		//Poll the rotary encoder
 		//
 		// Note: If the rotary encoder returns any value other than 'NoChange' an
@@ -158,21 +156,57 @@ void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)()
 				break;
 
 		}
-		UpdateButton(indexBack, gplev0);
-		UpdateButton(indexInsert, gplev0);
 	}
-	else // Unmolested original logic
-#endif /* !__PICO2__ && !ESP32*/
+	else 
 	{
-		int index;
-		for (index = 0; index < buttonCount; ++index)
-		{
-			UpdateButton(index, gplev0);
-		}
-
+ 		UpdateButton(indexEnter);
+ 		UpdateButton(indexUp);
+ 		UpdateButton(indexDown);
+ 	}	
+#endif /* !__PICO2__ && !ESP32*/
+	if (!minimalCheck)
+	{
+ 		int indexBack = InputMappings::INPUT_BUTTON_BACK;
+ 		int indexInsert = InputMappings::INPUT_BUTTON_INSERT;
+		  
+ 		UpdateButton(indexBack);
+ 		UpdateButton(indexInsert);
 	}
 }
 
+void IEC_Bus::UpdateButton(int index)
+{
+	bool inputcurrent = (gplev0 & ButtonPinFlags[index]) == 0;
+
+	InputButtonPrev[index] = InputButton[index];
+	inputRepeatPrev[index] = inputRepeat[index];
+
+	if (inputcurrent)
+	{
+		validInputCount[index]++;
+		if (validInputCount[index] == INPUT_BUTTON_DEBOUNCE_THRESHOLD)
+		{
+			InputButton[index] = true;
+			inputRepeatThreshold[index] = INPUT_BUTTON_DEBOUNCE_THRESHOLD + INPUT_BUTTON_REPEAT_THRESHOLD;
+			inputRepeat[index]++;
+		}
+
+		if (validInputCount[index] == inputRepeatThreshold[index])
+		{
+			inputRepeat[index]++;
+			inputRepeatThreshold[index] += INPUT_BUTTON_REPEAT_THRESHOLD / inputRepeat[index];
+		}
+	}
+	else
+	{
+		InputButton[index] = false;
+		validInputCount[index] = 0;
+		inputRepeatThreshold[index] = INPUT_BUTTON_REPEAT_THRESHOLD;
+		inputRepeat[index] = 0;
+		inputRepeatPrev[index] = 0;
+	}
+}
+ 
 //ROTARY: Modified for rotary encoder support - 09/05/2019 by Geo...
 void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 {
@@ -286,7 +320,10 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 	}
 
 	if (portB && (portB->GetDirection() & 0x10) == 0)
+	{ /*FCP*/
 		AtnaDataSetToOut = false; // If the ATNA PB4 gets set to an input then we can't be pulling data low. (Maniac Mansion does this)
+		if(AtnaDataSetToOutOld) RefreshOuts1541(); /*FCP*/
+	} /*FCP*/
 
 	// moved from PortB_OnPortOut
 	if (AtnaDataSetToOut)
@@ -432,132 +469,6 @@ void IEC_Bus::ReadEmulationMode1581(void)
 }
 #endif /* PI1581 SUPPORT */
 
-void __not_in_flash_func(IEC_Bus::RefreshOuts1541)(void)
-{
-	unsigned set = 0;
-	unsigned clear = 0;
-	unsigned tmp;
-#if defined(__PICO2__)		
-	if (!splitIECLines)
-	{
-		if (AtnaDataSetToOut || DataSetToOut)
-			set |= PIGPIO_MASK_IN_DATA;
-		if (ClockSetToOut)
-			set |= PIGPIO_MASK_IN_CLOCK;
-		gpio_set_dir_masked(PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK, set);
-	}
-	else
-	{
-		not_implemented("refreshOuts1541 - splitIECLines");
-		return;
-	}
-	set = 0;
-	if (OutputLED)
-		set |= PIGPIO_MASK_OUT_LED;
-	if (OutputSound)
-		set |= PIGPIO_MASK_OUT_SOUND;
-	gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
-#elif defined(ESP32)
-	//DEBUG_LOG("%s: ATN: %d, Data: %d, Clock: %d\n", __FUNCTION__, AtnaDataSetToOut, DataSetToOut, ClockSetToOut);
-	if (!splitIECLines)
-	{
-		if (AtnaDataSetToOut || DataSetToOut) {
-			gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_OUTPUT);
-		}
-		else {
-			gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_INPUT);
-		}
-		
-		if (ClockSetToOut) {
-			gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_OUTPUT);
-		}
-		else {
-			gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_INPUT);
-		}
-	}	
-	else
-	{
-		not_implemented("refreshOuts1541 - splitIECLines");
-		return;
-	}
-	if (OutputLED)
-		gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 1);
-	else
-		gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 0);
-	if (OutputSound)
-		gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 1);
-	else
-		gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 0);
-#else
-	if (!splitIECLines)
-	{
-		//time_fn_arm();
-#if !defined (CIRCLE_GPIO)
-		unsigned outputs = 0;
-		if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
-		if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
-
-		unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs;
-		write32(ARM_GPIO_GPFSEL1, nValue);
-#else
-		u32 im = 0, om = 0;
-		if (AtnaDataSetToOut || DataSetToOut)
-			om |= (1 << PIGPIO_DATA);
-		else
-			im |= (1 << PIGPIO_DATA);
-		if (ClockSetToOut)
-			om |= (1 << PIGPIO_CLOCK);
-		else
-			im |= (1 << PIGPIO_CLOCK);
-#if RASPPI == 5		
-		if (im)
-			write32 (RIO0_OE (0, RIO_CLR_OFFSET), im);
-		if (om)
-			write32 (RIO0_OE (0, RIO_SET_OFFSET), om);
-#else			
-		CGPIOPin::SetModeAll(im, om);
-#endif	/* RASPPI */
-#endif	/* CIRCLE_GPIO */
-		//time_fn_eval(1, __FUNCTION__);
-	}
-	else
-	{
-#if defined (CIRCLE_GPIO)		
-		_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK));
-#endif		
-		if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
-		else clear |= 1 << PIGPIO_OUT_DATA;
-
-		if (ClockSetToOut) set |= 1 << PIGPIO_OUT_CLOCK;
-		else clear |= 1 << PIGPIO_OUT_CLOCK;
-
-		if (!invertIECOutputs) {
-			tmp = set;
-			set = clear;
-			clear = tmp;
-		}
-	}
-
-	if (OutputLED) set |= 1 << PIGPIO_OUT_LED;
-	else clear |= 1 << PIGPIO_OUT_LED;
-
-	if (OutputSound) set |= 1 << PIGPIO_OUT_SOUND;
-	else clear |= 1 << PIGPIO_OUT_SOUND;
-
-#if !defined (CIRCLE_GPIO)
-	write32(ARM_GPIO_GPCLR0, clear);
-	write32(ARM_GPIO_GPSET0, set);
-#else
-#if RASPPI == 5
-	write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
-	write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
-#else
-	CGPIOPin::WriteAll(set, _mask);
-#endif
-#endif
-#endif  /* __PICO2__ */
-}
-
 void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
 {
 	bool oldDataSetToOut = DataSetToOut;
@@ -655,4 +566,3 @@ void IEC_Bus::Reset(void)
 	RefreshOuts1581();
 #endif	
 }
-
