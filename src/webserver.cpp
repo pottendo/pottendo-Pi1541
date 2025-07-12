@@ -357,6 +357,7 @@ static bool write_image(string fn, char *extension, const u8 *pPartData, unsigne
 		(strcmp(extension, "lst") == 0) ||
 		(strcmp(extension, "txt") == 0) ||
 		(strcmp(extension, "nfo") == 0) ||
+		(strcmp(extension, "zip") == 0) ||
 		(strcmp(extension, "prg") == 0))
 	{
 		DEBUG_LOG("%s: received %d bytes.", __FUNCTION__, nPartLength);

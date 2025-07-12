@@ -161,8 +161,7 @@ void Screen::PlotPixel16(u32 pixel_offset, RGBA Colour)
 	*(unsigned short*)&framebuffer[pixel_offset] = ((RED(Colour) >> 3) << 11) | ((GREEN(Colour) >> 2) << 5) | (BLUE(Colour) >> 3);
 #endif
 #else
-	TScreenColor c = COLOR16((RED(Colour)>>3), (GREEN(Colour) >> 3), (BLUE(Colour)>>3));
-	Kernel.set_pixel((pixel_offset % pitch) / 2, pixel_offset / pitch, c);
+	Kernel.set_pixel((pixel_offset % pitch) / 2, pixel_offset / pitch, COLOR16((RED(Colour)>>3), (GREEN(Colour) >> 3), (BLUE(Colour)>>3)));
 #endif
 }
 

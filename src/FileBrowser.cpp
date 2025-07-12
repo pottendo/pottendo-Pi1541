@@ -898,11 +898,13 @@ void FileBrowser::DisplayPNG(FILINFO& filIcon, int x, int y)
 				int channels_in_file;
 				stbi_uc* image = stbi_load_from_memory((stbi_uc const*)PNG, bytesRead, &w, &h, &channels_in_file, 4);
 #if not defined(EXPERIMENTALZERO)
-
 				if (image && (w <= PNG_WIDTH && h <= PNG_HEIGHT))
 				{
-					DEBUG_LOG("Opened PNG %s w = %d h = %d cif = %d\r\n", filIcon.fname, w, h, channels_in_file);
-					screenMain->PlotImage((u32*)image, x, y, w, h);
+					//DEBUG_LOG("Opened PNG %s w = %d h = %d cif = %d\r\n", filIcon.fname, w, h, channels_in_file);
+					int offsx, offsy;
+					offsx = (PNG_WIDTH - w) / 2;
+					offsy = (PNG_HEIGHT - h) / 2;
+					screenMain->PlotImage((u32*)image, x + offsx, y + offsy, w, h);
 				}
 				else
 				{
