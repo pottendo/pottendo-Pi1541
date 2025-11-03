@@ -14,6 +14,7 @@ extern "C" void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags
 #define LED_DELAY_MS 250
 #endif
 
+//char psram_test[512 * 1024 * 1024]; // 5MB should be enough to test PSRAM presence
 // Perform initialisation
 int pico_led_init(void) {
 #if defined(PICO_DEFAULT_LED_PIN)
@@ -59,11 +60,13 @@ int main()
     }
     FATFS fileSystemSD;
     FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
-    	if (FR_OK != fr) {
-        	printf("f_mount error: (%d)\n", fr);
-			return -1;
-    	}		
-		list_directory("/");
+    if (FR_OK != fr) {
+       	printf("f_mount error: (%d)\n", fr);
+		return -1;
+    }		
+	list_directory("/");
+    fflush(stdout);
+    sleep_ms(1000);
     kernel_main(0, 0, 0);
     while (true) {
         printf("Hello, world!\n");

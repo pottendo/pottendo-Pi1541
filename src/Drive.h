@@ -23,7 +23,7 @@
 #include "DiskImage.h"
 #include <stdlib.h>
 
-#if defined(EXPERIMENTALZERO)
+#if defined(EXPERIMENTALZERO) && !defined(__PICO2__)
 inline int ceil(float num) {
 	int inum = (int)num;
 	if (num == (float)inum) {

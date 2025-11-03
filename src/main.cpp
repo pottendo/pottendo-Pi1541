@@ -298,7 +298,7 @@ void InitialiseHardware()
 #endif
 	{
 		screen = new ScreenHeadLess();
-		DEBUG_LOG("running headless");
+		DEBUG_LOG("running headless\n");
 	}
 #if !defined(__PICO2__)	&& !defined(ESP32)
 	screen->Open(screenWidth, screenHeight, 16);
@@ -2129,6 +2129,8 @@ extern "C"
 	{
 		FRESULT res;
 		FATFS fileSystemSD;
+
+		DEBUG_LOG("Pi1541 Kernel Main\n");
 #if !defined(EXPERIMENTALZERO)		
 		FATFS fileSystemUSB[16];
 #endif		
@@ -2145,7 +2147,7 @@ extern "C"
 		initDiskImage();
 		if (esp32_initSD() != 0)
 			return;
-		esp32_showstat();
+		plfio_showstat();
 		list_directory("/");
 #endif
 	_m_IEC_Commands = new IEC_Commands;
@@ -2154,7 +2156,7 @@ extern "C"
 		initDiskImage();
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
-        	printf("f_mount error: (%d)\n", fr);
+        	DEBUG_LOG("f_mount error: (%d)\n", fr);
 			return;
     	}		
 #endif
@@ -2311,5 +2313,18 @@ void setup(void)
 void loop(void)
 {
 	esp32_loop();
+}
+#endif
+
+#if defined (__PICO2__)
+void pico2_setup(void);
+void pico2_loop(void);
+extern "C" void setup(void)
+{
+	pico2_setup();
+}
+extern "C" void loop(void)
+{
+	pico2_loop();
 }
 #endif

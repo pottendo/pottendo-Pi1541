@@ -31,7 +31,7 @@
 const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
 #elif defined(__PICO2__)
 #include "pico/stdlib.h"
-const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
+const char* VolumeStr[FF_VOLUMES] = {"sd", "usb", "flash", "psram"};
 #elif defined(ESP32)
 const char* VolumeStr[FF_VOLUMES] = {"SD","USB01"};
 #else

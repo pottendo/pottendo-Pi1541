@@ -32,7 +32,7 @@ void InitialiseLCD(void);
 void not_implemented(const char *fn);
 uint64_t get_ticks(void);
 void initDiskImage(void);
-void esp32_showstat(void);
+void plfio_showstat(void);
 
 #define f_open _f_open
 FRESULT _f_open (FIL* fp, const TCHAR* path, BYTE mode);
