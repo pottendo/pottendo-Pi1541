@@ -29,7 +29,7 @@ public:
 		: ScreenBase()
 	{
 	}
-
+	virtual ~Screen();
 	void Open(u32 width, u32 height, u32 colourDepth);
 
 	void DrawRectangle(u32 x1, u32 y1, u32 x2, u32 y2, RGBA colour);

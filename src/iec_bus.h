@@ -668,6 +668,7 @@ public:
 			if (Resetting)
 			{
 				IEC_Bus::WaitMicroSeconds(100);
+				break;
 			}
 		}
 		while (Resetting);

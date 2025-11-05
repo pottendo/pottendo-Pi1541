@@ -1,15 +1,15 @@
 #include <Arduino.h>
 #include <stdio.h>
 #include "pico2.h"
+#include "../../src/Screen.h"
 #include "ff.h"
 #include "pico/stdlib.h"
 #include "hw_config.h"
 
 extern "C" void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
 extern void list_directory(const char *path);
-#define MAX_PATH 127
+#define MAX_PATH 255
 static char cwd[MAX_PATH + 1]="";
-//const char* VolumeStr[FF_VOLUMES] = {"sd", "flash", "ram", "cf"};
 
 void _DEBUG(const char* fmt, ...) 
 {
