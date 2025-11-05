@@ -40,4 +40,5 @@ FRESULT _f_open (FIL* fp, const TCHAR* path, BYTE mode);
 FRESULT _f_opendir (DIR* dp, const TCHAR* path);
 #define __not_in_flash_func(a) a
 
+#define pmalloc ps_malloc
 #endif /* __ESP32_H__ */
