@@ -48,7 +48,6 @@ void pico2_setup(void)
     plfio_showstat();
     printf("%s: initializing SD card...\n", __FUNCTION__);
     pico2_initSD();
-    delay(1000);
     FATFS fileSystemSD;
     FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     if (FR_OK != fr) {
@@ -57,8 +56,8 @@ void pico2_setup(void)
     printf("%s: listing root directory:\n", __FUNCTION__);
 	list_directory("/");
     fflush(stdout);
-    sleep_ms(1000);
-    
+    printf("%s: setting CPU frequency to 250MHz\n", __FUNCTION__);
+    set_sys_clock_khz(250000, true);
     kernel_main(0, 0, 0);
 }
 
