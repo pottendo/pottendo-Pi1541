@@ -2,6 +2,8 @@
 
 This is an attempt to make Pi1541 available on a Pico 2
 
+THIS CODE IS OBSOLETE - PICO2 HAS BEEN MOVED TO PlatformI/O - refer to esp1541
+
 ## Build
 I use VSCode and its pico extension - this installs the Pico SDK in ~/.pico_sdk.
 As there's the need to have some files being read from an SDCard, one needs the respective setup. I use an SPI connected SDCard reader in a more or less standard SPI configuration
