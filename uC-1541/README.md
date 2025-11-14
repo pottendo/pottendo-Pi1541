@@ -1,4 +1,4 @@
-# pico1541 - Pi1541 ESP32/PSRAM support 
+# pico1541/ESP32 + PSRAM - Pi1541
 
 This is an attempt to make Pi1541 available on a esp32/PSRAM
 
@@ -70,12 +70,12 @@ The following pins have been assigned to the pico2 setup:
 
 
 ## Status
-This is a PoC to get Pi1541 running on smaller uControllers. The ESP32 CPU + I/O proved to be *too slow* to meet the real-time requirements for Pi1541 - therefore won't work.
-The code can be used as a further porting base to more powerful uControllers - similar to Pico2.
+This is a PoC to get Pi1541 running on smaller uControllers. The ESP32 CPU + I/O and Pico 2 proved to be *too slow* to meet the real-time requirements for Pi1541 - therefore won't work.
+The code can be used as a further porting base to more powerful uControllers.
 
 The code is planned to remain compatible to all versions supported by Pi1541.
 
-Note that Pico2 is substantially overclocked (250Mhz) - use at your own risk!
+Note that Pico2 is substantially overclocked (250Mhz) and still not meeting the requirements - use at your own risk!
 
 ## TODO:
 - activate UI: buttons & LCD display

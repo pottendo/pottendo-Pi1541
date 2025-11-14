@@ -4,6 +4,8 @@
 #include "../../src/Screen.h"
 #include "ff.h"
 #include "pico/stdlib.h"
+#include "hardware/clocks.h"
+#include "hardware/vreg.h"
 #include "hw_config.h"
 
 extern "C" void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
@@ -35,6 +37,21 @@ int pico2_initSD(void)
     return 0;
 }
 
+void overclock(uint32_t kHz)
+{
+    vreg_set_voltage(VREG_VOLTAGE_1_10);
+    sleep_ms(10);
+    bool ret = set_sys_clock_khz(kHz , false);
+    sleep_ms(10);
+    if (!ret) {
+        printf("%s: failed to overclock to %d kHz\n", __FUNCTION__, kHz);
+        delay(1000 * 5);
+        return;
+    }
+    printf("%s: overclocked to %d Hz\n", __FUNCTION__, kHz);
+    delay(1000 * 5);
+}
+
 void pico2_setup(void)
 {
     Serial.begin(115200);
@@ -56,8 +73,7 @@ void pico2_setup(void)
     printf("%s: listing root directory:\n", __FUNCTION__);
 	list_directory("/");
     fflush(stdout);
-    printf("%s: setting CPU frequency to 250MHz\n", __FUNCTION__);
-    set_sys_clock_khz(250000, true);
+
     kernel_main(0, 0, 0);
 }
 
