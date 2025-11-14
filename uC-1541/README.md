@@ -79,4 +79,15 @@ Note that Pico2 is substantially overclocked (250Mhz) and still not meeting the 
 
 ## TODO:
 - activate UI: buttons & LCD display
-- Fix pico build for FatFS - currently needs some adjustment in fconf.h in the lib dir after checkout
+- Fix pico build for FatFS - currently needs some adjustment in fconf.h in the lib dir after checkout:
+in `.pio/libdeps/picoplus2w/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include/ffconf.h`
+```
+#define FF_STR_VOLUME_ID	0
+#define FF_VOLUME_STRS		"RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
+```
+change to
+  ```
+#define FF_STR_VOLUME_ID	1
+/*#define FF_VOLUME_STRS		"RAM","NAND","CF","SD","SD2","USB","USB2","USB3"*/
+```
+

@@ -933,7 +933,9 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 		cycleCount++;
 	}
+#if defined(__PICO2__)	
 	overclock(312000);
+#endif	
 	
 	// Self test code done. Begin realtime emulation.
 	while (exitReason == EXIT_UNKNOWN)
