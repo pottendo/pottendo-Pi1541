@@ -299,7 +299,7 @@ void InitialiseHardware()
 #endif
 	{
 		screen = new ScreenHeadLess();
-		DEBUG_LOG("running headless");
+		DEBUG_LOG("running headless\n");
 	}
 #if !defined(__PICO2__)	&& !defined(ESP32)
 	screen->Open(screenWidth, screenHeight, 16);
@@ -764,7 +764,7 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s, IconName='%s'", __FUNCTION__, diskImage->GetName(), filenameForIcon);
+	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -936,6 +936,10 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 		cycleCount++;
 	}
+#if defined(__PICO2__)	
+	overclock(312000);
+#endif	
+	
 	// Self test code done. Begin realtime emulation.
 	while (exitReason == EXIT_UNKNOWN)
 	{
@@ -1078,7 +1082,8 @@ extern int mount_new;
 			{
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				//DEBUG_LOG("! ct = %d\n", ct);
+				DEBUG_LOG("! ct = %d\n", ct);
+				//delay(1000 * 10);
 				//sprintf(tempBuffer, "-%d-", ct);
 				//DisplayMessage(0, 20, true, tempBuffer, RGBA(255, 255, 255, 255), RGBA(0,0,0,0));
 			}
@@ -2132,6 +2137,8 @@ extern "C"
 	{
 		FRESULT res;
 		FATFS fileSystemSD;
+
+		DEBUG_LOG("Pi1541 Kernel Main\n");
 #if !defined(EXPERIMENTALZERO)		
 		FATFS fileSystemUSB[16];
 #endif		
@@ -2148,7 +2155,7 @@ extern "C"
 		initDiskImage();
 		if (esp32_initSD() != 0)
 			return;
-		esp32_showstat();
+		plfio_showstat();
 		list_directory("/");
 #endif
 	_m_IEC_Commands = new IEC_Commands;
@@ -2157,7 +2164,7 @@ extern "C"
 		initDiskImage();
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
-        	printf("f_mount error: (%d)\n", fr);
+        	DEBUG_LOG("f_mount error: (%d)\n", fr);
 			return;
     	}		
 #endif
@@ -2314,5 +2321,18 @@ void setup(void)
 void loop(void)
 {
 	esp32_loop();
+}
+#endif
+
+#if defined (__PICO2__)
+void pico2_setup(void);
+void pico2_loop(void);
+extern "C" void setup(void)
+{
+	pico2_setup();
+}
+extern "C" void loop(void)
+{
+	pico2_loop();
 }
 #endif

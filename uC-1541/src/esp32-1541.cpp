@@ -16,7 +16,7 @@ static const crgb_t L_BLUE = 0x0000ff;
 static const crgb_t L_WHITE = 0xe0e0e0;
 LiteLED myLED( LED_TYPE, LED_TYPE_IS_RGBW );    // create the LiteLED object; we're calling it "myLED"
 
-void esp32_showstat(void)
+void plfio_showstat(void)
 {
     printf("Chip model: %s, %dMHz, %d cores\n", ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getChipCores());
     printf("Free heap: %d/%d %d max block\n", ESP.getFreeHeap(), ESP.getHeapSize(),ESP.getMaxAllocHeap());

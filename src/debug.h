@@ -8,7 +8,7 @@
 
 #if !defined (__CIRCLE__)
 #ifdef DEBUG
-#define DEBUG_LOG(...) printf(__VA_ARGS__)
+#define DEBUG_LOG(...) Serial.printf(__VA_ARGS__)
 #else
 #define DEBUG_LOG(...)
 #endif
