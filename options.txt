@@ -27,9 +27,12 @@ i2cScan = 1 // scan i2c bus and display addresses on screen
 //i2cLcdUseCBMChar = 1 // set it to 1 to use CBM font on LCD. Small but fun !
 
 // If you have hardware with a peizo buzzer (the type without a generator) then you can use this option to hear the head step
+// use SoundOnGPIO = 1 for GPIO
+// use SoundOnGPIO = 0 for DMA Sound (=default)
+// use SoundOnGPIO = -1 for disabling sound
 SoundOnGPIO = 1
-SoundOnGPIODuration = 1000 // Length of buzz in micro seconds
-SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz
+SoundOnGPIODuration = 1000 // Length of buzz in micro seconds if GPIO sound
+SoundOnGPIOFreq = 1200 // Frequency of buzz in Hz if GPIO sound
 
 // You can remap the physical button functions
 // numbers correspond to the standard board layout

@@ -40,7 +40,7 @@ void SetACTLed(int v);
 void _enable_unaligned_access(void);
 void enable_MMU_and_IDCaches(void);
 void emulator(void);
-void PlaySoundDMA(void);
+void PlaySoundDMA(int play);
 void setIP(const char *ip);
 void setNM(const char *nm);
 void setGW(const char *gw);

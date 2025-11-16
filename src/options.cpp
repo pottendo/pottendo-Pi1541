@@ -23,7 +23,7 @@
 #include <strings.h>
 #include <ctype.h>
 
-#define INVALID_VALUE	((unsigned) -1)
+#define INVALID_VALUE	((int)0xDEADBEEF)
 
 char* TextParser::GetToken(bool includeSpace)
 {
@@ -191,7 +191,7 @@ Options::Options(void)
 #define ELSE_CHECK_DECIMAL_OPTION(Name) \
 	else if (strcasecmp(pOption, #Name) == 0) \
 	{ \
-		unsigned nValue = 0; \
+		int nValue = 0; \
 		if ((nValue = GetDecimal(pValue)) != INVALID_VALUE) \
 			Name = nValue; \
 	}
@@ -383,7 +383,7 @@ void Options::Process(char* buffer)
 	}
 }
 
-unsigned Options::GetDecimal(char* pString)
+int Options::GetDecimal(char* pString)
 {
 	if (pString == 0 || *pString == '\0')
 		return 0;

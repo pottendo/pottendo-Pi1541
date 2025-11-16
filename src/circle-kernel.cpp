@@ -208,6 +208,7 @@ TShutdownMode CKernel::Run (void)
 				log("%s won't support PWM sound, disabling it", mi->GetMachineName());
 				no_pwm = true;
 				break;
+			case MachineModel3APlus:
 			case MachineModel3B:
 			case MachineModel3BPlus:
 			case MachineModel4B:
@@ -217,6 +218,7 @@ TShutdownMode CKernel::Run (void)
 #endif				
 				break;
 			default:
+				no_pwm = true;
 				log ("model '%s' not tested, use at your onw risk...", mi->GetMachineName());
 				MsDelay(2000);
 				break;
@@ -337,8 +339,8 @@ bool CKernel::run_wifi(void)
 		m_Net = new CNetSubSystem(0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN);
 	if (!m_Net) return false;
 	bool bOK = true;
-	if (bOK) bOK = m_Net->Initialize(FALSE);
 	if (bOK) bOK = m_WLAN.Initialize();
+	if (bOK) bOK = m_Net->Initialize(FALSE);
 	if (bOK) bOK = m_WPASupplicant.Initialize();
 	if (!bOK) {
 		log("couldn't start wifi network...waiting 5s"); 

@@ -159,8 +159,9 @@ unsigned int screenHeight = 768;
 const char* termainalTextRed = "\E[31m";
 const char* termainalTextNormal = "\E[0m";
 
-int headSoundFreq;
-int headSoundCounterDuration;
+static int playsound = 0;
+static int headSoundFreq;
+static int headSoundCounterDuration;
 
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32) 
 // Hooks required for USPi library
@@ -813,8 +814,10 @@ DMA_ControlBlock dmaSoundCB =
 	0, 0
 };
 
-static void PlaySoundDMA()
+static void PlaySoundDMA(bool play)
 {
+	if (play != 0) 
+		return;
 	write32(PWM_DMAC, PWM_ENAB + 0x0001);
 	write32(DMA_ENABLE, 1);	// DMA_EN0
 	write32(DMA0_BASE + DMA_CONBLK_AD, (u32)&dmaSoundCB);
@@ -994,7 +997,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 		if (headDir != oldHeadDir)	// Need to start a new sound?
 		{
 			oldHeadDir = headDir;
-			if (options.SoundOnGPIO())
+			if (playsound > 0)
 			{
 				headSoundCounter = headSoundCounterDuration;
 				headSoundFreqCounter = headSoundFreq;
@@ -1002,7 +1005,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			else
 			{
 #if not defined(EXPERIMENTALZERO)
-				PlaySoundDMA();
+				PlaySoundDMA(playsound);
 #endif
 			}
 		}
@@ -1089,7 +1092,7 @@ extern int mount_new;
 			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
 		}
 
-		if (options.SoundOnGPIO() && headSoundCounter > 0)
+		if ((playsound > 0) && headSoundCounter > 0)
 		{
 			headSoundFreqCounter--;		// Continue updating a GPIO non DMA sound.
 			if (headSoundFreqCounter <= 0)
@@ -1244,7 +1247,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 		if (track != oldTrack)	// Need to start a new sound?
 		{
 			oldTrack = track;
-			if (options.SoundOnGPIO())
+			if (playsound > 0)
 			{
 				headSoundCounter = headSoundCounterDuration;
 				headSoundFreqCounter = headSoundFreq;
@@ -1252,7 +1255,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			else
 			{
 #if not defined(EXPERIMENTALZERO)
-				PlaySoundDMA();
+				PlaySoundDMA(playsound);
 #endif
 			}
 		}
@@ -1325,7 +1328,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #endif
 		ctBefore = ctAfter;
 
-		if (options.SoundOnGPIO() && headSoundCounter > 0)
+		if ((playsound > 0) && headSoundCounter > 0)
 		{
 			headSoundFreqCounter--;		// Continue updating a GPIO non DMA sound.
 			if (headSoundFreqCounter <= 0)
@@ -2189,9 +2192,12 @@ extern "C"
 			DisplayOptions(y_pos+=32);
 
 #endif
+		playsound = options.SoundOnGPIO();
 		headSoundFreq = 1000000 / options.SoundOnGPIOFreq();	// 1200Hz = 1/1200 * 10^6;
 		headSoundCounterDuration = 1000 * options.SoundOnGPIODuration();
-
+		DEBUG_LOG("Sound: %s", (playsound > 0) ? "GPIO" : (playsound == 0) ? "DMA" : "OFF") ;
+		if (playsound > 0)
+			DEBUG_LOG("%d Freq, %dus duration", options.SoundOnGPIOFreq(), options.SoundOnGPIODuration());
 		//if (!options.QuickBoot())
 			//IEC_Bus::WaitMicroSeconds(3 * 1000000);
 
@@ -2203,9 +2209,6 @@ extern "C"
 		TimerSystemInitialize();
 #endif
 		USPiInitialize();
-
-		DEBUG_LOG("\r\n");
-
 		numberOfUSBMassStorageDevices = USPiMassStorageDeviceAvailable();
 		DEBUG_LOG("%d USB Mass Storage Devices found\r\n", numberOfUSBMassStorageDevices);
 
@@ -2236,7 +2239,7 @@ extern "C"
 		//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 		IEC_Bus::SetRotaryEncoderInvert(options.RotaryEncoderInvert());
 #if not defined(EXPERIMENTALZERO)
-		if (!options.SoundOnGPIO())
+		if (playsound == 0)
 		{
 #if !defined (__CIRCLE__)			
 			dmaSound = (u32*)malloc(Sample_bin_size * 4);
