@@ -144,10 +144,9 @@ The floppy emulation is entirely untouched, so it's as good as it was/is in V1.2
 
 ## Misc
 Other uController support has been added:
-- Raspberry Pico 2 W (see directory _pico1541_)
-- ESP32 (PSRAM) (see directory _esp1541_)
+- Raspberry Pico 2W, ESP32 support. One needs a uController with sufficient RAM (e.g. PSRAM), see uC-1541
 
-However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handel Pi1541 hard realtime requirements.
+However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handle Pi1541 hard realtime requirements.
 
 **Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`.
 
