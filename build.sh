@@ -95,7 +95,7 @@ if [ x${tag} != "xnone" ] ; then
 	    echo "failed to build legacy codebase for Pi3"
 	    exit 1
     fi
-    make clean 2>&1 >/dev/null
+    make RASPPI=3 clean 2>&1 >/dev/null
     if make RASPPI=0 legacy > make-PiZero.log; then
 	    echo "successully built for PiZero, legacy code base"
 	    cp kernel.img ${RELEASE}
@@ -103,7 +103,7 @@ if [ x${tag} != "xnone" ] ; then
 	    echo "failed to build legacy codebase for PiZero"
 	    exit 1
     fi
-    make clean 2>&1 >/dev/null
+    make RASPPI=0 clean 2>&1 >/dev/null
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart

@@ -121,7 +121,7 @@ uspi/libuspi.a:
 clean:
 	$(Q)$(RM) $(OBJS_LEGACY) $(OBJS_CIRCLE) $(TARGET).elf $(TARGET).map $(TARGET).lst $(TARGET).img $(TARGET_CIRCLE) *.img
 	$(MAKE) -C uspi clean
-	$(MAKE) -C $(SRCDIR) -f Makefile.circle clean
+	$(MAKE) -C $(SRCDIR) -f Makefile.circle clean 2>/dev/null || true
 	$(MAKE) -C $(SRCDIR)/webcontent -f Makefile clean
 
 distclean: clean
