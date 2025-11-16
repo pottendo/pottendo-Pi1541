@@ -1082,7 +1082,7 @@ extern int mount_new;
 			{
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				DEBUG_LOG("! ct = %d\n", ct);
+				//DEBUG_LOG("! ct = %d\n", ct);
 				//delay(1000 * 10);
 				//sprintf(tempBuffer, "-%d-", ct);
 				//DisplayMessage(0, 20, true, tempBuffer, RGBA(255, 255, 255, 255), RGBA(0,0,0,0));
