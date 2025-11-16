@@ -837,7 +837,7 @@ public:
 	static inline bool IsDataSetToOut() { return DataSetToOut; }
 	//static inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
 	static inline bool IsClockSetToOut() { return ClockSetToOut; }
-	static inline bool IsReset() { return false; }  //Resetting; }
+	static inline bool IsReset() { return Resetting; }
 
 	static inline void WaitWhileAtnAsserted()
 	{
