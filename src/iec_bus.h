@@ -90,11 +90,11 @@ enum PIGPIO
 	PIGPIO_DATA = 12,
 	PIGPIO_RESET = 13,
 	PIGPIO_SRQ = 14,
-	PIGPIO_IN_BUTTON1 = 5,
-	PIGPIO_IN_BUTTON2 = 6,
-	PIGPIO_IN_BUTTON3 = 7,
-	PIGPIO_IN_BUTTON4 = 8,
-	PIGPIO_IN_BUTTON5 = 9,
+	PIGPIO_IN_BUTTON1 = 16,
+	PIGPIO_IN_BUTTON2 = 17,
+	PIGPIO_IN_BUTTON3 = 18,
+	PIGPIO_IN_BUTTON4 = 19,
+	PIGPIO_IN_BUTTON5 = 20,
 	PIGPIO_OUT_SOUND = 14,
 	PIGPIO_OUT_LED   = 15,
 #elif defined(ESP32)
@@ -637,6 +637,7 @@ public:
 			if (Resetting)
 			{
 				IEC_Bus::WaitMicroSeconds(100);
+				Resetting = 0;
 			}
 		}
 		while (Resetting);

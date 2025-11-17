@@ -24,7 +24,7 @@
 #include <stdlib.h>
 
 
-#if defined(EXPERIMENTALZERO)
+#if defined(EXPERIMENTALZERO) && !defined(__PICO2__)
 	#define FAST_CODE 1
 #endif
 

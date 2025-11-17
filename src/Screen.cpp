@@ -39,6 +39,8 @@ extern unsigned char* CBMFont;
 static const int BitFontHt = 16;
 static const int BitFontWth = 8;
 
+Screen::~Screen() = default;
+
 void Screen::Open(u32 widthDesired, u32 heightDesired, u32 colourDepth)
 {
 	if (widthDesired < 320)
@@ -241,6 +243,7 @@ static char vga2screen(char c)
 
 void Screen::WriteChar(bool petscii, u32 x, u32 y, unsigned char c, RGBA colour)
 {
+#if !defined(__PICO2__)	
 	if (opened)
 	{
 		u32 fontHeight;
@@ -277,6 +280,7 @@ void Screen::WriteChar(bool petscii, u32 x, u32 y, unsigned char c, RGBA colour)
 			}
 		}
 	}
+#endif	
 }
 
 void Screen::PlotPixel(u32 x, u32 y, RGBA colour)

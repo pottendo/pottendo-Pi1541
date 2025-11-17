@@ -1,8 +1,12 @@
 #ifndef __PICO2_H__
 #define __PICO2_H__
-
+#include <Arduino.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <ff.h>
+
+#undef DEC
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -18,6 +22,8 @@ void Reboot_Pi(void);
 void InitialiseLCD(void);
 void not_implemented(const char *fn);
 void initDiskImage(void);
-
-#define __not_in_flash_func(a) a
+void plfio_showstat(void);
+//#define printf Serial.printf
+//#define __not_in_flash_func(a) a
+void overclock(uint32_t kHz);
 #endif

@@ -67,7 +67,7 @@ public:
 	inline unsigned int LogoDisplayDelay() const { return logoDisplayDelay; }
 	inline unsigned int ShowOptions() const { return showOptions; }
 	inline unsigned int DisplayPNGIcons() const { return displayPNGIcons; }
-	inline unsigned int SoundOnGPIO() const { return soundOnGPIO; }
+	inline int SoundOnGPIO() const { return soundOnGPIO; }
 	inline unsigned int SoundOnGPIODuration() const { return soundOnGPIODuration; }
 	inline unsigned int SoundOnGPIOFreq() const { return soundOnGPIOFreq; }
 	inline unsigned int SplitIECLines() const { return splitIECLines; }
@@ -134,7 +134,7 @@ public:
 
 	const char* GetAutoBaseName() const { return autoBaseName; }
 
-	static unsigned GetDecimal(char* pString);
+	static int GetDecimal(char* pString);
 	static float GetFloat(char* pString);
 
 private:
@@ -152,7 +152,7 @@ private:
 	unsigned int logoDisplayDelay;
 	unsigned int showOptions;
 	unsigned int displayPNGIcons;
-	unsigned int soundOnGPIO;
+	int soundOnGPIO;
 	unsigned int soundOnGPIODuration;
 	unsigned int soundOnGPIOFreq;
 	unsigned int invertIECInputs;
@@ -160,9 +160,7 @@ private:
 	unsigned int splitIECLines;
 	unsigned int ignoreReset;
 	unsigned int autoBootFB128;
-
 	unsigned int displayTemperature;
-
 	unsigned int lowercaseBrowseModeFilenames;
 
 	unsigned int cdSlashSlashToRoot;
@@ -170,7 +168,6 @@ private:
 
 	unsigned int screenWidth;
 	unsigned int screenHeight;
-
 	unsigned int i2cBusMaster;
 	unsigned int i2cLcdAddress;
 	unsigned int i2cScan;

@@ -95,7 +95,7 @@ if [ x${tag} != "xnone" ] ; then
 	    echo "failed to build legacy codebase for Pi3"
 	    exit 1
     fi
-    make clean 2>&1 >/dev/null
+    make RASPPI=3 clean 2>&1 >/dev/null
     if make RASPPI=0 legacy > make-PiZero.log; then
 	    echo "successully built for PiZero, legacy code base"
 	    cp kernel.img ${RELEASE}
@@ -103,7 +103,7 @@ if [ x${tag} != "xnone" ] ; then
 	    echo "failed to build legacy codebase for PiZero"
 	    exit 1
     fi
-    make clean 2>&1 >/dev/null
+    make RASPPI=0 clean 2>&1 >/dev/null
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart
@@ -115,7 +115,9 @@ if [ x${checkout} = "xyes" ] ; then
     rm -rf ${CIRCLE}
     git clone --recursive https://github.com/smuehlst/circle-stdlib.git
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V49.0.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V50.0.1.diff
+    cd addon/wlan/hostap
+    patch -p1 < ../../../../../../pottendo-Pi1541/src/Circle/patch-circle-V50.0.1-wpafix.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make

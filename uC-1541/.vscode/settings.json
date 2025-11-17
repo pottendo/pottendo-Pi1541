@@ -6,6 +6,11 @@
         "unordered_map": "cpp",
         "unordered_set": "cpp",
         "vector": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "hw_config.h": "c",
+        "sd_card.h": "c",
+        "rp2040_sdio.h": "c",
+        "delays.h": "c",
+        "rp2040_sdio.pio.h": "c"
     }
 }

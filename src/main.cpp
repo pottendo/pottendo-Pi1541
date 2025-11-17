@@ -163,8 +163,9 @@ unsigned int screenHeight = 768;
 const char* termainalTextRed = "\E[31m";
 const char* termainalTextNormal = "\E[0m";
 
-int headSoundFreq;
-int headSoundCounterDuration;
+static int playsound = 0;
+static int headSoundFreq;
+static int headSoundCounterDuration;
 
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32) 
 // Hooks required for USPi library
@@ -302,7 +303,7 @@ void InitialiseHardware()
 #endif
 	{
 		screen = new ScreenHeadLess();
-		DEBUG_LOG("running headless");
+		DEBUG_LOG("running headless\n");
 	}
 #if !defined(__PICO2__)	&& !defined(ESP32)
 	if (!options.GetDisableHDMI())
@@ -798,7 +799,7 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s, IconName='%s'", __FUNCTION__, diskImage->GetName(), filenameForIcon);
+	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -848,8 +849,10 @@ DMA_ControlBlock dmaSoundCB =
 	0, 0
 };
 
-static void PlaySoundDMA()
+static void PlaySoundDMA(bool play)
 {
+	if (play != 0) 
+		return;
 	write32(PWM_DMAC, PWM_ENAB + 0x0001);
 	write32(DMA_ENABLE, 1);	// DMA_EN0
 	write32(DMA0_BASE + DMA_CONBLK_AD, (u32)&dmaSoundCB);
@@ -970,6 +973,10 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 		cycleCount++;
 	}
+#if defined(__PICO2__)	
+	overclock(312000);
+#endif	
+	
 	// Self test code done. Begin realtime emulation.
 	while (exitReason == EXIT_UNKNOWN)
 	{
@@ -1040,7 +1047,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 		if (headDir != oldHeadDir)	// Need to start a new sound?
 		{
 			oldHeadDir = headDir;
-			if (options.SoundOnGPIO())
+			if (playsound > 0)
 			{
 				headSoundCounter = headSoundCounterDuration;
 				headSoundFreqCounter = headSoundFreq;
@@ -1048,7 +1055,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			else
 			{
 #if not defined(EXPERIMENTALZERO)
-				PlaySoundDMA();
+				PlaySoundDMA(playsound);
 #endif
 			}
 		}
@@ -1122,6 +1129,7 @@ extern int mount_new;
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
 				//DEBUG_LOG("! ct = %d\n", ct);
+				//delay(1000 * 10);
 				//sprintf(tempBuffer, "-%d-", ct);
 				//DisplayMessage(0, 20, true, tempBuffer, RGBA(255, 255, 255, 255), RGBA(0,0,0,0));
 			}
@@ -1135,7 +1143,7 @@ extern int mount_new;
 			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
 		}
 
-		if (options.SoundOnGPIO() && headSoundCounter > 0)
+		if ((playsound > 0) && headSoundCounter > 0)
 		{
 			headSoundFreqCounter--;		// Continue updating a GPIO non DMA sound.
 			if (headSoundFreqCounter <= 0)
@@ -1304,7 +1312,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 		if (track != oldTrack)	// Need to start a new sound?
 		{
 			oldTrack = track;
-			if (options.SoundOnGPIO())
+			if (playsound > 0)
 			{
 				headSoundCounter = headSoundCounterDuration;
 				headSoundFreqCounter = headSoundFreq;
@@ -1312,7 +1320,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			else
 			{
 #if not defined(EXPERIMENTALZERO)
-				PlaySoundDMA();
+				PlaySoundDMA(playsound);
 #endif
 			}
 		}
@@ -1385,7 +1393,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #endif
 		ctBefore = ctAfter;
 
-		if (options.SoundOnGPIO() && headSoundCounter > 0)
+		if ((playsound > 0) && headSoundCounter > 0)
 		{
 			headSoundFreqCounter--;		// Continue updating a GPIO non DMA sound.
 			if (headSoundFreqCounter <= 0)
@@ -2185,6 +2193,8 @@ extern "C"
 	{
 		FRESULT res;
 		FATFS fileSystemSD;
+
+		DEBUG_LOG("Pi1541 Kernel Main\n");
 #if !defined(EXPERIMENTALZERO)		
 		FATFS fileSystemUSB[16];
 #endif		
@@ -2201,7 +2211,7 @@ extern "C"
 		initDiskImage();
 		if (esp32_initSD() != 0)
 			return;
-		esp32_showstat();
+		plfio_showstat();
 		list_directory("/");
 #endif
 	_m_IEC_Commands = new IEC_Commands;
@@ -2210,7 +2220,7 @@ extern "C"
 		initDiskImage();
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
-        	printf("f_mount error: (%d)\n", fr);
+        	DEBUG_LOG("f_mount error: (%d)\n", fr);
 			return;
     	}		
 #endif
@@ -2248,11 +2258,17 @@ extern "C"
 			DisplayOptions(y_pos+=32);
 
 #endif
+		playsound = options.SoundOnGPIO();
 		headSoundFreq = 1000000 / options.SoundOnGPIOFreq();	// 1200Hz = 1/1200 * 10^6;
 		headSoundCounterDuration = 1000 * options.SoundOnGPIODuration();
+		DEBUG_LOG("Sound: %s", (playsound > 0) ? "GPIO" : (playsound == 0) ? "DMA" : "OFF") ;
+		if (playsound > 0)
+			DEBUG_LOG("%d Freq, %dus duration", options.SoundOnGPIOFreq(), options.SoundOnGPIODuration());
 
 		if (options.LogoDisplayDelay())
 			IEC_Bus::WaitMicroSeconds(options.LogoDisplayDelay() * 1000000);
+		//if (!options.QuickBoot())
+			//IEC_Bus::WaitMicroSeconds(3 * 1000000);
 
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		InterruptSystemInitialize();
@@ -2262,9 +2278,6 @@ extern "C"
 		TimerSystemInitialize();
 #endif
 		USPiInitialize();
-
-		DEBUG_LOG("\r\n");
-
 		numberOfUSBMassStorageDevices = USPiMassStorageDeviceAvailable();
 		DEBUG_LOG("%d USB Mass Storage Devices found\r\n", numberOfUSBMassStorageDevices);
 
@@ -2298,7 +2311,7 @@ extern "C"
 		IEC_Bus::Initialise();
 
 #if not defined(EXPERIMENTALZERO)
-		if (!options.SoundOnGPIO())
+		if (playsound == 0)
 		{
 #if !defined (__CIRCLE__)			
 			dmaSound = (u32*)malloc(Sample_bin_size * 4);
@@ -2375,5 +2388,18 @@ void setup(void)
 void loop(void)
 {
 	esp32_loop();
+}
+#endif
+
+#if defined (__PICO2__)
+void pico2_setup(void);
+void pico2_loop(void);
+extern "C" void setup(void)
+{
+	pico2_setup();
+}
+extern "C" void loop(void)
+{
+	pico2_loop();
 }
 #endif

@@ -149,10 +149,10 @@ int gap_match_length = 7;	// Used by gcr.cpp
 void initDiskImage(void)
 {
 #if defined(HAS_PSRAM)
-	DiskImage::readBuffer = static_cast<unsigned char *>(ps_malloc(READBUFFER_SIZE * sizeof(unsigned char)));
+	DiskImage::readBuffer = static_cast<unsigned char *>(pmalloc(READBUFFER_SIZE * sizeof(unsigned char)));
 	//compressionBuffer = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
 	memset(DiskImage::readBuffer, 0xff, READBUFFER_SIZE);
-	esp32_showstat();
+	plfio_showstat();
 #else
 	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
 	//compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
@@ -168,8 +168,8 @@ DiskImage::DiskImage()
 {
 #if defined(__PICO2__) || defined(ESP32)
 #if defined(HAS_PSRAM)	
-	tracks = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
-	esp32_showstat();
+	tracks = static_cast<unsigned char *>(pmalloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
+	plfio_showstat();
 #else	
 	DiskImage::tracks = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH]();
 #endif	
@@ -182,7 +182,7 @@ DiskImage::~DiskImage()
 {
 #if defined(__PICO2__) || defined(ESP32)
 #if defined(HAS_PSRAM)	
-	ps_free(tracks);
+	free(tracks);
 #else
 	delete[] tracks;
 #endif	
