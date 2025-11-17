@@ -60,6 +60,10 @@ while [ ! x"${opts}" = x"break" ] ; do
 	    checkout="yes"
 	    shift
 	    ;;
+    -l)
+        build_legacy="yes"
+        shift
+        ;;
 	-h)
 	    echo "Usage: $0 [-t <release-tag>] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
 	    shift
@@ -87,27 +91,48 @@ if [ x${tag} != "xnone" ] ; then
     fi
     RELEASE=${base}/../${tag}
     mkdir ${RELEASE} 2>/dev/null
-    # Check if legacy build still works
-    cd ${PPI1541}
-    if make RASPPI=3 legacy > make-Pi3-legacy.log; then
-	    echo "successully built for Pi3, legacy code base"
-    else
-	    echo "failed to build legacy codebase for Pi3"
-	    exit 1
-    fi
-    make RASPPI=3 clean 2>&1 >/dev/null
-    if make RASPPI=0 legacy > make-PiZero.log; then
-	    echo "successully built for PiZero, legacy code base"
-	    cp kernel.img ${RELEASE}
-    else
-	    echo "failed to build legacy codebase for PiZero"
-	    exit 1
-    fi
-    make RASPPI=0 clean 2>&1 >/dev/null
+    build_legacy="yes"
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart
     mkdir ${RELEASE} 2>/dev/null
+fi
+
+if [ x${build_legacy} = "xyes" ] ; then
+    builds="0 2 3 1BPlus"
+    mkdir ${RELEASE}/orig-build 2>/dev/null
+    for b in ${builds} ; do
+        make RASPPI=${b} clean
+        cd ${PPI1541}
+        echo "building legacy codebase for RASPPI=${b}..."
+        if make RASPPI=${b} legacy > make-RASPPI-${b}-legacy.log; then
+            echo "successully built for RASPPI=${b}, legacy code base"
+            mv kernel.img ${RELEASE}/orig-build/kernel-Pi${b}.img
+        else
+            echo "failed to build legacy codebase for RASPPI=${b}"
+            exit 1
+        fi
+    done
+    make RASPPI=${b} clean
+    cat > ${RELEASE}/orig-build/README.txt <<EOF
+# Legacy builds of pottendo-Pi1541
+# These builds are based on the original codebase
+# prior to migration to circle-stdlib.
+# They are provided for compatibility reasons
+# for older Raspberry Pi models.
+# The builds are provided as-is, without
+# any support or warranty.
+#
+# rename the files to kernel.img and place them in the
+# bootpartition of your Raspberry Pi SD card
+# to use them on the respective Raspberry Pi models:
+# kernel-Pi0.img      -> Raspberry Pi Zero, Pi Zero W
+# kernel-Pi2.img      -> Raspberry Pi 2
+# kernel-Pi3.img      -> Raspberry Pi 3, Pi 3B+, Pi 3A+, Pizero 2 W
+# kernel-Pi1BPlus.img -> Raspberry Pi 1 Model B+
+EOF
+    echo "successfully built legacy codebase for all RASPPI models"
+    exit 0
 fi
 
 if [ x${checkout} = "xyes" ] ; then
