@@ -132,7 +132,6 @@ if [ x${build_legacy} = "xyes" ] ; then
 # kernel-Pi1BPlus.img -> Raspberry Pi 1 Model B+
 EOF
     echo "successfully built legacy codebase for all RASPPI models"
-    exit 0
 fi
 
 if [ x${checkout} = "xyes" ] ; then
@@ -237,5 +236,6 @@ for a in ${archs} ; do
     fi
     cp kernel*.img ${RELEASE}
 done
+cp README.md ${RELEASE}
 ls -l ${RELEASE}
 echo "successfully built for ${archs}"
