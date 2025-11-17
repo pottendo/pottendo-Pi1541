@@ -1,6 +1,6 @@
 # Pi1541 - Circle ported, ready for new features
 
-This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of March 2025, Version 49.0).
+This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A simple web-server features
@@ -39,7 +39,7 @@ Copy the content of the release bundle to your boot partition of your Pi1541 SDC
 # Status
 ------
 The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
-- Pi1541 on Raspberry models 3A+, 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
+- Pi1541 on Raspberry models 3A+ ***), 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
 - Option A HW Support 
 - Option B HW Support *)
 - LCD Display SSD1306, SH1107 (128x128 pixel resolution) **)
@@ -52,6 +52,8 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 *) Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
 
 **) The display may have some pull-up resistors installed on its I2C data/clock lines (SDA/SCL lines). These won't work on I2C-1 of Raspberry PIs, as I2C-1 there already features 1.8kOhm pull-ups, which probably conflict with other pull-ups on this I2C-1 bus. Pi1541 HW hats often default to I2C-1. If your display isn't working, try to move it to I2C-0. Your Pi1541-hat may support this with solder bridges.
+
+***) thans to @SvOlli on F64, who kinkdly donated a Pi3A+
 
 <br />
 
@@ -136,7 +138,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 - added support for a SH1107 based LCD featuring 128x128 pixel resolution (see note above on I2Cs and pull-up resistors in case it doesn't work)
-- SoundOnGPIO = 1 turns sound completely off
+- SoundOnGPIO = -1 turns sound completely off
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
