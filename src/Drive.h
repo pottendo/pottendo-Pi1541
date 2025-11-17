@@ -24,11 +24,11 @@
 #include <stdlib.h>
 
 
-#if defined(EXPERIMENTALZERO) && !defined(__PICO2__)
+#if defined(EXPERIMENTALZERO)
 	#define FAST_CODE 1
 #endif
 
-#if defined(FAST_CODE)
+#if defined(FAST_CODE) && !defined(__PICO2__)
 inline int ceil(float num) {
 	int inum = (int)num;
 	if (num == (float)inum) {
