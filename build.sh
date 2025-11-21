@@ -61,7 +61,7 @@ while [ ! x"${opts}" = x"break" ] ; do
 	    shift
 	    ;;
     -l)
-        build_legacy="yes"
+        build_legacy="only"
         shift
         ;;
 	-h)
@@ -98,8 +98,8 @@ else
     mkdir ${RELEASE} 2>/dev/null
 fi
 
-if [ x${build_legacy} = "xyes" ] ; then
-    builds="0 2 3 1BPlus"
+if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
+    builds="0 2 3 1BPlus 1BRev1 1BRev2"
     mkdir ${RELEASE}/orig-build 2>/dev/null
     for b in ${builds} ; do
         make RASPPI=${b} clean
@@ -119,19 +119,25 @@ if [ x${build_legacy} = "xyes" ] ; then
 # These builds are based on the original codebase
 # prior to migration to circle-stdlib.
 # They are provided for compatibility reasons
-# for older Raspberry Pi models.
+# and for older Raspberry Pi models.
 # The builds are provided as-is, without
 # any support or warranty.
 #
-# rename the files to kernel.img and place them in the
-# bootpartition of your Raspberry Pi SD card
+# place appropriate files in the bootpartition of your Raspberry Pi SD card
 # to use them on the respective Raspberry Pi models:
 # kernel-Pi0.img      -> Raspberry Pi Zero, Pi Zero W
+# kernel-Pi1BPlus.img -> Raspberry Pi 1 Model B+, 40 pin GPIO
+# kernel-Pi1BRev1.img -> Raspberry Pi 1 Model B Revision 1, 26 pin GPIO
+# kernel-Pi1BRev2.img -> Raspberry Pi 1 Model B Revision 2, 26 pin GPIO
 # kernel-Pi2.img      -> Raspberry Pi 2
 # kernel-Pi3.img      -> Raspberry Pi 3, Pi 3B+, Pi 3A+, Pizero 2 W
-# kernel-Pi1BPlus.img -> Raspberry Pi 1 Model B+
+# verify config.txt for correct kernel file names!
 EOF
     echo "successfully built legacy codebase for all RASPPI models"
+    if [ x${build_legacy} = "xonly" ] ; then
+        echo "only legacy build requested, exiting."
+        exit 0
+    fi
 fi
 
 if [ x${checkout} = "xyes" ] ; then
