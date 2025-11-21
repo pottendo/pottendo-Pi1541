@@ -7,11 +7,51 @@
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
 #include "hw_config.h"
+#include "../../src/iec_bus.h"
 
 extern "C" void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
 extern void list_directory(const char *path);
 #define MAX_PATH 255
 static char cwd[MAX_PATH + 1]="";
+
+void IEC_Bus::RefreshOuts1541(void)
+{
+    unsigned set = 0;
+    if (!splitIECLines)
+    {
+        if (AtnaDataSetToOut || DataSetToOut)
+            set |= PIGPIO_MASK_IN_DATA;
+        if (ClockSetToOut)
+            set |= PIGPIO_MASK_IN_CLOCK;
+        gpio_set_dir_masked(PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK, set);
+    }
+    else
+    {
+        not_implemented("refreshOuts1541 - splitIECLines");
+        return;
+    }
+    set = 0;
+    if (OutputLED)
+        set |= PIGPIO_MASK_OUT_LED;
+    if (OutputSound)
+        set |= PIGPIO_MASK_OUT_SOUND;
+    gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
+}
+
+void IEC_Bus::RefreshOutSound(void)
+{
+    if(IEC_Bus::OutputSound) 
+        gpio_put(PIGPIO_OUT_SOUND, 1);
+    else
+        gpio_put(PIGPIO_OUT_SOUND, 0);
+}
+void IEC_Bus::RefreshOutLED(void)
+{
+    if(IEC_Bus::OutputLED) 
+        gpio_put(PIGPIO_OUT_LED, 1);
+    else
+        gpio_put(PIGPIO_OUT_LED, 0);
+}
 
 void _DEBUG(const char* fmt, ...) 
 {

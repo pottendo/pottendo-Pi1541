@@ -3,6 +3,9 @@
 #include <SD.h>
 #include <ff.h>
 #include <LiteLED.h>
+#undef NOP
+#undef DEC
+#include "../../src/iec_bus.h"
 extern "C" void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
 #define LED_TYPE        LED_STRIP_WS2812
 #define LED_TYPE_IS_RGBW 0   // if the LED is an RGBW type, change the 0 to 1
@@ -15,6 +18,58 @@ static const crgb_t L_GREEN = 0x00ff00;
 static const crgb_t L_BLUE = 0x0000ff;
 static const crgb_t L_WHITE = 0xe0e0e0;
 LiteLED myLED( LED_TYPE, LED_TYPE_IS_RGBW );    // create the LiteLED object; we're calling it "myLED"
+
+void IEC_Bus::RefreshOuts1541(void)
+{
+    // DEBUG_LOG("%s: ATN: %d, Data: %d, Clock: %d\n", __FUNCTION__, AtnaDataSetToOut, DataSetToOut, ClockSetToOut);
+    if (!splitIECLines)
+    {
+        if (AtnaDataSetToOut || DataSetToOut)
+        {
+            gpio_set_direction((gpio_num_t)PIGPIO_DATA, GPIO_MODE_OUTPUT);
+        }
+        else
+        {
+            gpio_set_direction((gpio_num_t)PIGPIO_DATA, GPIO_MODE_INPUT);
+        }
+
+        if (ClockSetToOut)
+        {
+            gpio_set_direction((gpio_num_t)PIGPIO_CLOCK, GPIO_MODE_OUTPUT);
+        }
+        else
+        {
+            gpio_set_direction((gpio_num_t)PIGPIO_CLOCK, GPIO_MODE_INPUT);
+        }
+    }
+    else
+    {
+        not_implemented("refreshOuts1541 - splitIECLines");
+        return;
+    }
+    if (OutputLED)
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 1);
+    else
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 0);
+    if (OutputSound)
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 1);
+    else
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 0);
+}
+void IEC_Bus::RefreshOutSound(void)
+{
+    if(IEC_Bus::OutputSound) 
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 1);
+    else
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 0);
+}
+void IEC_Bus::RefreshOutLED(void)
+{
+    if(IEC_Bus::OutputLED) 
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 1);
+    else
+        gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 0);
+}
 
 void plfio_showstat(void)
 {

@@ -285,7 +285,9 @@ extern void write6502_1581(u16 address, const u8 value);
 void InitialiseHardware()
 {
 #if !defined (__CIRCLE__)
+#if !defined(__PICO2__) && !defined(ESP32)
 	RPI_GpioVirtInit();
+#endif	
 #if defined(RPI3)
 	RPI_TouchInit();
 #endif
@@ -1128,7 +1130,9 @@ extern int mount_new;
 			{
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-				//DEBUG_LOG("! ct = %d\n", ct);
+#if defined(__PICO2__) || defined(ESP32)
+				DEBUG_LOG("! ct = %d\n", ct);
+#endif				
 				//delay(1000 * 10);
 				//sprintf(tempBuffer, "-%d-", ct);
 				//DisplayMessage(0, 20, true, tempBuffer, RGBA(255, 255, 255, 255), RGBA(0,0,0,0));
@@ -1754,7 +1758,7 @@ static bool AttemptToLoadROM(const char* ROMName, int index)
 		|| (FR_OK == f_open(&fp, ROMName2, FA_READ)) )
 	{
 		u32 hash;
-		u32 bytesRead;
+		UINT bytesRead;
 
 		screen->Clear(COLOUR_BLACK);
 		snprintf(tempBuffer, tempBufferSize, "Loading ROM %s\r\n", ROMName);

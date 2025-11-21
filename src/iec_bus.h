@@ -645,60 +645,13 @@ public:
 	// Out going
 	static void PortB_OnPortOut(void* pUserData, unsigned char status);
 
+#if defined(__PICO2__) || defined(ESP32)
+	static void RefreshOuts1541(void);
+	static void RefreshOutLED(void);
+	static void RefreshOutSound(void);
+#else
 	static inline void RefreshOuts1541(void)
 	{
-	#if defined(__PICO2__)		
-		if (!splitIECLines)
-		{
-			if (AtnaDataSetToOut || DataSetToOut)
-				set |= PIGPIO_MASK_IN_DATA;
-			if (ClockSetToOut)
-				set |= PIGPIO_MASK_IN_CLOCK;
-			gpio_set_dir_masked(PIGPIO_MASK_IN_DATA | PIGPIO_MASK_IN_CLOCK, set);
-		}
-		else
-		{
-			not_implemented("refreshOuts1541 - splitIECLines");
-			return;
-		}
-		set = 0;
-		if (OutputLED)
-			set |= PIGPIO_MASK_OUT_LED;
-		if (OutputSound)
-			set |= PIGPIO_MASK_OUT_SOUND;
-		gpio_put_masked(PIGPIO_MASK_OUT_LED | PIGPIO_MASK_OUT_SOUND, set);
-	#elif defined(ESP32)
-		//DEBUG_LOG("%s: ATN: %d, Data: %d, Clock: %d\n", __FUNCTION__, AtnaDataSetToOut, DataSetToOut, ClockSetToOut);
-		if (!splitIECLines)
-		{
-			if (AtnaDataSetToOut || DataSetToOut) {
-				gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_OUTPUT);
-			}
-			else {
-				gpio_set_direction((gpio_num_t) PIGPIO_DATA, GPIO_MODE_INPUT);
-			}
-			
-			if (ClockSetToOut) {
-				gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_OUTPUT);
-			}
-			else {
-				gpio_set_direction((gpio_num_t) PIGPIO_CLOCK, GPIO_MODE_INPUT);
-			}
-		}	
-		else
-		{
-			not_implemented("refreshOuts1541 - splitIECLines");
-			return;
-		}
-		if (OutputLED)
-			gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 1);
-		else
-			gpio_set_level((gpio_num_t)PIGPIO_OUT_LED, 0);
-		if (OutputSound)
-			gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 1);
-		else
-			gpio_set_level((gpio_num_t)PIGPIO_OUT_SOUND, 0);
-	#else
 		if (!splitIECLines)
 		{
 			// time_fn_arm();
@@ -773,7 +726,6 @@ public:
 			CGPIOPin::WriteAll(setlist[sel], _mask);
 #endif
 #endif /* CIRCLE_GPIO */
-#endif /* __PICO2__ */
 		}
 	}
 
@@ -807,6 +759,8 @@ public:
 		else            write32(ARM_GPIO_GPCLR0, 1<<PIGPIO_OUT_SOUND);
 	}
 #endif 	/* CIRCLE_GPIO */
+
+#endif /* __PICO2__ || ESP32 */
 
 #if defined(PI1581SUPPORT)
 	static inline void RefreshOuts1581(void)
