@@ -144,6 +144,26 @@ Still the legacy code can be built with support for all supported hardware varia
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
 <br />
 
+## Compatibility
+
+The emulation is quite demanding for Pis (reaction time in <1us). Empirically I've found the following rules which may increase the compatibility:
+- more MHz => better: a Pi4 clocked to 1800Mhz is probably the high-end; though not needed in 99.9% of the cases
+  - see `config.txt` how to adapt or overclock in case you want that
+  - Pi3s automatically regulate clock when reaching certain thresholds, see `temp_soft_limit` parameter in `config.txt` and `socmaxtemp` in `cmdline.txt`.
+    It is recommended to use active cooling (small unaudible fans are sufficient) to get temperature down, especially when housings are used.
+- HDMI output and output to the LCD may cause issues
+  - use `DisableHDMI = 1` or `headLess = 1`
+  - use `DisplayTemperature = 0`
+- I found on Pi3s 32 bit version a bit more stable 
+  - don't use 64bit builds, see `config.txt`
+- I've seen that DMA sound delays emulation
+  - `SoundOnGPIO = 1` for Buzzer or `SounOnGPIO = -1` for no sound at all
+- Users have reported
+  - IEC Cable length and quality may have an impact
+  - Quality of LS and level shifter of the Pi1541 HW
+  - General Pi1541 hat quality, related to power supply
+- Finally, Steve's original source base may offer best compatibility as the web-server and all new functions are not entirely decoupled from the main emulation loop
+
 ## Misc
 Other uController support has been added:
 - Raspberry Pico 2W, ESP32 support. One needs a uController with sufficient RAM (e.g. PSRAM), see uC-1541
