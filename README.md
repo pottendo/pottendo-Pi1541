@@ -53,7 +53,7 @@ The following is supposed to work on the circle based _V1.24c_, as I've tested t
 
 **) The display may have some pull-up resistors installed on its I2C data/clock lines (SDA/SCL lines). These won't work on I2C-1 of Raspberry PIs, as I2C-1 there already features 1.8kOhm pull-ups, which probably conflict with other pull-ups on this I2C-1 bus. Pi1541 HW hats often default to I2C-1. If your display isn't working, try to move it to I2C-0. Your Pi1541-hat may support this with solder bridges.
 
-***) thans to @SvOlli on F64, who kinkdly donated a Pi3A+
+***) thans to @SvOlli on F64, who kindly donated a Pi3A+
 
 <br />
 
@@ -270,35 +270,62 @@ In case you want to run the slightly improved legacy 1.24 version (_kernel.img_)
 Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendo-Pi1541:
 
 ```
+# PiZero model
 [pi0]
-arm_freq=1100
-over_voltage=8
-sdram_freq=500
-sdram_over_voltage=2
 # force_turbo = 1 in combination with over_voltage invalidates warranty!
 # may improve compatibility, and needed for Steve's original kernels
-force_turbo=1 
+force_turbo=1
+arm_freq=1100
+over_voltage=6
+sdram_freq=450
+sdram_over_voltage=2
 boot_delay=1
 arm_64bit=0
-kernel_address=0x1f00000
-kernel=kernel.img
+gpu_mem=0
+#kernel_address=0x1f00000   # uncomment on PiZero, otherwise its used also for PiZero2W of 32bit boots... and fails
+kernel=kernel-Pi0.img
 
-# this is for the PiZero 2 W
+# this is for the PiZero 2W, merged with [p0]!
 [pi02]
 arm_freq=1400
 over_voltage=4
-sdram_freq=500
+sdram_freq=450
 sdram_over_voltage=1
 boot_delay=1
 gpu_mem=0
 hdmi_group=2
 hdmi_mode=16
 # select 32- or 64-bit mode
-arm_64bit=1
+arm_64bit=0
 # Pi 3 & Pi Zero 2W, 32bit
-#kernel=kernel8-32.img
+kernel=kernel8-32.img
 # Pi 3 & Pi Zero 2W, 64bit
-kernel=kernel8.img
+#kernel=kernel8.img
+
+# P1 models
+[pi1]
+# force_turbo = 1 in combination with over_voltage invalidates warranty!
+# may improve compatibility, and needed for Steve's original kernels
+force_turbo=1
+arm_freq=1100
+over_voltage=6
+sdram_freq=450
+sdram_over_voltage=2
+boot_delay=1
+arm_64bit=0
+gpu_mem=0
+kernel_address=0x1f00000
+kernel=kernel-P1BPlus.img
+#kernel=kernel-P1BRev1.img
+#kernel=kernel-P1BRev2.img
+
+[pi2] 
+# untested
+#arm_freq=1100
+#sdram_freq=500
+#over_voltage=6
+#kernel_address=0x1f00000
+#kernel=kernel-Pi2.img
 
 # all Pi3 variants
 [pi3]
@@ -316,11 +343,11 @@ gpu_mem=0
 hdmi_group=2
 hdmi_mode=16
 # select 32- or 64-bit mode
-arm_64bit=1
+arm_64bit=0
 # Pi 3 & Pi Zero 2W, 32bit
-#kernel=kernel8-32.img
+kernel=kernel8-32.img
 # Pi 3 & Pi Zero 2W, 64bit
-kernel=kernel8.img
+#kernel=kernel8.img
 # Pi3 legacy 32bit kernel
 #kernel_address=0x1f00000
 #kernel=kernel.img
@@ -332,14 +359,14 @@ hdmi_group=2           # Set display mode to DMT (monitor)
 hdmi_mode=82           # Set resolution to 1920x1080 @ 60Hz
 max_framebuffers=2
 # select 32- or 64-bit mode
-arm_64bit=1
+arm_64bit=0
 # Pi 4, 32bit
-#kernel=kernel7l.img
+kernel=kernel7l.img
 # Pi 4, 64bit
-kernel=kernel8-rpi4.img
+#kernel=kernel8-rpi4.img
 
 [all]
-enable_uart=1
+#enable_uart=1
 # Disable compensation for displays with overscan
 disable_overscan=1
 ```

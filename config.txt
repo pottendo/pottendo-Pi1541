@@ -10,8 +10,25 @@ sdram_over_voltage=2
 boot_delay=1
 arm_64bit=0
 gpu_mem=0
-kernel_address=0x1f00000
+#kernel_address=0x1f00000   # uncomment on PiZero, otherwise its used also for PiZero2W of 32bit boots... and fails
 kernel=kernel-Pi0.img
+
+# this is for the PiZero 2W, merged with [p0]!
+[pi02]
+arm_freq=1400
+over_voltage=4
+sdram_freq=450
+sdram_over_voltage=1
+boot_delay=1
+gpu_mem=0
+hdmi_group=2
+hdmi_mode=16
+# select 32- or 64-bit mode
+arm_64bit=0
+# Pi 3 & Pi Zero 2W, 32bit
+kernel=kernel8-32.img
+# Pi 3 & Pi Zero 2W, 64bit
+#kernel=kernel8.img
 
 # P1 models
 [pi1]
@@ -30,22 +47,13 @@ kernel=kernel-P1BPlus.img
 #kernel=kernel-P1BRev1.img
 #kernel=kernel-P1BRev2.img
 
-# this is for the PiZero 2W
-[pi02]
-arm_freq=1400
-over_voltage=4
-sdram_freq=500
-sdram_over_voltage=1
-boot_delay=1
-gpu_mem=0
-hdmi_group=2
-hdmi_mode=16
-# select 32- or 64-bit mode
-arm_64bit=1
-# Pi 3 & Pi Zero 2W, 32bit
-#kernel=kernel8-32.img
-# Pi 3 & Pi Zero 2W, 64bit
-kernel=kernel8.img
+[pi2] 
+# untested
+#arm_freq=1100
+#sdram_freq=500
+#over_voltage=6
+#kernel_address=0x1f00000
+#kernel=kernel-Pi2.img
 
 # all Pi3 variants
 [pi3]
