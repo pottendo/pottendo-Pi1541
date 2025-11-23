@@ -656,7 +656,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				Channel& channelCommand = channels[15];
 
-				DEBUG_LOG("%s sa = %d\n", channelCommand.buffer, secondaryAddress);
+				//DEBUG_LOG("%s sa = %d\n", channelCommand.buffer, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
