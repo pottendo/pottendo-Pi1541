@@ -84,7 +84,7 @@
 "\t\t\t\t\t\t\t\t\tvalue=\"Change Config\" /></a>\n"
 "\t\t\t\t\t\t\t<a href=\"update.html\"><input type=\"submit\" class=\"btn btn-success\"\n"
 "\t\t\t\t\t\t\t\t\tvalue=\"Update Pi1541\" /></a>\n"
-"\t\t\t\t\t\t\t<a href=\"logger.html\"><input type=\"submit\" class=\"btn btn-success\"\n"
+"\t\t\t\t\t\t\t<a href=\"logger.html\"><input type=\"submit\" class=\"btn btn-success\" style=\"font-weight: bold; color: black;\"\n"
 "\t\t\t\t\t\t\t\t\tvalue=\"Logging\" /></a>\n"
 "\t\t\t\t\t\t\t<a href=\"reset.html\"><input type=\"submit\" class=\"btn btn-success\" onClick=\"return delConfirm(event)\"\n"
 "\t\t\t\t\t\t\t\t\tvalue=\"Reset Pi1541\" /></a>\n"
