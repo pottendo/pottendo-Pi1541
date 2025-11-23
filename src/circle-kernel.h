@@ -80,6 +80,7 @@ public:
 	void blink(int n) { m_ActLED.Blink(n); }
 	void tlog(int i) { char x[1024]; sprintf(x, "0x%08x", i); mLogger.Write("tlog:", LogNotice, x); }
 	void log(const char *fmt, ...);
+	void log_web(const char *t);
 	void SetACTLed(int v) { if (v) m_ActLED.On(); else m_ActLED.Off(); }
 	boolean init_screen(u32 widthDesired, u32 heightDesired, u32 colourDepth, 
 						u32 &width, u32 &height, u32 &bpp, u32 &pitch, u8** framebuffer);

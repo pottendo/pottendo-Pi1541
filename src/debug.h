@@ -13,6 +13,7 @@
 #define DEBUG_LOG(...)
 #endif
 #else
+#include "logger.h"
 #define DEBUG_LOG(...) Kernel.log(__VA_ARGS__)
 #endif
 

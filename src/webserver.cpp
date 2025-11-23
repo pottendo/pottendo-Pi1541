@@ -36,6 +36,7 @@
 #include "FileBrowser.h"
 #include "Petscii.h"
 #include "iec_commands.h"
+#include "logger.h"
 using namespace std;
 
 extern Options options;
@@ -68,6 +69,11 @@ static const char s_mount[] =
 static const char s_status[] =
 {
 #include "webcontent/status.h"
+};
+
+static const char s_logger[] =
+{
+#include "webcontent/logger.h"
 };
 
 static const u8 s_Style[] =
@@ -513,7 +519,7 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 				no_entries++;
 				if (buffer[2] == 0)
 				{
-					DEBUG_LOG("scratched entry");
+					//DEBUG_LOG("scratched entry");
 					continue;
 				}
 				ftype = fileTypes[(buffer[2] & 7)];
@@ -1305,6 +1311,21 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
+	else if (strcmp(pPath, "/logger.html") == 0)
+	{
+		if (strcmp(pParams, "[DOWNLOAD]") == 0)
+		{
+			DEBUG_LOG("%s: logger download, pParams = %s", __FUNCTION__, pParams);
+			pContent = (const u8*)(logger.get_bootlogs(false) + logger.get_logs(false)).c_str();
+			nLength = strlen((const char *)pContent);
+			*ppContentType = "application/octet-stream";
+			goto out;
+		}
+		String.Format(s_logger, logger.get_bootlogs().c_str(), logger.get_log_count(), logger.get_logs().c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

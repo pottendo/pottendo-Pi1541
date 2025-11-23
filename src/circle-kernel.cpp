@@ -105,6 +105,11 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 	DEBUG_LOG("Heap: %d/%d", old, ms->GetMemSize());
 }
 
+void logHandler(void)
+{
+	Kernel.log_web("logHander: called");
+}
+
 CKernel::CKernel(void) :
 	mScreen (mOptions.GetWidth (), mOptions.GetHeight ()),
 	mTimer (&mInterrupt),
@@ -140,7 +145,7 @@ CKernel::CKernel(void) :
 			m_ActLED.Blink(5); // we're screwed for logging, tell the user by blinking
 	}
 	mLogger.Initialize (pTarget);
-		
+	mLogger.RegisterEventNotificationHandler(logHandler);
 	if (screen_failed)
 		log("screen initialization failed...  trying headless");
 	strcpy(ip_address, "<n/a>");
@@ -196,7 +201,8 @@ boolean CKernel::Initialize (void)
 extern ScreenLCD *screenLCD;
 extern DiskCaddy diskCaddy;
 extern CSpinLock core0RefreshingScreen;
-TShutdownMode CKernel::Run (void)
+
+TShutdownMode CKernel::Run(void)
 {
 	CMachineInfo *mi = CMachineInfo::Get();
 	if (mi)
@@ -260,6 +266,7 @@ TShutdownMode CKernel::Run (void)
 
 	// launch everything
 	Kernel.launch_cores();
+	logger.finished_booting("display core");
 	if (options.GetHeadLess() == false)
 	{
 		UpdateScreen();
@@ -272,13 +279,36 @@ TShutdownMode CKernel::Run (void)
 	return ShutdownHalt;
 }
 
+logger_t logger(1000);
 void CKernel::log(const char *fmt, ...)
 {
     char t[256];
     va_list args;
     va_start(args, fmt);
     vsnprintf(t, 256, fmt, args);
-	mLogger.Write("pottendo-log:", LogNotice, t);
+	mLogger.Write("pi1541", LogNotice, t);
+	va_end(args);
+}
+
+void CKernel::log_web(const char *t)
+{
+	if (options.GetNetEthernet() || options.GetNetWifi())
+	{
+		TLogSeverity sev;
+		char src[LOG_MAX_SOURCE];
+		char msg[LOG_MAX_MESSAGE];
+		time_t tm;
+		unsigned mtm;
+		int tz;
+		while (mLogger.ReadEvent(&sev, src, msg, &tm, &mtm, &tz) != FALSE)
+		{
+			char buf[80], buf2[84];
+			struct tm *lt = localtime(&tm);
+	        strftime(buf, sizeof(buf), "%b %e %X", lt);
+			snprintf(buf2, sizeof(buf2), "%s.%02u", buf, mtm % 1000);
+			logger.log((std::string(src) + ":" + std::string(msg)).c_str(), buf2);
+		}
+	}
 }
 
 boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDepth, u32 &width, u32 &height, u32 &bpp, u32 &pitch, u8** framebuffer)
@@ -391,6 +421,7 @@ void CKernel::run_webserver(bool isWifi)
 		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
 		CWebServer CWebServer(m_Net, &m_ActLED);
 		int temp_period = 0;
+		logger.finished_booting("network core");
 		while (1)
 		{
 			mScheduler.MsSleep(100);
@@ -552,6 +583,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	switch (core) {
 		case 1:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
+		logger.finished_booting("emulator core");
 		emulator();
 		break;
 	case 2:
@@ -596,6 +628,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		out:
 #endif	
 		Kernel.log("disabling network support on core %d", core);
+		logger.finished_booting("network core - disabled");
 		if (options.DisplayTemperature())
 		{	
 			DEBUG_LOG("%s: displaying temperature on LCD", __FUNCTION__);
@@ -607,6 +640,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 		break;
 	case 3:	/* health monitoring */
+		logger.finished_booting("system monitor core");
 		if (options.GetHealthMonitor() == 1)
 			Kernel.log("disabling health monitoring on core %d", core);
 		else

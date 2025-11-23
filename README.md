@@ -1,6 +1,6 @@
 # Pi1541 - Circle ported, ready for new features
 
-This is an optional port of Pi1541 (V1.24) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
+This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A simple web-server features
@@ -18,9 +18,10 @@ A simple web-server features
   - mount images, LST files
   - image content preview, including D81 images
   - image preview
-- edit of _options.txt_ and _config.txt_
+- Edit of _options.txt_ and _config.txt_
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
-- reboot of Pi1541
+- View & Download log-messages
+- Reboot of Pi1541
 
 Some further ideas:
 - Enhance webserver to support image administration (copy, move, rename, etc.)
@@ -198,7 +199,7 @@ The following options control new functions available:
 | NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          |
 | DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          |
 | DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          |
-| headLess    | 0 or 1 | disable/enable headless (no HDMI output) |
+| (headLess)    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |
 
 Here a snippet one can add to his `options.txt`:
 ```

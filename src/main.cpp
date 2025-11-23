@@ -2269,10 +2269,8 @@ extern "C"
 		if (playsound > 0)
 			DEBUG_LOG("%d Freq, %dus duration", options.SoundOnGPIOFreq(), options.SoundOnGPIODuration());
 
-		if (options.LogoDisplayDelay())
+		if (!options.QuickBoot() && options.LogoDisplayDelay())
 			IEC_Bus::WaitMicroSeconds(options.LogoDisplayDelay() * 1000000);
-		//if (!options.QuickBoot())
-			//IEC_Bus::WaitMicroSeconds(3 * 1000000);
 
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		InterruptSystemInitialize();

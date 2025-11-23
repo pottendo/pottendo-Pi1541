@@ -59,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541 WebUI</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Status</h3>
+					<h3 style="text-align:left">Logging</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -93,14 +93,26 @@
 				</tr>
 			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<table style="width: 100%;">
-				<tr><td>
-					<div style="display: flex; justify-content: space-between; width: 100%;">
-						<h4 style="text-align: left">Status</h4>
-						<div style="text-align: right" id="externalText">Loading...</div>
-					</div>
-				</td></tr>
-			</table>
+            <table style="width: 100%;">
+                <tr>
+                    <td>
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <h4 style="text-align: left">System messages</h4>
+                            <div style="text-align: right" id="externalText">Loading...</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr><td><div style="display: flex; justify-content: right; width: 100%;">
+                        <a href="logger.html?[DOWNLOAD]" download="pi1541-log.txt"><input type="submit" class="btn btn-success" value="Download"/></a>
+                        </div></td>
+                </tr>
+            </table>
+            <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+            <p style="margin-bottom: 20px; line-height: 1.6;">
+                <strong>Boot log messages from the Pi1541 kernel:</strong></p>
+			<p>%s</p>
+            <p style="margin-bottom: 20px; line-height: 1.6;">
+                <strong>Last %d log messages from the Pi1541 kernel:</strong></p>
 			<p>%s</p>
 		</div>
 		<p class="small">%s, %s</p>

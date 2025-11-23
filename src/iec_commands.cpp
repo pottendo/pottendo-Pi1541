@@ -408,7 +408,7 @@ void IEC_Commands::SimulateIECBegin(void)
 	IEC_Bus::WaitWhileAtnAsserted();
 	IEC_Bus::ReleaseClock();
 	IEC_Bus::ReleaseData();
-	DEBUG_LOG("Begin\r\n");
+	DEBUG_LOG("%s: Begin\r\n", __FUNCTION__);
 }
 
 // Paraphrasing Jim Butterfield
