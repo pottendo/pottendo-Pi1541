@@ -1,9 +1,24 @@
 COMPILER = acme
 CFLAGS = -v1 --cpu 6502 -f cbm -o
 
-.PHONY: all clean
+.PHONY: all clean d64 c1541
+PROGS = fb20-3k.prg fb20-8k.prg fb20-mc.prg fb20.prg fb64.prg fb64dtv.prg fb16.prg fb128.prg
 
-all: fb20-3k.prg fb20-8k.prg fb20-mc.prg fb20.prg fb64.prg fb64dtv.prg fb16.prg fb128.prg
+all: $(PROGS) d64
+
+d64: c1541 $(PROGS)
+	c1541 -format "cbm-filebrowser,00" d64 CBM-FileBrowser.d64 
+	c1541 CBM-FileBrowser.d64 -write fb64.prg fb64
+	c1541 CBM-FileBrowser.d64 -write fb20-3k.prg fb20-3k
+	c1541 CBM-FileBrowser.d64 -write fb20-8k.prg fb20-8k
+	c1541 CBM-FileBrowser.d64 -write fb20-mc.prg fb20-mc
+	c1541 CBM-FileBrowser.d64 -write fb20.prg fb20
+	c1541 CBM-FileBrowser.d64 -write fb64dtv.prg fb64dtv
+	c1541 CBM-FileBrowser.d64 -write fb16.prg fb16
+	c1541 CBM-FileBrowser.d64 -write fb128.prg fb128
+
+c1541:
+	@which c1541 > /dev/null || (echo "c1541 not found! Please install VICE package." && exit 1)
 
 fb20-3k.prg: vic20-3k.asm vic20-3k.def CBM-FileBrowser.asm
 	$(COMPILER) $(CFLAGS) $@ $<
@@ -29,4 +44,4 @@ fb16.prg: c16.asm c16.def CBM-FileBrowser.asm
 fb128.prg: c128.asm c128.def CBM-FileBrowser.asm
 	$(COMPILER) $(CFLAGS) $@ $<
 clean:
-	rm *.prg
+	rm -f *.prg *.d64
