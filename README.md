@@ -39,7 +39,7 @@ Copy the content of the release bundle to your boot partition of your Pi1541 SDC
 
 # Status
 ------
-The following is supposed to work on the circle based _V1.24c_, as I've tested those functions a bit:
+The following is supposed to work on the circle based _V1.25c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3A+ ***), 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
 - Option A HW Support 
 - Option B HW Support *)
@@ -130,7 +130,7 @@ A simple text-entry form based configuration editor is provided. Once uploaded p
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
 <br />
 
-The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) with some improvements:
+The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + patched to 1.25 (as of July 2025) with some improvements:
 
 - LED/Buzzer work again as in 1.23
 - some bugfixes to avoid crash (missing initializer)
@@ -142,7 +142,8 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) wi
 - SoundOnGPIO = -1 turns sound completely off
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
-The floppy emulation is entirely untouched, so it's as good as it was/is in V1.24 - which is pretty good, IMHO! **Credits to Steve!**
+The floppy emulation is entirely untouched, so it's as good as it was/is in V1.25 - which is pretty good, IMHO! **Credits to Steve!**
+As the original source builds are provided in `orig-build`, the version using circle appends 'c', e.g. when displayed on the LCD.
 <br />
 
 ## Compatibility
@@ -220,7 +221,6 @@ useDHCP = 1 // get network config automatically, else uncomment and define stati
 # Know Bugs
 
 - Pluging in a USB stick _after_ booting, won't show files on the USB mounted drive and display remains dark. Unplugging/re-plugging works as expected if USB is plugged in at startup
-- Pi5 not yet working
 
 # Checkout & Build
 
@@ -234,7 +234,7 @@ The following compiler suites were used for development:
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
 For building the project needs certain developer tools installed. Depending on your Linux installation these may be needed to be installed:
-_make, wget, unzip, git, sed, patch_.
+_make, wget, unzip, git, sed, patch, c1541_.
 
 My development machine is an x86_64 based ArchLinux box.
 Checkout & build

@@ -110,10 +110,11 @@ if [[ ! (-z "$@") && (${upload} == 1) ]] ; then
       echo "uploading directory ${f}..."
       find ${f} -name "*" -exec /bin/bash -c 'upload_file "$0"' {} ${dst} \;
     else
-      echo "uploading file $f to ${dst}"
+      echo "uploading file $f..."
       if [ ! -z ${dst} ] ; then
         targetdir=$(printf %s "${dst}" | jq -sRr @uri)
         targetdir="?%5BDIR%5D\&/${targetdir}"
+        echo "... to ${dst}"
       fi
       curl -s -F "diskimage=@${f}" ${pi}/index.html${targetdir} >/dev/null
     fi

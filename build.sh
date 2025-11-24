@@ -189,6 +189,15 @@ EOF
     cp options.txt config.txt ${RELEASE}
     mkdir ${RELEASE}/1541
     wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/1541/fb.d64
+    cd CBM-FileBrowser_v1.6/sources
+    make clean 2>&1 > /dev/null
+    echo "building CBM-FileBrowser_v1.6..."
+    if make 2>&1 | tee make-CBM-FileBrowser.log; then
+        echo "successfully built CBM-FileBrowser_v1.6"
+        cp CBM-FileBrowser.d64 ${RELEASE}/1541/CBM-FileBrowser.d64  
+    else
+        echo "WARNING: failed to build CBM-FileBrowser_v1.6"
+    fi
     echo "populated a Pi bootpartition for pottendo-Pi1541:"
     ls -l ${RELEASE}
     echo "Don't forget to adapt 'options.txt' and 'wpa_supplicant.conf' to your local needs!"

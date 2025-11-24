@@ -4,6 +4,7 @@
 *.img
 *.lst
 *.map
+*.prg
 *.swp
 *.d
 *~
@@ -18,6 +19,7 @@ src/webcontent/style.h
 src/webserver-SAVE.cpp
 src/webcontent/config.h
 src/webcontent/update.h
+src/webcontent/logger.h
 src/webcontent/mount-imgs.h
 src/webcontent/edit-config.h
 pi3-sample

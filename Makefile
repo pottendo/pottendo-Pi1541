@@ -124,6 +124,7 @@ clean:
 	$(MAKE) -C uspi clean
 	$(MAKE) -C $(SRCDIR) -f Makefile.circle clean 2>/dev/null || true
 	$(MAKE) -C $(SRCDIR)/webcontent -f Makefile clean
+	$(MAKE) -C CBM-FileBrowser_v1.6/sources clean
 
 distclean: clean
 	rm -f *.log
