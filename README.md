@@ -2,8 +2,8 @@
 
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
-As almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
-A simple web-server features
+Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
+A web-server has been added which features the a WebUI:
 - Manage Upload and SDCard
   - upload of images and directory trees to the SDCard
   - delete of files & directories
@@ -248,7 +248,7 @@ git clone https://github.com/pottendo/pottendo-Pi1541.git
 cd ${BUILDDIR}/pottendo-Pi1541
 ./build.sh -c   # this clones circle-stdlib in ${BUILDDIR} and populates a Pi-bootpartition here: ${BUILDDIR}/Pi-Bootpart
 # if all goes well, you're ready to build
-./build.sh      # kernels for Pi3/32bit Pi3/64bit Pi4/32bit Pi4/64bit are built and finally moved to ${BUILDDIR}
+./build.sh      # kernels for Pi3/32bit Pi3/64bit Pi4/32bit Pi4/64bit are built and finally moved to ${BUILDDIR}/Pi-Bootpart
 # to build for a single architecture, one can use e.g. 'build.sh -a pi3-32' 
 # subsequently you can build just using 'make' this uses circle-stdlib as used with the previous 'build.sh' run
 
@@ -256,7 +256,7 @@ cd ${BUILDDIR}/pottendo-Pi1541
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | Model                 | Version      | build cmd                                         | Image Name                                         | Note                                  |
 | --------------------- | ------------ | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------- |
-| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img`                                      |                                       |
+| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` or script built: `kernel-Pi0.img` `kernel-Pi1BPlus.img`  `kernel-Pi1BRev1.img`  `kernel-Pi1BRev2.img`  `kernel-Pi2.img`  `kernel-Pi3.img`  |                                       |
 | 3                     | circle build | `make`                                            | `kernel8-32.img` (32bit), `kernel8.img`(64bit)                                   |                                       |
 | Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img`                                   | PWM Sound not upported                |
 | Pi 4                  | circle build | `make`                                            | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) |                                       |
@@ -266,7 +266,7 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 
 Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
 The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
-In case you want to run the slightly improved legacy 1.24 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
+In case you want to run the slightly improved legacy 1.25 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
 
 Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendo-Pi1541:
 
