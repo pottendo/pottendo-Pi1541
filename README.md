@@ -3,7 +3,7 @@
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
-A web-server has been added which features the a WebUI:
+A web-server has been added which features the WebUI:
 - Manage Upload and SDCard
   - upload of images and directory trees to the SDCard
   - delete of files & directories
@@ -256,7 +256,7 @@ cd ${BUILDDIR}/pottendo-Pi1541
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | Model                 | Version      | build cmd                                         | Image Name                                         | Note                                  |
 | --------------------- | ------------ | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------- |
-| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` or script built: `kernel-Pi0.img` `kernel-Pi1BPlus.img`  `kernel-Pi1BRev1.img`  `kernel-Pi1BRev2.img`  `kernel-Pi2.img`  `kernel-Pi3.img`  |                                       |
+| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` or script built: `kernel-Pi0.img` `kernel-Pi1BPlus.img`  `kernel-Pi1BRev1.img`  `kernel-Pi1BRev2.img`  `kernel-Pi2.img`  `kernel-Pi3.img` in ${BUILDDIR}/Pi-Bootpart |                                       |
 | 3                     | circle build | `make`                                            | `kernel8-32.img` (32bit), `kernel8.img`(64bit)                                   |                                       |
 | Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img`                                   | PWM Sound not upported                |
 | Pi 4                  | circle build | `make`                                            | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) |                                       |
