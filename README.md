@@ -174,7 +174,7 @@ However, the code compiles and runs in principle on those platforms; due to the 
 
 **Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`.
 
-For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B's protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
+For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B+3A+'s protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
 
 ## TODOs
 
@@ -190,17 +190,18 @@ For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limi
 # Additional Options in `options.txt`
 
 The following options control new functions available:
-| Option      | Value  | Purpose                                  |
-| ----------- | ------ | ---------------------------------------- |
-| SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |
-| TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |
-| netEthernet | 0 or 1 | disable/enable Ethernet network          |
-| netWifi     | 0 or 1 | disable/enable Wifi network              |
-| IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          |
-| NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          |
-| DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          |
-| DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          |
-| (headLess)    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |
+| Option      | Value  | Purpose                                  |Default|Comment |
+| ----------- | ------ | ---------------------------------------- |--------|--------|
+| SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
+| TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
+| netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
+| netWifi     | 0 or 1 | disable/enable Wifi network              |0||
+| useDHCP     | 0 or 1 | disable/enable DHCP for optaining IP configuration |1||
+| IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          ||ignored when using DHCP |
+| NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          ||ignored when using DHCP |
+| DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          ||ignored when using DHCP |
+| DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          ||ignored when using DHCP |
+| (headLess)    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |0||
 
 Here a snippet one can add to his `options.txt`:
 ```
@@ -212,7 +213,7 @@ TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US)
 netWifi = 0
 netEthernet = 1
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
-useDHCP = 1 // get network config automatically, else uncomment and define static network config below
+useDHCP = 1 // get network config automatically, else set to '0' and define static network config below
 //IPAdress = 192.168.1.31
 //NetMask = 192.168.1.0
 //DefaultGateway = 192.168.1.1
@@ -256,9 +257,9 @@ cd ${BUILDDIR}/pottendo-Pi1541
 Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 | Model                 | Version      | build cmd                                         | Image Name                                         | Note                                  |
 | --------------------- | ------------ | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------- |
-| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` or script built: `kernel-Pi0.img` `kernel-Pi1BPlus.img`  `kernel-Pi1BRev1.img`  `kernel-Pi1BRev2.img`  `kernel-Pi2.img`  `kernel-Pi3.img` in ${BUILDDIR}/Pi-Bootpart |                                       |
+| Pi Zero, 1RevXX, 2, 3 | legacy build | `make RASPPI={0,1BRev1,1BRev2,1BPlus,2,3} legacy` | `kernel.img` or script built: `kernel-Pi0.img` `kernel-Pi1BPlus.img`  `kernel-Pi1BRev1.img`  `kernel-Pi1BRev2.img`  `kernel-Pi2.img`  `kernel-Pi3.img` in ${BUILDDIR}/Pi-Bootpart |  `     kernel_address=0x1f00000` needed in config.txt                                |
 | 3                     | circle build | `make`                                            | `kernel8-32.img` (32bit), `kernel8.img`(64bit)                                   |                                       |
-| Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img`                                   | PWM Sound not upported                |
+| Pi Zero 2W            | circle build | `make`                                            | `kernel8-32.img` (32bit), `kernel8.img`(64bit)                                      | PWM Sound not upported                |
 | Pi 4                  | circle build | `make`                                            | `kernel7l.img` (32bit), `kernel8-rpi4.img` (64bit) |                                       |
 | Pi 5                  | circle build | `make`                                            | `kernel_2712.img`                                  | broken, PWM Sound not (yet) supported |
 

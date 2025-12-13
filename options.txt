@@ -157,7 +157,7 @@ TZ = 2.0    // 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 
 netWifi = 0
 netEthernet = 0
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
-useDHCP = 1 // get network config automatically, else uncomment and define static network config below
+useDHCP = 1 // get network config automatically, else set to '0' and define static network config below
 //IPAdress = 192.168.1.31
 //NetMask = 192.168.1.0
 //DefaultGateway = 192.168.1.1
