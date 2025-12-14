@@ -37,7 +37,7 @@ index 566e6eb7..1e8600ec 100644
  
  #ifndef KERNEL_STACK_SIZE
 -#define KERNEL_STACK_SIZE	0x20000
-+#define KERNEL_STACK_SIZE	(8 * 0x20000)
++#define KERNEL_STACK_SIZE	(32 * 0x20000)
  #endif
  
  // HEAP_DEFAULT_NEW defines the default heap to be used for the "new"
@@ -71,7 +71,7 @@ index 566e6eb7..1e8600ec 100644
  
  #ifndef TASK_STACK_SIZE
 -#define TASK_STACK_SIZE		0x8000
-+#define TASK_STACK_SIZE		(4*0x8000)
++#define TASK_STACK_SIZE		KERNEL_STACK_SIZE
  #endif
  
  // NO_BUSY_WAIT deactivates busy waiting in the EMMC, SDHOST and USB

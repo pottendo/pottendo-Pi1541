@@ -151,6 +151,7 @@ CKernel::CKernel(void) :
 	strcpy(ip_address, "<n/a>");
 	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
 	version_extra[0] = '\0';
+	DEBUG_LOG("%s: CKernel initialized, KERNEL_STACK_SIZE = 0x%08x, TASK_STACK_SIZE = 0x%08x", __FUNCTION__, KERNEL_STACK_SIZE, TASK_STACK_SIZE);
 }
 
 static void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
