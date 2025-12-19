@@ -90,12 +90,12 @@ if [ x${tag} != "xnone" ] ; then
 	    exit 1
     fi
     RELEASE=${base}/../${tag}
-    mkdir ${RELEASE} 2>/dev/null
+    mkdir -p ${RELEASE}/debug-syms 2>/dev/null
     build_legacy="yes"
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart
-    mkdir ${RELEASE} 2>/dev/null
+    mkdir -p ${RELEASE}/debug-syms 2>/dev/null
 fi
 
 if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
@@ -108,6 +108,8 @@ if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
         if make RASPPI=${b} legacy > make-RASPPI-${b}-legacy.log; then
             echo "successully built for RASPPI=${b}, legacy code base"
             mv kernel.img ${RELEASE}/orig-build/kernel-Pi${b}.img
+            cp kernel.lst ${RELEASE}/debug-syms/kernel-Pi${b}.lst
+            cp kernel.map ${RELEASE}/debug-syms/kernel-Pi${b}.map
         else
             echo "failed to build legacy codebase for RASPPI=${b}"
             exit 1
@@ -250,6 +252,8 @@ for a in ${archs} ; do
 	exit 1
     fi
     cp kernel*.img ${RELEASE}
+    cp src/kernel*.lst ${RELEASE}/debug-syms
+    cp src/kernel*.map ${RELEASE}/debug-syms
 done
 cp README.md ${RELEASE}
 ls -l ${RELEASE}
