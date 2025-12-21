@@ -2117,13 +2117,11 @@ void IEC_Commands::LoadDirectory()
 	else
 	{
 		res = f_opendir(&dir, ".");
-printf("%s: opendir: %d\n", __FUNCTION__, res);		
 		if (res == FR_OK)
 		{
 			do
 			{
 				res = f_readdir(&dir, &entry.filImage);
-printf("%s: readdir: %d\n", __FUNCTION__, res);		
 				ext = strrchr(entry.filImage.fname, '.');
 				if (res == FR_OK && entry.filImage.fname[0] != 0 && !(ext && strcasecmp(ext, ".png") == 0) && (entry.filImage.fname[0] != '.'))
 					entries.push_back(entry);
@@ -2133,7 +2131,6 @@ printf("%s: readdir: %d\n", __FUNCTION__, res);
 			std::sort(entries.begin(), entries.end(), greater());
 		}
 	}
-printf("%s: 1\n", __FUNCTION__);
 
 	for (u32 i = 0; i < entries.size(); ++i)
 	{

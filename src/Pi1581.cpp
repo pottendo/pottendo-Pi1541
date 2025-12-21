@@ -297,6 +297,11 @@ void Pi1581::SetDeviceID(u8 id)
 
 void Pi1581::Insert(DiskImage* diskImage)
 {
+	if (!diskImage || (!diskImage->IsD81() && !diskImage->IsD71()))
+	{
+		DEBUG_LOG("%s: 1581: Unsupported disk image type inserted: %s", __FUNCTION__, diskImage->GetName());
+		return;
+	}
 //	CIA.GetPortB()->SetInput(PORTB_PINS_WPAT, !diskImage->GetReadOnly());
 	CIA.GetPortA()->SetInput(PORTA_PINS_DISKCHNG, true);
 	wd177x.Insert(diskImage);

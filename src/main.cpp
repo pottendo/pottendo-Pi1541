@@ -1422,12 +1422,20 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #if defined(EXPERIMENTALZERO)
 				diskCaddy.Update();
 #endif
+#if defined(__CIRCLE__)
+				if (options.GetHeadLess())
+					diskCaddy.Update();
+#endif
 			}
 			else if (prevDisk)
 			{
 				pi1581.Insert(diskCaddy.NextDisk());
 #if defined(EXPERIMENTALZERO)
 				diskCaddy.Update();
+#endif
+#if defined(__CIRCLE__)
+				if (options.GetHeadLess())
+					diskCaddy.Update();
 #endif
 			}
 #if not defined(EXPERIMENTALZERO)

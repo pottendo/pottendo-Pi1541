@@ -1437,7 +1437,8 @@ bool FileBrowser::SelectLST(const char* filenameLST)
 			{
 				//DEBUG_LOG("LST token = %s\r\n", token);
 				diskType = DiskImage::GetDiskImageTypeViaExtention(token);
-				if (diskType == DiskImage::D64 || diskType == DiskImage::G64 || diskType == DiskImage::NIB || diskType == DiskImage::NBZ || diskType == DiskImage::T64)
+				if (diskType == DiskImage::D64 || diskType == DiskImage::G64 || diskType == DiskImage::D71 || diskType == DiskImage::D81 ||
+					diskType == DiskImage::NIB || diskType == DiskImage::NBZ || diskType == DiskImage::T64)
 				{
 					FileBrowser::BrowsableList::Entry* entry = folder.FindEntry(token);
 					if (entry && !(entry->filImage.fattrib & AM_DIR))
