@@ -17,11 +17,11 @@
 // written by pottendo
 //
 
+#include "circle-kernel.h"
 #include "emulator.h"
 #include "iec_bus.h"
 #include "ROMs.h"
 #include "InputMappings.h"
-#include "SpinLock.h"
 #include "Screen.h"
 #include "ScreenLCD.h"
 #include "options.h"
@@ -76,7 +76,7 @@ emulator_t::emulator_t(u8 driveNumber)
 	iec_bus(driveNumber)
 {
     DEBUG_LOG("%s: emulator for drive = %d\n", __FUNCTION__, driveNumber);
-	_m_IEC_Commands = new IEC_Commands;
+	_m_IEC_Commands = new IEC_Commands(&iec_bus);
 
 	_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
 	GlobalSetDeviceID(deviceID);

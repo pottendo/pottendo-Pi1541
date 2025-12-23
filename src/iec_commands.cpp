@@ -36,7 +36,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <algorithm>
-extern IEC_Bus *iec_bus_instance;
 
 #define CBM_NAME_LENGTH 16
 #define CBM_NAME_LENGTH_MINUS_D64 CBM_NAME_LENGTH-4
@@ -225,7 +224,8 @@ void IEC_Commands::Channel::Close()
 	bytesSent = 0;
 }
 
-IEC_Commands::IEC_Commands()
+IEC_Commands::IEC_Commands(IEC_Bus* ib)
+:	iec_bus_instance(ib)
 {
 	deviceID = 8;
 	usingVIC20 = false;

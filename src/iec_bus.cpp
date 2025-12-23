@@ -82,7 +82,8 @@ IEC_Bus::IEC_Bus(u8 driveNumber) :
 	//emulationModeCheckButtonIndex = 0;
 
 	gplev0 = 0;
-	Initialise();
+	if (device_id == 8)
+		Initialise();
 	DEBUG_LOG("%s: IEC Bus initialized for device %d", __FUNCTION__, device_id);
 }
 

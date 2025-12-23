@@ -2234,7 +2234,7 @@ extern "C"
 		plfio_showstat();
 		list_directory("/");
 #endif
-		_m_IEC_Commands = new IEC_Commands;
+		//_m_IEC_Commands = new IEC_Commands;
 
 #if defined(__PICO2__)
 		initDiskImage();

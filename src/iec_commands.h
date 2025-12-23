@@ -74,7 +74,7 @@ public:
 		RESET
 	};
 
-	IEC_Commands();
+	IEC_Commands(IEC_Bus* ib);
 	void Initialise();
 
 	void SetDeviceId(u8 id) { deviceID = id; }
@@ -212,6 +212,8 @@ protected:
 	bool cdSlashSlashToRoot;
 
 	DiskImage::DiskType newDiskType;
+
+	IEC_Bus *iec_bus_instance;
 };
 #endif
 

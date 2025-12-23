@@ -586,7 +586,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	case 1:
 		{
 			emulator_t em(8);
-			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
+			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
 			logger.finished_booting("emulator core");
 			em.run_emulator();
 		}
