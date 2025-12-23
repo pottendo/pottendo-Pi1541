@@ -51,11 +51,11 @@ public:
 
 	static const int ROM1581_SIZE = 16384 * 2;
 	unsigned char ROMImage1581[ROM1581_SIZE];
-	char ROMName1581[256];
 	static const int MAX_ROMS = 7;
 #else
 	static const int MAX_ROMS = 1;
 #endif
+	char ROMName1581[256];// not used unless PI1581SUPPORT defined
 
 	unsigned char ROMImages[MAX_ROMS][ROM_SIZE];
 	unsigned char ROMImageMPS802[ROM_MPS802_SIZE];

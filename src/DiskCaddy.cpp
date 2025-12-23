@@ -279,6 +279,7 @@ bool DiskCaddy::InsertNBZ(const FILINFO* fileInfo, unsigned char* diskImageData,
 	return false;
 }
 
+#if defined (PI1581SUPPORT)
 bool DiskCaddy::InsertD81(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly)
 {
 	DiskImage* diskImage = new DiskImage();
@@ -292,6 +293,7 @@ bool DiskCaddy::InsertD81(const FILINFO* fileInfo, unsigned char* diskImageData,
 	delete diskImage;
 	return false;
 }
+#endif
 
 bool DiskCaddy::InsertT64(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly)
 {

@@ -69,7 +69,8 @@ extern "C"
 #include "logo.h"
 #include "ssd_logo.h"
 #include "version.h"
-
+#include "emulator.h"
+extern IEC_Bus *iec_bus_instance;
 static unsigned ctb, cta;
 
 unsigned versionMajor = 1;
@@ -125,7 +126,7 @@ u8 s_u8Memory[0xc000];
 
 int numberOfUSBMassStorageDevices = 0;
 DiskCaddy diskCaddy;
-Pi1541 pi1541;
+static Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
 #endif
@@ -163,9 +164,9 @@ unsigned int screenHeight = 768;
 const char* termainalTextRed = "\E[31m";
 const char* termainalTextNormal = "\E[0m";
 
-static int playsound = 0;
-static int headSoundFreq;
-static int headSoundCounterDuration;
+int playsound = 0;
+int headSoundFreq;
+int headSoundCounterDuration;
 
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32) 
 // Hooks required for USPi library
@@ -427,7 +428,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 		core0RefreshingScreen.Acquire();
 #endif
 
-		IEC_Bus::WaitMicroSeconds(100);
+		iec_bus_instance->WaitMicroSeconds(100);
 
 		if (options.DisplayTemperature())
 			snprintf(tempBuffer, tempBufferSize, "%s %02dC", track, temperature);
@@ -437,7 +438,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 		screenLCD->PrintText(false, 0, 0, tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
 		screenLCD->RefreshRows(0, 1);
 
-		IEC_Bus::WaitMicroSeconds(100);
+		iec_bus_instance->WaitMicroSeconds(100);
 #if not defined(EXPERIMENTALZERO)
 		core0RefreshingScreen.Release();
 #endif
@@ -505,12 +506,13 @@ void UpdateScreen()
 			led = pi1541.drive.IsLEDOn();
 			motor = pi1541.drive.IsMotorOn();
 		}
+#if defined(PI1581SUPPORT)		
 		else if (emulating == EMULATING_1581)
 		{
 			led = pi1581.IsLEDOn();
 			motor = pi1581.IsMotorOn();
 		}
-
+#endif
 		if (options.HDMIDisplayIECActivity())
 		{
 			value = led;
@@ -558,7 +560,7 @@ void UpdateScreen()
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top3, bottom, BkColour);
 
-		value = IEC_Bus::GetPI_Atn();
+		value = iec_bus_instance->GetPI_Atn();
 		if (options.HDMIGraphIEC())
 		{
 			bottom = top2 - 2;
@@ -586,7 +588,7 @@ void UpdateScreen()
 			}
 		}
 
-		value = IEC_Bus::GetPI_Data();
+		value = iec_bus_instance->GetPI_Data();
 		if (options.HDMIGraphIEC())
 		{
 			bottom = top - 2;
@@ -611,7 +613,7 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-		value = IEC_Bus::GetPI_Clock();
+		value = iec_bus_instance->GetPI_Clock();
 		if (options.HDMIGraphIEC())
 		{
 			bottom = screenHeight - 1;
@@ -678,6 +680,7 @@ void UpdateScreen()
 				refreshLCDStatusDisplay = true;
 			}
 		}
+#if defined (PI1581SUPPORT)		
 		else if (emulating == EMULATING_1581)
 		{
 			track = pi1581.wd177x.GetCurrentTrack();
@@ -691,6 +694,7 @@ void UpdateScreen()
 				refreshLCDStatusDisplay = true;
 			}
 		}
+#endif
 		if (emulating != IEC_COMMANDS)
 		{
 
@@ -749,7 +753,7 @@ void UpdateScreen()
 
 #endif /* !defined(__PICO2__) && !defined(ESP32) */
 
-static bool Snoop(u8 a, int max)
+bool Snoop(u8 a, int max)
 {
 	if (a == snoopBackCommand[0])
 	{
@@ -899,6 +903,7 @@ void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour,
 EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
+#if 0	
 	bool oldLED = false;
 #if defined(ESP32)
 	uint64_t ctBefore = 0, ctAfter = 0;
@@ -1208,6 +1213,7 @@ extern int mount_new;
 #endif
 		}
 	}
+#endif
 	return exitReason;
 }
 
@@ -1463,9 +1469,10 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 }
 #endif
 
-FileBrowser* fileBrowser;
+//FileBrowser* fileBrowser;
 void __not_in_flash_func(emulator)(void)
 {
+#if 0 // XXXXXXXXXXXXXXXXXXX
 #if not defined(EXPERIMENTALZERO)
 	Keyboard* keyboard = Keyboard::Instance();
 #endif
@@ -1473,7 +1480,7 @@ void __not_in_flash_func(emulator)(void)
 
 	roms.lastManualSelectedROMIndex = 0;
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
-	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
+	FileBrowser *fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
 	pi1541.Initialise();
 
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
@@ -1718,6 +1725,7 @@ extern int mount_new;
 		}
 	}
 	delete fileBrowser;
+#endif // XXXXXXXXXXXXXXXXXXX
 }
 
 //static void MouseHandler(unsigned nButtons,
@@ -1988,9 +1996,9 @@ static void CheckOptions()
 		do
 		{
 			screen->Clear(COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(20000);
+			delay_us(20000);
 			screen->PrintText(false, xpos, ypos, tempBuffer, COLOUR_WHITE, COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(100000);
+			delay_us(100000);
 		}
 		while (1);
 	}
@@ -2226,7 +2234,7 @@ extern "C"
 		plfio_showstat();
 		list_directory("/");
 #endif
-	_m_IEC_Commands = new IEC_Commands;
+		_m_IEC_Commands = new IEC_Commands;
 
 #if defined(__PICO2__)
 		initDiskImage();
@@ -2278,7 +2286,7 @@ extern "C"
 			DEBUG_LOG("%d Freq, %dus duration", options.SoundOnGPIOFreq(), options.SoundOnGPIODuration());
 
 		if (!options.QuickBoot() && options.LogoDisplayDelay())
-			IEC_Bus::WaitMicroSeconds(options.LogoDisplayDelay() * 1000000);
+			delay_us(options.LogoDisplayDelay() * 1000000);
 
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		InterruptSystemInitialize();
@@ -2309,16 +2317,16 @@ extern "C"
 
 		CheckOptions();
 
-		IEC_Bus::SetSplitIECLines(options.SplitIECLines());
-		IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());
-		IEC_Bus::SetInvertIECOutputs(options.InvertIECOutputs());
-		IEC_Bus::SetIgnoreReset(options.IgnoreReset());
+		//IEC_Bus::SetSplitIECLines(options.SplitIECLines());
+		//IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());
+		//IEC_Bus::SetInvertIECOutputs(options.InvertIECOutputs());
+		//IEC_Bus::SetIgnoreReset(options.IgnoreReset());
 		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 		IEC_Bus::SetRotaryEncoderEnable(options.RotaryEncoderEnable());
 		//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 		IEC_Bus::SetRotaryEncoderInvert(options.RotaryEncoderInvert());
 
-		IEC_Bus::Initialise();
+		//IEC_Bus::Initialise();
 
 #if not defined(EXPERIMENTALZERO)
 		if (playsound == 0)
@@ -2354,8 +2362,8 @@ extern "C"
 		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
 		GlobalSetDeviceID(deviceID);
 
-		pi1541.drive.SetVIA(&pi1541.VIA[1]);
-		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
+		//pi1541.drive.SetVIA(&pi1541.VIA[1]);
+		//pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
 
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		if (screenLCD)

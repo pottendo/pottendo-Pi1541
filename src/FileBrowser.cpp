@@ -1563,6 +1563,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForIcon)
 #endif
 {
+	DEBUG_LOG("%s: Displaying disk info for %s (%p)", __FUNCTION__, diskImage->GetName(), this);
 #if not defined(EXPERIMENTALZERO)
 	// Ideally we should not have to load the entire disk to read the directory.
 	static const char* fileTypes[]=

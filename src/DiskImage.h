@@ -155,9 +155,9 @@ public:
 	inline unsigned BitsInTrack(unsigned track) const { return trackLengths[track] << 3; }
 	inline unsigned TrackLength(unsigned track) const { return trackLengths[track]; }
 
+#if defined(PI1581SUPPORT)	
 	inline bool IsD81() const { return diskType == D81; }
 	inline bool IsD71() const { return diskType == D71; }
-#if defined(PI1581SUPPORT)	
 	inline unsigned char GetD81Byte(unsigned track, unsigned headIndex, unsigned headPos) const { return tracksD81[track][headIndex][headPos]; }
 	inline void SetD81Byte(unsigned track, unsigned headIndex, unsigned headPos, unsigned char data)
 	{
@@ -182,6 +182,9 @@ public:
 			trackD81SyncBits[track][headIndex][headPos >> 3] &= ~(1 << (headPos & 7));
 
 	}
+#else
+	inline bool IsD81() const { return false; }
+	inline bool IsD71() const { return false; }
 #endif /* PI1581SUPPORT */
 
 	static DiskType GetDiskImageTypeViaExtention(const char* diskImageName);

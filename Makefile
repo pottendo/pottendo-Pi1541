@@ -44,7 +44,7 @@ LEGACY_OBJS = 	armc-start.o armc-cstartup.o armc-cstubs.o armc-cppstubs.o emmc.o
 
 CIRCLE_OBJS = 	circle-main.o circle-kernel.o webserver.o legacy-wrappers.o logger.o #circle-hmi.o 
 
-COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
+COMMON_OBJS = 	main.o emulator.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 		gcr.o prot.o lz.o options.o Screen.o ScreenLCD.o \
 		FileBrowser.o DiskCaddy.o ROMs.o InputMappings.o xga_font_data.o \
 		m8520.o wd177x.o Pi1581.o Keyboard.o dmRotary.o SSD1306.o

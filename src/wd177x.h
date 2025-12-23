@@ -18,7 +18,7 @@
 
 #ifndef WD177X_H
 #define WD177X_H
-
+#if defined (PI1581SUPPORT)
 #include "IOPort.h"
 #include "DiskImage.h"
 #include "m6502.h"
@@ -261,5 +261,5 @@ private:
 	unsigned short crc;
 	unsigned char dataAddressMark;
 };
-
+#endif
 #endif

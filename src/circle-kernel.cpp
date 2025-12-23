@@ -35,6 +35,7 @@
 #include "options.h"
 #include "webserver.h"
 #include "version.h"
+#include "emulator.h"
 
 #define _DRIVE		"SD:"
 #define _FIRMWARE_PATH	_DRIVE "/firmware/"		// firmware files must be provided here
@@ -582,10 +583,13 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	int i = 0;
 	switch (core) {
-		case 1:
-		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
-		logger.finished_booting("emulator core");
-		emulator();
+	case 1:
+		{
+			emulator_t em(8);
+			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
+			logger.finished_booting("emulator core");
+			em.run_emulator();
+		}
 		break;
 	case 2:
 #if RASPPI >= 3
@@ -648,6 +652,13 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		{
 			Kernel.log("launching system monitoring on core %d", core);
 			Kernel.run_tempmonitor();
+		}
+		if (0) {
+			/* experimental second emulation for device 9 on core 3*/
+			emulator_t em(9);
+			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
+			logger.finished_booting("emulator core");
+			em.run_emulator();
 		}
 		break;
 	default:

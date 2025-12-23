@@ -20,9 +20,11 @@
 #include "debug.h"
 #include "options.h"
 #include "ROMs.h"
+#include "emulator.h"
 
 extern Options options;
-extern Pi1541 pi1541;
+//extern Pi1541 pi1541;
+extern emulator_t* emulator_instance;
 extern u8 s_u8Memory[0xc000];
 extern ROMs roms;
 
@@ -64,10 +66,10 @@ u8 read6502(u16 address)
 				value = s_u8Memory[address & 0x7ff]; // 74LS42 outputs low on pin 1 or pin 2
 				break;
 			case 6:
-				value = pi1541.VIA[0].Read(address);	// 74LS42 outputs low on pin 7
+				value = (*(emulator_instance->get_pi1541())).VIA[0].Read(address);	// 74LS42 outputs low on pin 7
 				break;
 			case 7:
-				value = pi1541.VIA[1].Read(address);	// 74LS42 outputs low on pin 9
+				value = (*(emulator_instance->get_pi1541())).VIA[1].Read(address);	// 74LS42 outputs low on pin 9
 				break;
 			default:
 				value = address >> 8;	// Empty address bus
@@ -87,7 +89,7 @@ u8 read6502ExtraRAM(u16 address)
 	else
 	{
 		u16 addressLines11And12 = address & 0x1800;
-		if (addressLines11And12 == 0x1800) return pi1541.VIA[(address & 0x400) != 0].Read(address);	// address line 10 indicates what VIA to index
+		if (addressLines11And12 == 0x1800) return (*(emulator_instance->get_pi1541())).VIA[(address & 0x400) != 0].Read(address);	// address line 10 indicates what VIA to index
 		return s_u8Memory[address & 0x7fff];
 	}
 }
@@ -106,8 +108,8 @@ u8 peek6502(u16 address)
 		u16 addressLines15_12_11_10 = (address & 0x1c00) >> 10;
 		addressLines15_12_11_10 |= (address & 0x8000) >> (15 - 3);
 		if (addressLines15_12_11_10 == 0 || addressLines15_12_11_10 == 1) value = s_u8Memory[address & 0x7ff]; // 74LS42 outputs low on pin 1 or pin 2
-		else if (addressLines15_12_11_10 == 6) value = pi1541.VIA[0].Peek(address);	// 74LS42 outputs low on pin 7
-		else if (addressLines15_12_11_10 == 7) value = pi1541.VIA[1].Peek(address);	// 74LS42 outputs low on pin 9
+		else if (addressLines15_12_11_10 == 6) value = (*(emulator_instance->get_pi1541())).VIA[0].Peek(address);	// 74LS42 outputs low on pin 7
+		else if (addressLines15_12_11_10 == 7) value = (*(emulator_instance->get_pi1541())).VIA[1].Peek(address);	// 74LS42 outputs low on pin 9
 		else value = address >> 8;	// Empty address bus
 	}
 	return value;
@@ -141,10 +143,10 @@ void write6502(u16 address, const u8 value)
 				s_u8Memory[address & 0x7ff] = value; // 74LS42 outputs low on pin 1 or pin 2
 				break;
 			case 6:
-				pi1541.VIA[0].Write(address, value);	// 74LS42 outputs low on pin 7
+				(*(emulator_instance->get_pi1541())).VIA[0].Write(address, value);	// 74LS42 outputs low on pin 7
 				break;
 			case 7:
-				pi1541.VIA[1].Write(address, value);	// 74LS42 outputs low on pin 9
+				(*(emulator_instance->get_pi1541())).VIA[1].Write(address, value);	// 74LS42 outputs low on pin 9
 				break;
 			default:
 				break;
@@ -157,7 +159,7 @@ void write6502ExtraRAM(u16 address, const u8 value)
 	if (address & 0x8000) return; // address line 15 selects the ROM
 	u16 addressLines11And12 = address & 0x1800;
 	if (addressLines11And12 == 0) s_u8Memory[address & 0x7fff] = value;
-	else if (addressLines11And12 == 0x1800) pi1541.VIA[(address & 0x400) != 0].Write(address, value);	// address line 10 indicates what VIA to index
+	else if (addressLines11And12 == 0x1800) (*(emulator_instance->get_pi1541())).VIA[(address & 0x400) != 0].Write(address, value);	// address line 10 indicates what VIA to index
 }
 
 Pi1541::Pi1541()
@@ -208,7 +210,7 @@ void Pi1541::Reset()
 	VIA[0].Reset();
 	VIA[1].Reset();
 	drive.Reset();
-	IEC_Bus::Reset();
+	emulator_instance->get_iec_bus()->Reset();
 	// On a real drive the outputs look like they are being pulled high (when set to inputs) (Taking an input from the front end of an inverter)
 	VIABortB = VIA[0].GetPortB();
 	VIABortB->SetInput(VIAPORTPINS_DATAOUT, true);

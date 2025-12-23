@@ -36,6 +36,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <algorithm>
+extern IEC_Bus *iec_bus_instance;
 
 #define CBM_NAME_LENGTH 16
 #define CBM_NAME_LENGTH_MINUS_D64 CBM_NAME_LENGTH-4
@@ -57,7 +58,7 @@ extern void DisplayMessage(int x, int y, bool LCD, const char* message, u32 text
 #define WaitWhile(checkStatus) \
 	do\
 	{\
-		IEC_Bus::ReadBrowseMode();\
+		iec_bus_instance->ReadBrowseMode();\
 		if (CheckATN()) return true;\
 	} while (checkStatus)
 
@@ -265,7 +266,7 @@ void IEC_Commands::CloseAllChannels()
 
 bool IEC_Commands::CheckATN(void)
 {
-	bool atnAsserted = IEC_Bus::IsAtnAsserted();
+	bool atnAsserted = iec_bus_instance->IsAtnAsserted();
 	if (atnSequence == ATN_SEQUENCE_RECEIVE_COMMAND_CODE)
 	{
 		// TO CHECK is this case needed? Just let it complete
@@ -320,43 +321,43 @@ bool IEC_Commands::CheckATN(void)
 
 bool IEC_Commands::WriteIECSerialPort(u8 data, bool eoi)
 {
-	IEC_Bus::WaitMicroSeconds(50); //sidplay64-sd2iec needs this?
+	iec_bus_instance->WaitMicroSeconds(50); //sidplay64-sd2iec needs this?
 
 	// When the talker is ready it releases the Clock line.
-	IEC_Bus::ReleaseClock();
+	iec_bus_instance->ReleaseClock();
 
 	// Wait for all listeners to be ready. They singal this by releasing the Data line.
-	WaitWhile(IEC_Bus::IsDataAsserted());
+	WaitWhile(iec_bus_instance->IsDataAsserted());
 
 	if (eoi) // End Or Identify
 	{
-		WaitWhile(IEC_Bus::IsDataReleased());
-		WaitWhile(IEC_Bus::IsDataAsserted());
+		WaitWhile(iec_bus_instance->IsDataReleased());
+		WaitWhile(iec_bus_instance->IsDataAsserted());
 	}
 
-	IEC_Bus::AssertClock();
-	IEC_Bus::WaitMicroSeconds(40);
-	WaitWhile(IEC_Bus::IsDataAsserted());
-	IEC_Bus::WaitMicroSeconds(21);
+	iec_bus_instance->AssertClock();
+	iec_bus_instance->WaitMicroSeconds(40);
+	WaitWhile(iec_bus_instance->IsDataAsserted());
+	iec_bus_instance->WaitMicroSeconds(21);
 
 	// At this point, the talker controls both lines, Clock and Data. At the beginning of the sequence, it is asserting the Clock, while the Data line is released.
 	for (u8 i = 0; i < 8; ++i)
 	{
-		IEC_Bus::WaitMicroSeconds(45);
-		if (data & 1 << i) IEC_Bus::ReleaseData();
-		else IEC_Bus::AssertData();
-		IEC_Bus::WaitMicroSeconds(22);
-		IEC_Bus::ReleaseClock();
-		if (usingVIC20) IEC_Bus::WaitMicroSeconds(34);
-		else IEC_Bus::WaitMicroSeconds(75);
-		IEC_Bus::AssertClock();
-		IEC_Bus::WaitMicroSeconds(22);
-		IEC_Bus::ReleaseData();
-		IEC_Bus::WaitMicroSeconds(14);
+		iec_bus_instance->WaitMicroSeconds(45);
+		if (data & 1 << i) iec_bus_instance->ReleaseData();
+		else iec_bus_instance->AssertData();
+		iec_bus_instance->WaitMicroSeconds(22);
+		iec_bus_instance->ReleaseClock();
+		if (usingVIC20) iec_bus_instance->WaitMicroSeconds(34);
+		else iec_bus_instance->WaitMicroSeconds(75);
+		iec_bus_instance->AssertClock();
+		iec_bus_instance->WaitMicroSeconds(22);
+		iec_bus_instance->ReleaseData();
+		iec_bus_instance->WaitMicroSeconds(14);
 	}
 
 	// After the eighth bit has been sent, it's the listener's turn to acknowledge. At this moment, the Clock line is asserted and the Data line is released.
-	WaitWhile(IEC_Bus::IsDataReleased());
+	WaitWhile(iec_bus_instance->IsDataReleased());
 	return false;
 }
 
@@ -365,38 +366,38 @@ bool IEC_Commands::ReadIECSerialPort(u8& byte)
 	byte = 0;
 
 	// When the talker is ready it releases the Clock line.
-	WaitWhile(IEC_Bus::IsClockAsserted());
+	WaitWhile(iec_bus_instance->IsClockAsserted());
 
 	// We release data first
-	IEC_Bus::ReleaseData();
-	WaitWhile(IEC_Bus::IsDataAsserted());
+	iec_bus_instance->ReleaseData();
+	WaitWhile(iec_bus_instance->IsDataAsserted());
 
 	timer.Start(200);
 	do
 	{
-		IEC_Bus::ReadBrowseMode();
+		iec_bus_instance->ReadBrowseMode();
 		if (CheckATN()) return true;
 	}
-	while (IEC_Bus::IsClockReleased() && !timer.Tick());
+	while (iec_bus_instance->IsClockReleased() && !timer.Tick());
 	if (timer.TimedOut())
 	{
-		IEC_Bus::AssertData();
-		IEC_Bus::WaitMicroSeconds(73);
-		IEC_Bus::ReleaseData();
-		WaitWhile(IEC_Bus::IsClockReleased());
+		iec_bus_instance->AssertData();
+		iec_bus_instance->WaitMicroSeconds(73);
+		iec_bus_instance->ReleaseData();
+		WaitWhile(iec_bus_instance->IsClockReleased());
 		receivedEOI = true;
 	}
 
 	for (u8 i = 0; i < 8; ++i)
 	{
-		WaitWhile(IEC_Bus::IsClockAsserted());
-		byte = (byte >> 1) | (!!IEC_Bus::IsDataReleased() << 7);
-		WaitWhile(IEC_Bus::IsClockReleased());
+		WaitWhile(iec_bus_instance->IsClockAsserted());
+		byte = (byte >> 1) | (!!iec_bus_instance->IsDataReleased() << 7);
+		WaitWhile(iec_bus_instance->IsClockReleased());
 	}
 
 	//DEBUG_LOG("%02x\r\n", byte);
 
-	IEC_Bus::AssertData();
+	iec_bus_instance->AssertData();
 	return false;
 }
 
@@ -404,10 +405,10 @@ void IEC_Commands::SimulateIECBegin(void)
 {
 	SetHeaderVersion();
 	Reset();
-	IEC_Bus::ReadBrowseMode();
-	IEC_Bus::WaitWhileAtnAsserted();
-	IEC_Bus::ReleaseClock();
-	IEC_Bus::ReleaseData();
+	iec_bus_instance->ReadBrowseMode();
+	iec_bus_instance->WaitWhileAtnAsserted();
+	iec_bus_instance->ReleaseClock();
+	iec_bus_instance->ReleaseData();
 	DEBUG_LOG("%s: Begin\r\n", __FUNCTION__);
 }
 
@@ -438,18 +439,18 @@ void IEC_Commands::SimulateIECBegin(void)
 // and then asserts the Clock line. We're now in our starting position, with the talker (that's the device) asserting the Clock, and the listener (the computer) asserting the Data line true.
 IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 {
-	if (IEC_Bus::IsReset())
+	if (iec_bus_instance->IsReset())
 	{
 		//DEBUG_LOG("Wait for reset\r\n");
 		// If the computer is resetting then just wait until it has come out of reset.
 		do
 		{
 			//DEBUG_LOG("Reset during SimulateIECUpdate\r\n");
-			IEC_Bus::ReadBrowseMode();
-			IEC_Bus::WaitMicroSeconds(100);
+			iec_bus_instance->ReadBrowseMode();
+			iec_bus_instance->WaitMicroSeconds(100);
 		}
-		while (IEC_Bus::IsReset());
-		IEC_Bus::WaitMicroSeconds(20);
+		while (iec_bus_instance->IsReset());
+		iec_bus_instance->WaitMicroSeconds(20);
 		return RESET;
 	}
 
@@ -460,15 +461,15 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 	switch (atnSequence)
 	{
 		case ATN_SEQUENCE_IDLE:
-			IEC_Bus::ReadBrowseMode();
-			if (IEC_Bus::IsAtnAsserted()) atnSequence = ATN_SEQUENCE_ATN;
+			iec_bus_instance->ReadBrowseMode();
+			if (iec_bus_instance->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_ATN;
 			else if (selectedImageName[0] != 0) updateAction = IMAGE_SELECTED;
 		break;
 		case ATN_SEQUENCE_ATN:
 			// All devices must release the Clock line as the computer will be the one assering it.
-			IEC_Bus::ReleaseClock();
+			iec_bus_instance->ReleaseClock();
 			// Tell computer we are ready to listen by asserting the Data line.
-			IEC_Bus::AssertData();
+			iec_bus_instance->AssertData();
 
 			deviceRole = DEVICE_ROLE_PASSIVE;
 			atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -476,9 +477,9 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 
 			// Wait until the computer is ready to talk
 			// TODO: should set a timer here and if it times out (before the clock is released) go back to IDLE?
-			while (IEC_Bus::IsClockReleased())
+			while (iec_bus_instance->IsClockReleased())
 			{
-				IEC_Bus::ReadBrowseMode();
+				iec_bus_instance->ReadBrowseMode();
 			}
 		break;
 		case ATN_SEQUENCE_RECEIVE_COMMAND_CODE:
@@ -571,7 +572,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_LISTEN;
-				if (IEC_Bus::IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
+				if (iec_bus_instance->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
 				else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 			}
 			else if (commandCode == 0x3f)	// Unlisten
@@ -583,7 +584,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_TALK;
-				if (IEC_Bus::IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
+				if (iec_bus_instance->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
 				else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 			}
 			else if (commandCode == 0x5f)	// Untalk
@@ -610,7 +611,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 				{
 					CloseFile(secondaryAddress);
 
-					if (IEC_Bus::IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
+					if (iec_bus_instance->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
 					else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 
 					//DEBUG_LOG("Cl %d %d\r\n", secondaryAddress, atnSequence);
@@ -623,9 +624,9 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 			else
 			{
-				IEC_Bus::ReleaseClock();
-				IEC_Bus::ReleaseData();
-				IEC_Bus::WaitWhileAtnAsserted();
+				iec_bus_instance->ReleaseClock();
+				iec_bus_instance->ReleaseData();
+				iec_bus_instance->WaitWhileAtnAsserted();
 				atnSequence = ATN_SEQUENCE_COMPLETE;
 			}
 		break;
@@ -634,7 +635,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 
 			//DEBUG_LOG("T sa=%d\r\n", secondaryAddress);
 
-			IEC_Bus::WaitWhileAtnAsserted();
+			iec_bus_instance->WaitWhileAtnAsserted();
 			if (deviceRole == DEVICE_ROLE_LISTEN)
 			{
 				Listen();
@@ -642,15 +643,15 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			else if (deviceRole == DEVICE_ROLE_TALK)
 			{
 				// Do the turn around and become the talker
-				IEC_Bus::ReleaseData();
-				IEC_Bus::AssertClock();
+				iec_bus_instance->ReleaseData();
+				iec_bus_instance->AssertClock();
 				Talk();
 			}
 			atnSequence = ATN_SEQUENCE_COMPLETE;
 		break;
 		case ATN_SEQUENCE_COMPLETE:
-			IEC_Bus::ReleaseClock();
-			IEC_Bus::ReleaseData();
+			iec_bus_instance->ReleaseClock();
+			iec_bus_instance->ReleaseData();
 
 			if (receivedCommand)
 			{
