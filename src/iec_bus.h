@@ -656,10 +656,18 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
-		emuSpinLock.Acquire();
 		if (!splitIECLines)
 		{
+			static unsigned out_dr9 = 0;
+			emuSpinLock.Acquire();
 			// time_fn_arm();
+			if (device_id == 9)
+			{
+				out_dr9 = DataSetToOut | (ClockSetToOut << 1);
+				emuSpinLock.Release();
+				return;
+			}
+			emuSpinLock.Release();
 #if !defined(CIRCLE_GPIO)
 			static const unsigned outlist[4] = {
 				0,
@@ -669,7 +677,7 @@ public:
 					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
 			register unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1);
+				(ClockSetToOut << 1) | out_dr9;
 
 			write32(ARM_GPIO_GPFSEL1, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
 			//DEBUG_LOG("%s: GPFSEL1=0x%08X", __FUNCTION__, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
@@ -733,7 +741,6 @@ public:
 #endif
 #endif /* CIRCLE_GPIO */
 		}
-		emuSpinLock.Release();
 	}
 
 #if defined(CIRCLE_GPIO)
