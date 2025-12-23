@@ -76,8 +76,8 @@ u32 IEC_Bus::emulationModeCheckButtonIndex = 0;
 
 unsigned IEC_Bus::gplev0;
 
-//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
-RotaryEncoder IEC_Bus::rotaryEncoder;
+//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
+//RotaryEncoder IEC_Bus::rotaryEncoder;
 bool IEC_Bus::rotaryEncoderEnable;
 //ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 bool IEC_Bus::rotaryEncoderInvert;
@@ -121,7 +121,21 @@ void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)
 #if !defined(__PICO2__)	&& !defined(ESP32)
  	int indexEnter = InputMappings::INPUT_BUTTON_ENTER;
  	int indexUp = InputMappings::INPUT_BUTTON_UP;
-	int indexDown = InputMappings::INPUT_BUTTON_DOWN;	
+	int indexDown = InputMappings::INPUT_BUTTON_DOWN;
+    
+    //ROTARY: Modified for rotary encoder support - 12/23/2025 by hgryska
+    UpdateButton(indexEnter);
+	if (IEC_Bus::rotaryEncoderEnable == true)
+	{
+		UpdateRotary(indexUp, indexDown);
+	}
+	else
+	{
+ 		UpdateButton(indexUp);
+ 		UpdateButton(indexDown);
+	}
+    
+/*
 
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 	if (IEC_Bus::rotaryEncoderEnable == true)
@@ -162,7 +176,7 @@ void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)
  		UpdateButton(indexEnter);
  		UpdateButton(indexUp);
  		UpdateButton(indexDown);
- 	}	
+ 	}	*/
 #endif /* !__PICO2__ && !ESP32*/
 	if (!minimalCheck)
 	{
@@ -207,6 +221,57 @@ void IEC_Bus::UpdateButton(int index)
 	}
 }
  
+//ROTARY: Added for rotary encoder support - 12/23/2025 by hgryska
+void IEC_Bus::UpdateRotary(int index_up, int index_down)
+{
+	bool inputclock;
+	bool inputdata;
+
+	if (IEC_Bus::rotaryEncoderInvert == false)
+	{
+		inputclock = (gplev0 & ButtonPinFlags[index_up])   == 0;
+		inputdata  = (gplev0 & ButtonPinFlags[index_down]) == 0;
+	}
+	else
+	{
+		inputclock = (gplev0 & ButtonPinFlags[index_down]) == 0;
+		inputdata  = (gplev0 & ButtonPinFlags[index_up])   == 0;
+	}
+
+	InputButtonPrev[index_up]   = InputButton[index_up];
+	inputRepeatPrev[index_up]   = inputRepeat[index_up];
+	InputButtonPrev[index_down] = InputButton[index_down];
+	inputRepeatPrev[index_down] = inputRepeat[index_down];
+
+	if (inputclock)
+	{
+		validInputCount[index_up]++;
+		if (validInputCount[index_up] == 1000)
+		{
+			if (inputdata)
+			{
+				InputButton[index_up] = true;
+				inputRepeat[index_up]++;
+			}
+			else
+			{
+				InputButton[index_down] = true;
+				inputRepeat[index_down]++;
+			}
+		}
+	}
+	else
+	{
+		InputButton[index_up]   = false;
+		InputButton[index_down] = false;
+		validInputCount[index_up] = 0;
+		inputRepeat[index_up] = 0;
+		inputRepeatPrev[index_up] = 0;
+		inputRepeat[index_down] = 0;
+		inputRepeatPrev[index_down] = 0;
+	}
+}
+
 //ROTARY: Modified for rotary encoder support - 09/05/2019 by Geo...
 void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 {

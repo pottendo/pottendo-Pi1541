@@ -32,8 +32,8 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #endif
-//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
-#include "dmRotary.h"
+//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
+//#include "dmRotary.h"
 
 #define INPUT_BUTTON_DEBOUNCE_THRESHOLD 20000
 #define INPUT_BUTTON_REPEAT_THRESHOLD 460000
@@ -534,8 +534,8 @@ public:
 		RPI_GpioBase->GPPUDCLK0 = 0;
 #endif
 #if !defined(__PICO2__) && !defined(ESP32)
-		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
-		if (IEC_Bus::rotaryEncoderEnable == true)
+		//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
+/*		if (IEC_Bus::rotaryEncoderEnable == true)
 		{
 			//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 			if (IEC_Bus::rotaryEncoderInvert == true)
@@ -546,7 +546,7 @@ public:
 			{
 				IEC_Bus::rotaryEncoder.Initialize(RPI_GPIO22, RPI_GPIO23, RPI_GPIO27);
 			}
-		}
+		} */
 #endif		
 	}
 
@@ -566,16 +566,17 @@ public:
 #endif
 
 	static void UpdateButton(int index);
-
+    //ROTARY: Added for rotary encoder support - 12/23/2025 by hgryska
+	static void UpdateRotary(int index_clock, int index_data);
 	
-	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
+	//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
 	//
 	// Note: This method serves as a shim to allow the rotary encoder
 	//       logic to set a specific input button state (fooling the
 	//       original logic into thinking a button was pressed or
 	//       released).
 	//
-	static inline void SetButtonState(int index, bool state)
+/*	static inline void SetButtonState(int index, bool state)
 	{
 
 		InputButtonPrev[index] = InputButton[index];
@@ -605,8 +606,7 @@ public:
 			
 		}
 
-	}
-
+	} */
 
 	static void ReadBrowseMode(void);
 	static void ReadGPIOUserInput(bool minimalCheck = false);
@@ -1042,8 +1042,8 @@ private:
 	static u32 inputRepeat[5];
 	static u32 inputRepeatPrev[5];
 
-	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
-	static RotaryEncoder rotaryEncoder;
+	//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
+	//static RotaryEncoder rotaryEncoder;
 	static bool rotaryEncoderEnable;
 	//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
 	static bool rotaryEncoderInvert;

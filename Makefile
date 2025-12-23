@@ -47,7 +47,7 @@ CIRCLE_OBJS = 	circle-main.o circle-kernel.o webserver.o legacy-wrappers.o logge
 COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 		gcr.o prot.o lz.o options.o Screen.o ScreenLCD.o \
 		FileBrowser.o DiskCaddy.o ROMs.o InputMappings.o xga_font_data.o \
-		m8520.o wd177x.o Pi1581.o Keyboard.o dmRotary.o SSD1306.o
+		m8520.o wd177x.o Pi1581.o Keyboard.o SSD1306.o
 SRCDIR   = src
 OBJS_CIRCLE  := $(addprefix $(SRCDIR)/, $(CIRCLE_OBJS) $(COMMON_OBJS))
 OBJS_LEGACY  := $(addprefix $(SRCDIR)/, $(LEGACY_OBJS) $(COMMON_OBJS))
