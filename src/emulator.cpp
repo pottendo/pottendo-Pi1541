@@ -55,6 +55,8 @@ emulator_t *emulator_instance = nullptr;
 emulator_t *emulator_instance_dr9 = nullptr;
 IEC_Bus *iec_bus_instance = nullptr;
 
+SpinLock emuSpinLock;
+
 /* fixme's - declared twice, etc. */
 #define FAST_BOOT_CYCLES 1003061
 #define SNOOP_CD_CBM 0xEA2D

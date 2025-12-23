@@ -38,6 +38,7 @@
 #define INPUT_BUTTON_DEBOUNCE_THRESHOLD 20000
 #define INPUT_BUTTON_REPEAT_THRESHOLD 460000
 
+extern SpinLock emuSpinLock;
 /* moved to variables in InputMapping
 #define INPUT_BUTTON_ENTER 0
 #define INPUT_BUTTON_UP 1
@@ -655,6 +656,7 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
+		emuSpinLock.Acquire();
 		if (!splitIECLines)
 		{
 			// time_fn_arm();
@@ -731,6 +733,7 @@ public:
 #endif
 #endif /* CIRCLE_GPIO */
 		}
+		emuSpinLock.Release();
 	}
 
 #if defined(CIRCLE_GPIO)
