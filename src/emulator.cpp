@@ -42,9 +42,17 @@ extern void write6502(u16 address, const u8 value);
 extern void write6502ExtraRAM(u16 address, const u8 value);
 extern u8 read6502_1581(u16 address);
 extern void write6502_1581(u16 address, const u8 value);
+
+extern u8 read6502_dr9(u16 address);
+extern u8 read6502ExtraRAM_dr9(u16 address);
+extern void write6502_dr9(u16 address, const u8 value);
+extern void write6502ExtraRAM_dr9(u16 address, const u8 value);
+extern u8 read6502_1581_dr9(u16 address);
+extern void write6502_1581_dr9(u16 address, const u8 value);
 extern bool usb_mass_update;
 
 emulator_t *emulator_instance = nullptr;
+emulator_t *emulator_instance_dr9 = nullptr;
 IEC_Bus *iec_bus_instance = nullptr;
 
 /* fixme's - declared twice, etc. */
@@ -168,11 +176,21 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 	iec_bus.ReadBrowseMode();
 
 	bool extraRAM = options.GetExtraRAM();
-	DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM : read6502;
-	DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM : write6502;
-	pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+	if (get_deviceID() == 9)
+	{
+		emulator_instance_dr9 = this;
+		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM_dr9 : read6502_dr9;
+		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM_dr9 : write6502_dr9;
+		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+	}
+	else
+	{
+		emulator_instance = this;
+		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM : read6502;
+		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM : write6502;
+		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+	}
 
-	emulator_instance = this;
 	iec_bus.VIA = &pi1541.VIA[0];
 	iec_bus.port = pi1541.VIA[0].GetPortB();
 	pi1541.Reset();	// will call iec_bus.Reset();
@@ -213,7 +231,7 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 #if defined(__PICO2__)	
 	overclock(312000);
 #endif	
-	DEBUG_LOG("%s: Fast booted 1541 in %d cycles", __FUNCTION__, cycleCount);
+	//DEBUG_LOG("%s: Fast booted 1541 in %d cycles", __FUNCTION__, cycleCount);
 	// Self test code done. Begin realtime emulation.
 	while (exitReason == EXIT_UNKNOWN)
 	{

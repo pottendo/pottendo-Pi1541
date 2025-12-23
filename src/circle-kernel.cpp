@@ -653,7 +653,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			Kernel.log("launching system monitoring on core %d", core);
 			Kernel.run_tempmonitor();
 		}
-		if (0) {
+		if (1) {
 			/* experimental second emulation for device 9 on core 3*/
 			emulator_t em(9);
 			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);

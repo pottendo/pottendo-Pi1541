@@ -50,11 +50,13 @@ public:
 
 	inline void SetDeviceID(u8 id)
 	{
+		device_id = id;
 		VIA[0].GetPortB()->SetInput(VIAPORTPINS_DEVSEL0, id & 1);
 		VIA[0].GetPortB()->SetInput(VIAPORTPINS_DEVSEL1, id & 2);
 	}
 
 private:
+	u8 device_id;
 	//u8 Memory[0xc000];
 
 	//static u8 Read6502(u16 address, void* data);
