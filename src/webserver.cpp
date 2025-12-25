@@ -44,6 +44,8 @@ bool webserver_upload = false;
 char mount_img[256] = { 0 };
 char mount_path[256] = { 0 };
 int mount_new = 0;
+static int target_drive = 8;
+
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
@@ -889,6 +891,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			*ppContentType = "application/octet-stream";
 			goto out;
 		}
+		if (type == "[toggleDrive]")
+		{
+			int d = (target_drive == 8) ? 9 : 8;
+			DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
+			snprintf(msg_str, 1023,"Toggled target drive from %d to %d", target_drive, d);
+			target_drive = d;
+			curr_path = "";
+		}
 		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 		{
 			bool xpath_set = false;
@@ -990,10 +1000,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned int temp;
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
-				 temp / 1000,
-				 CPUThrottle.GetClockRate() / 1000000L,
-				 t->c_str());
+		String.Format("Drive: <i>%d</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+				target_drive,
+				temp / 1000,
+				CPUThrottle.GetClockRate() / 1000000L,
+				t->c_str());
 		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -1253,7 +1264,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					if (mount_it && DiskImage::IsLSTExtention(mount_img))
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
-						mount_new = 2; /* indicate .lst mount */
+						mount_new = target_drive + 2; /* indicate .lst mount */
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
@@ -1284,7 +1295,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					if (mount_it)
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
-						mount_new = 1;	/* indicate image mount */
+						mount_new = target_drive;	/* indicate image mount */
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						

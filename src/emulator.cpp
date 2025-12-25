@@ -344,7 +344,7 @@ extern bool webserver_upload;
 		}
 extern char mount_img[256];
 extern int mount_new;
-		if (mount_new)
+		if (mount_new == deviceID)
 		{
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
 			emulating = IEC_COMMANDS;
@@ -608,7 +608,7 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 		}
 		extern char mount_img[256];
 		extern int mount_new;
-		if (mount_new)
+		if (mount_new == deviceID)
 		{
 			DEBUG_LOG("%s: mount_img = '%s'", __FUNCTION__, mount_img);
 			emulating = IEC_COMMANDS;
@@ -734,7 +734,7 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 	_m_IEC_Commands->SetCDSlashSlashToRoot(options.CDSlashSlashToRoot() != 0);
 
 	emulating = IEC_COMMANDS;
-	DEBUG_LOG("%s: enter main emulation loop", __FUNCTION__);
+	DEBUG_LOG("%s: Drive %d, enter main emulation loop", __FUNCTION__, deviceID);
 	while (1)
 	{
 		if (emulating == IEC_COMMANDS)
@@ -877,7 +877,7 @@ extern int mount_new;
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
-						else if (mount_new == 1)
+						else if (mount_new == deviceID)
 						{
 
 							fileBrowser->FolderChanged();
@@ -886,7 +886,7 @@ extern int mount_new;
 							fileBrowser->Update();
 							emulating = BeginEmulating(fileBrowser, mount_img);
 						}
-						if (mount_new == 2)/* .LST */
+						if (mount_new == (deviceID + 2))/* .LST - XXX FIXME not yet clean for dual drive */
 						{
 							fileBrowser->FolderChanged();
 							if (fileBrowser->SelectLST(mount_img))
@@ -912,7 +912,7 @@ extern int mount_new;
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
-						else if (mount_new == 1)
+						else if (mount_new == deviceID)
 						{
 
 							fileBrowser->FolderChanged();
@@ -921,7 +921,7 @@ extern int mount_new;
 							fileBrowser->Update();
 							emulating = BeginEmulating(fileBrowser, mount_img);
 						}
-						if (mount_new == 2)/* .LST */
+						if (mount_new == (deviceID + 2))/* .LST XXX Fixme note yet clean for dual drive */
 						{
 							fileBrowser->FolderChanged();
 							fileBrowser->SelectLST(mount_img);
@@ -947,7 +947,7 @@ extern int mount_new;
 				exitReason = Emulate1581(fileBrowser);
 #endif
 
-			DEBUG_LOG("Exited emulation %d\r\n", exitReason);
+			DEBUG_LOG("Drive %d exited emulation %d\r\n", deviceID, exitReason);
 
 			// Clearing the caddy now
 			//	- will write back all changed/dirty/written to disk images now
