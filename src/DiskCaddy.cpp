@@ -33,7 +33,7 @@ extern "C"
 }
 #endif
 
-extern u8 deviceID;
+//extern u8 deviceID;
 
 static const u32 screenPosXCaddySelections = 240;
 static const u32 screenPosYCaddySelections = 280;

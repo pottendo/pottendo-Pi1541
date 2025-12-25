@@ -83,6 +83,7 @@ void xPortB_OnPortOut(void* pUserData, unsigned char status)
 emulator_t::emulator_t(u8 driveNumber)
     : selectedViaIECCommands(false), 
     deviceID(driveNumber),
+	diskCaddy(driveNumber),
 	iec_bus(driveNumber)
 {
     DEBUG_LOG("%s: emulator for drive = %d\n", __FUNCTION__, driveNumber);
@@ -133,6 +134,7 @@ EmulatingMode emulator_t::BeginEmulating(FileBrowser* fileBrowser, const char* f
 
 void emulator_t::GlobalSetDeviceID(u8 id)
 {
+	DEBUG_LOG("%s: setting device ID to %d", __FUNCTION__, id);
 	deviceID = id;
 	_m_IEC_Commands->SetDeviceId(id);
 	pi1541.SetDeviceID(id);

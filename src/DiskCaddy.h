@@ -26,9 +26,12 @@
 
 class DiskCaddy
 {
+	u8 deviceID;
 public:
-	DiskCaddy()
-		: selectedIndex(0)
+	DiskCaddy(u8 driveNumber = 8)
+		: 
+		deviceID(driveNumber)
+		, selectedIndex(0)
 #if not defined(EXPERIMENTALZERO)
 		, screen(0)
 #endif

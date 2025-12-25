@@ -122,10 +122,10 @@ unsigned char* CBMFont = 0;
 #define LCD_LOGO_MAX_SIZE 1024
 u8 LcdLogoFile[LCD_LOGO_MAX_SIZE];
 
-u8 s_u8Memory[0xc000];
+static u8 s_u8Memory[0xc000];
 
 int numberOfUSBMassStorageDevices = 0;
-DiskCaddy diskCaddy;
+static DiskCaddy diskCaddy;
 static Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
@@ -141,7 +141,7 @@ ScreenHeadLess *screen_headless;
 ScreenLCD* screenLCD = 0;
 Options options;
 const char* fileBrowserSelectedName;
-u8 deviceID = 8;
+static u8 deviceID = 8;
 IEC_Commands *_m_IEC_Commands;	/* need dynamic allocation for ESPs with PSRAM */
 InputMappings* inputMappings;
 #if not defined(EXPERIMENTALZERO)
@@ -150,7 +150,7 @@ Keyboard* keyboard;
 bool USBKeyboardDetected = false;
 //bool resetWhileEmulating = false;
 bool selectedViaIECCommands = false;
-u16 pc;
+//u16 pc;
 #if defined(RPI2)
 u32 clockCycles1MHz;
 #endif
@@ -428,7 +428,8 @@ void UpdateLCD(const char* track, unsigned temperature)
 		core0RefreshingScreen.Acquire();
 #endif
 
-		iec_bus_instance->WaitMicroSeconds(100);
+		//iec_bus_instance->WaitMicroSeconds(100);
+		usDelay(100);
 
 		if (options.DisplayTemperature())
 			snprintf(tempBuffer, tempBufferSize, "%s %02dC", track, temperature);
@@ -438,7 +439,8 @@ void UpdateLCD(const char* track, unsigned temperature)
 		screenLCD->PrintText(false, 0, 0, tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
 		screenLCD->RefreshRows(0, 1);
 
-		iec_bus_instance->WaitMicroSeconds(100);
+		//iec_bus_instance->WaitMicroSeconds(100);
+		usDelay(100);
 #if not defined(EXPERIMENTALZERO)
 		core0RefreshingScreen.Release();
 #endif
@@ -2360,7 +2362,7 @@ extern "C"
 #endif
 		f_chdir("/1541");
 		_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
-		GlobalSetDeviceID(deviceID);
+		//GlobalSetDeviceID(deviceID);
 
 		//pi1541.drive.SetVIA(&pi1541.VIA[1]);
 		//pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);

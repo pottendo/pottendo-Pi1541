@@ -584,6 +584,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	int i = 0;
 	switch (core) {
 	case 1:
+		if (0)
 		{
 			emulator_t em(8);
 			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);

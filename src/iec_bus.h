@@ -659,15 +659,17 @@ public:
 		if (!splitIECLines)
 		{
 			static unsigned out_dr9 = 0;
+#if 0			
 			emuSpinLock.Acquire();
 			// time_fn_arm();
 			if (device_id == 9)
 			{
-				out_dr9 = DataSetToOut | (ClockSetToOut << 1);
+				//out_dr9 = DataSetToOut | (ClockSetToOut << 1);
 				emuSpinLock.Release();
 				return;
 			}
 			emuSpinLock.Release();
+#endif			
 #if !defined(CIRCLE_GPIO)
 			static const unsigned outlist[4] = {
 				0,

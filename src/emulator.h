@@ -27,12 +27,12 @@ class emulator_t {
     FileBrowser *fileBrowser;
     bool selectedViaIECCommands;
     const char* fileBrowserSelectedName;
+    u8 deviceID = 8;
     DiskCaddy diskCaddy;
     Pi1541 pi1541;
     #if defined(PI1581SUPPORT)
     Pi1581 pi1581;
     #endif
-    u8 deviceID = 8;
     EmulatingMode emulating;
     u16 pc;
     IEC_Bus iec_bus;
