@@ -82,8 +82,7 @@ IEC_Bus::IEC_Bus(u8 driveNumber) :
 	//emulationModeCheckButtonIndex = 0;
 
 	gplev0 = 0;
-	if (device_id == 9)
-		Initialise();
+	Initialise();
 	DEBUG_LOG("%s: IEC Bus initialized for device %d", __FUNCTION__, device_id);
 }
 
@@ -123,6 +122,8 @@ CGPIOPin IEC_Bus::IO_OUT_LED;
 CGPIOPin IEC_Bus::IO_OUT_CLOCK;
 CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
+bool IEC_Bus::iec_initialized = false;
+unsigned IEC_Bus::gplev0 = 0;
 #endif
 
 void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)

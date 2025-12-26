@@ -359,6 +359,7 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
 	u8 device_id;
+	static bool iec_initialized;
 #endif	
 public:
 	IEC_Bus(u8 driveNumber = 8);
@@ -368,6 +369,11 @@ public:
 	{
 		volatile int index; // Force a real delay in the loop below.
 		// Clear all outputs to 0
+		emuSpinLock.Acquire();
+		if (iec_initialized){
+			emuSpinLock.Release();
+			return;
+		}
 #if !defined(__PICO2__)	&& !defined(ESP32)
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
 #endif		
@@ -552,6 +558,9 @@ public:
 			}
 		}
 #endif		
+		iec_initialized = true;
+		DEBUG_LOG("%s: IEC Bus I/Os Initialized", __FUNCTION__);
+		emuSpinLock.Release();
 	}
 
 	inline void LetSRQBePulledHigh()
@@ -659,12 +668,12 @@ public:
 		if (!splitIECLines)
 		{
 			static unsigned out_dr9 = 0;
-#if 0			
+#if 1			
 			emuSpinLock.Acquire();
 			// time_fn_arm();
-			if (device_id == 9)
+			if (device_id == 8)
 			{
-				//out_dr9 = DataSetToOut | (ClockSetToOut << 1);
+				out_dr9 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
 				emuSpinLock.Release();
 				return;
 			}
@@ -1028,7 +1037,7 @@ private:
 	//static u32 emulationModeCheckButtonIndex;
 
 	unsigned _mask;
-	unsigned gplev0;
+	static unsigned gplev0;
 
 	bool PI_Atn;
 	bool PI_Data;

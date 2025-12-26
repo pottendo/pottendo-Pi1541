@@ -40,7 +40,6 @@ extern ROMs roms;
 // 1c00 !cs2 on pin 7
 u8 read6502(u16 address)
 {
-	DEBUG_LOG("%s: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX emulator_instance = %p", __FUNCTION__, emulator_instance);
 	u8 value = 0;
 	if (address & 0x8000)
 	{
@@ -85,7 +84,6 @@ u8 read6502(u16 address)
 // Allows a mode where we have RAM at all addresses other than the ROM and the VIAs. (Maybe useful to someone?)
 u8 read6502ExtraRAM(u16 address)
 {
-	DEBUG_LOG("%s: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX emulator_instance = %p", __FUNCTION__, emulator_instance);
 	if (address & 0x8000)
 	{
 		return roms.Read(address);
@@ -101,7 +99,6 @@ u8 read6502ExtraRAM(u16 address)
 // Use for debugging (Reads VIA registers without the regular VIA read side effects)
 u8 peek6502(u16 address)
 {
-	DEBUG_LOG("%s: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX emulator_instance = %p", __FUNCTION__, emulator_instance);
 	u8 value;
 	if (address & 0x8000)	// address line 15 selects the ROM
 	{
@@ -122,7 +119,6 @@ u8 peek6502(u16 address)
 
 void write6502(u16 address, const u8 value)
 {
-	DEBUG_LOG("%s: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX emulator_instance = %p", __FUNCTION__, emulator_instance);
 	if (address & 0x8000)
 	{
 		switch (address & 0xe000) // keep bits 15,14,13
@@ -162,7 +158,6 @@ void write6502(u16 address, const u8 value)
 
 void write6502ExtraRAM(u16 address, const u8 value)
 {
-	DEBUG_LOG("%s: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX emulator_instance = %p", __FUNCTION__, emulator_instance);
 	if (address & 0x8000) return; // address line 15 selects the ROM
 	u16 addressLines11And12 = address & 0x1800;
 	if (addressLines11And12 == 0) s_u8Memory[address & 0x7fff] = value;

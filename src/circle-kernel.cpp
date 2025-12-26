@@ -266,6 +266,9 @@ TShutdownMode CKernel::Run(void)
 		snprintf(dsp, 63, "Display %s (I2C%d@0x%02x)", options.I2CLcdModelName(), options.I2CBusMaster(), options.I2CLcdAddress());
 	append2version(dsp);
 
+	{
+		IEC_Bus iec(0);
+	}
 	// launch everything
 	Kernel.launch_cores();
 	logger.finished_booting("display core");
@@ -584,15 +587,32 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	int i = 0;
 	switch (core) {
 	case 1:
-		if (0)
+		if (1)
 		{
-			emulator_t em(8);
+			emulator_t em(9);
 			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
-			logger.finished_booting("emulator core");
+			logger.finished_booting("emulator core 8");
 			em.run_emulator();
 		}
 		break;
-	case 2:
+	case 2:	/* health monitoring */
+		logger.finished_booting("system monitor core");
+		if (options.GetHealthMonitor() == 1)
+			Kernel.log("disabling health monitoring on core %d", core);
+		else
+		{
+			Kernel.log("launching system monitoring on core %d", core);
+			Kernel.run_tempmonitor();
+		}
+		if (1) {
+			/* experimental second emulation for device 8 on core 2*/
+			emulator_t em(8);
+			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
+			logger.finished_booting("emulator core 8");
+			em.run_emulator();
+		}
+		break;
+case 3:
 #if RASPPI >= 3
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
 		do
@@ -643,23 +663,6 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				display_temp();
 				MsDelay(5000);
 			}
-		}
-		break;
-	case 3:	/* health monitoring */
-		logger.finished_booting("system monitor core");
-		if (options.GetHealthMonitor() == 1)
-			Kernel.log("disabling health monitoring on core %d", core);
-		else
-		{
-			Kernel.log("launching system monitoring on core %d", core);
-			Kernel.run_tempmonitor();
-		}
-		if (1) {
-			/* experimental second emulation for device 9 on core 3*/
-			emulator_t em(9);
-			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
-			logger.finished_booting("emulator core");
-			em.run_emulator();
 		}
 		break;
 	default:
