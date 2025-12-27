@@ -54,6 +54,7 @@ extern bool usb_mass_update;
 emulator_t *emulator_instance = nullptr;
 emulator_t *emulator_instance_dr9 = nullptr;
 IEC_Bus *iec_bus_instance = nullptr;
+extern FileBrowser *webfileBrowser;	/* used for previews */
 
 SpinLock emuSpinLock;
 
@@ -727,6 +728,10 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 	roms.lastManualSelectedROMIndex = 0;
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
+	emuSpinLock.Acquire();
+	if (webfileBrowser == nullptr)
+		webfileBrowser = fileBrowser;
+	emuSpinLock.Release();
 	pi1541.Initialise();
 
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());

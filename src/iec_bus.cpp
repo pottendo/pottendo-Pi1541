@@ -124,6 +124,7 @@ CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
 bool IEC_Bus::iec_initialized = false;
 unsigned IEC_Bus::gplev0 = 0;
+unsigned IEC_Bus::_mask = 0;
 #endif
 
 void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)

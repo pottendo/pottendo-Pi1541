@@ -646,7 +646,7 @@ static FRESULT f_unlink_full(string path, string &msg)
 }
 
 static unsigned char img_buf[READBUFFER_SIZE];
-extern FileBrowser *fileBrowser;
+FileBrowser *webfileBrowser;
 
 FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
 {
@@ -756,7 +756,7 @@ static int read_dir(string name, list<string> &dir)
 	if (ret > 0)
 	{
 		//DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
-		//fileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
+		//webfileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
 	}
 	else
 		DEBUG_LOG("%s: failed to open '%s'", __FUNCTION__, name.c_str());
@@ -874,10 +874,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: create new lst file '%s'", __FUNCTION__, fullndir.c_str());
-/* 		
-			if (!fileBrowser->MakeLSTFromDir((def_prefix + curr_path).c_str(), fullndir.c_str()))
+			if (!webfileBrowser->MakeLSTFromDir((def_prefix + curr_path).c_str(), fullndir.c_str()))
 				snprintf(msg_str, 1023,"Failed to create new LST file <i>%s</i>", fullndir.c_str());
-			else  */
+			else  
 				snprintf(msg_str, 1023,"Successfully created new LST file <i>%s</i>", fullndir.c_str());
 			msg = msg_str;
 		}
