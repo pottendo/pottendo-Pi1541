@@ -756,7 +756,10 @@ static int read_dir(string name, list<string> &dir)
 	if (ret > 0)
 	{
 		//DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
-		//webfileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
+		if (!webfileBrowser)
+			DEBUG_LOG("%s: webfileBrowser not initialized!", __FUNCTION__);
+		else
+			webfileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
 	}
 	else
 		DEBUG_LOG("%s: failed to open '%s'", __FUNCTION__, name.c_str());
@@ -889,14 +892,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			download_file(fullndir, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
 			goto out;
-		}
-		if (type == "[toggleDrive]")
-		{
-			int d = (target_drive == 8) ? 9 : 8;
-			DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
-			snprintf(msg_str, 1023,"Toggled target drive from %d to %d", target_drive, d);
-			target_drive = d;
-			curr_path = "";
 		}
 		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 		{
@@ -1163,7 +1158,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
@@ -1178,6 +1173,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		else
 		{
+			if (type == "[toggleDrive]")
+			{
+				int d = (target_drive == 8) ? 9 : 8;
+				DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
+				msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
+				target_drive = d;
+			}
 			if (fi.fattrib & AM_DIR)
 				is_dir = true;
 			if (type == "[MOUNT]")
@@ -1321,7 +1323,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					_t, // Delete
 					_t, img.c_str(), // Download
 					(is_dir ? "-->" : ""),
-
+					_t, // toggleDrive
+					//("<I>" + def_prefix + curr_path + "</i>").c_str(),
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;

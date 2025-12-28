@@ -372,7 +372,8 @@ public:
 		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 		emuSpinLock.Acquire();
-		if (iec_initialized){
+		if (iec_initialized) 
+		{
 			emuSpinLock.Release();
 			return;
 		}
@@ -673,7 +674,7 @@ public:
 #if 1			
 			emuSpinLock.Acquire();
 			// time_fn_arm();
-			if (device_id == 8)
+			if (device_id == 9)
 			{
 				out_dr9 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
 				emuSpinLock.Release();
@@ -1039,7 +1040,7 @@ private:
 	//static u32 emulationModeCheckButtonIndex;
 
 	static unsigned _mask;
-	static unsigned gplev0;
+	unsigned gplev0;
 
 	bool PI_Atn;
 	bool PI_Data;

@@ -108,10 +108,10 @@
 					<table class="dirs">
 						<tr valign="center">
 							<td>%s</td>
-							%s
+							%s <!-- comment added in case of directory -->
 							<td style="text-align:right;">
 								<a href="mount-imgs.html?[MOUNT]&%s">
-									<inup type="button" class="btn btn-success">Mount</button>
+									<button type="button" class="btn btn-success">Mount</button>
 								</a>
 								<a href="mount-imgs.html?[DEL]&%s">
 									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Delete</button>
@@ -120,10 +120,16 @@
 									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
 								</a>
 							</td>
-							%s
+							%s <!-- comment exit added in case of directory -->
 						</tr>
 					</table>
-					<br /><br />
+					<br />
+					<div style="text-align:right;">
+						<a href="mount-imgs.html?[toggleDrive]&%s">
+							<button type="button" class="btn btn-success">Toggle Drive</button>
+						</a>
+					</div>
+					<br />
 					<table class="dirs">
 						<tr>
 							<th>Directories</th>

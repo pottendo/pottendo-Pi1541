@@ -284,7 +284,7 @@ TShutdownMode CKernel::Run(void)
 	return ShutdownHalt;
 }
 
-logger_t logger(1000);
+logger_t logger(1000, 5);
 void CKernel::log(const char *fmt, ...)
 {
     char t[256];
@@ -589,8 +589,8 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	case 1:
 		if (1)
 		{
-			emulator_t em(9);
-			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
+			emulator_t em(8);
+			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
 			logger.finished_booting("emulator core 8");
 			em.run_emulator();
 		}
@@ -606,9 +606,9 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 		if (1) {
 			/* experimental second emulation for device 8 on core 2*/
-			emulator_t em(8);
-			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
-			logger.finished_booting("emulator core 8");
+			emulator_t em(9);
+			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
+			logger.finished_booting("emulator core 9");
 			em.run_emulator();
 		}
 		break;
