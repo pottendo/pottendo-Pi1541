@@ -369,6 +369,8 @@ public:
 	{
 		volatile int index; // Force a real delay in the loop below.
 		// Clear all outputs to 0
+		myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
+		myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);		
 		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
 		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 		emuSpinLock.Acquire();
@@ -1040,7 +1042,7 @@ private:
 	//static u32 emulationModeCheckButtonIndex;
 
 	static unsigned _mask;
-	unsigned gplev0;
+	static unsigned gplev0;
 
 	bool PI_Atn;
 	bool PI_Data;

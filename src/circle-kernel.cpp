@@ -589,10 +589,11 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	case 1:
 		if (1)
 		{
-			emulator_t em(8);
+			emulator_t *em = new emulator_t(8);
 			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
 			logger.finished_booting("emulator core 8");
-			em.run_emulator();
+			em->run_emulator();
+			delete em;
 		}
 		break;
 	case 2:	/* health monitoring */
@@ -606,10 +607,11 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 		if (1) {
 			/* experimental second emulation for device 8 on core 2*/
-			emulator_t em(9);
+			emulator_t *em = new emulator_t(9);
 			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
 			logger.finished_booting("emulator core 9");
-			em.run_emulator();
+			em->run_emulator();
+			delete em;
 		}
 		break;
 case 3:

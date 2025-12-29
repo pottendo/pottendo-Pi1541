@@ -1158,7 +1158,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, curr_path, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||

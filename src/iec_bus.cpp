@@ -123,7 +123,7 @@ CGPIOPin IEC_Bus::IO_OUT_CLOCK;
 CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
 bool IEC_Bus::iec_initialized = false;
-//unsigned IEC_Bus::gplev0 = 0;
+unsigned IEC_Bus::gplev0 = 0;
 unsigned IEC_Bus::_mask = 0;
 #endif
 
@@ -300,7 +300,7 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 	//printf("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
 #else
 #if !defined (CIRCLE_GPIO)
-	//if (device_id == 8) 
+	if (device_id == 8) 
 		gplev0 = read32(ARM_GPIO_GPLEV0);
 	//DEBUG_LOG("%s: gplev0 = %08x, device = %d", __FUNCTION__, gplev0, device_id);
 #else	
