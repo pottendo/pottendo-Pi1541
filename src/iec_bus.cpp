@@ -65,11 +65,6 @@ IEC_Bus::IEC_Bus(u8 driveNumber) :
 
 	Resetting = false;
 
-	splitIECLines = options.SplitIECLines();
-	invertIECInputs = options.InvertIECInputs();
-	invertIECOutputs = options.InvertIECOutputs();
-	ignoreReset = options.IgnoreReset();
-
 	myOutsGPFSEL1 = 0;
 	myOutsGPFSEL0 = 0;
 	InputButton[5] = {0};
@@ -80,9 +75,16 @@ IEC_Bus::IEC_Bus(u8 driveNumber) :
 	inputRepeatPrev[5] = {0};
 
 	//emulationModeCheckButtonIndex = 0;
-
-	gplev0 = 0;
+	emuSpinLock.Acquire();
+	SetSplitIECLines(options.SplitIECLines());
+	SetInvertIECInputs(options.InvertIECInputs());
+	SetInvertIECOutputs(options.InvertIECOutputs());	
+	SetIgnoreReset(options.IgnoreReset());
+	emuSpinLock.Release();
+	DEBUG_LOG("%s: splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", __FUNCTION__, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
+	//gplev0 = 0;
 	Initialise();
+
 	DEBUG_LOG("%s: IEC Bus initialized for device %d", __FUNCTION__, device_id);
 }
 

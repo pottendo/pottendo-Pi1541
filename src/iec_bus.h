@@ -368,11 +368,13 @@ public:
 	inline void Initialise(void)
 	{
 		volatile int index; // Force a real delay in the loop below.
-		// Clear all outputs to 0
-		myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
-		myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);		
-		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
-		myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
+		if (!splitIECLines)
+		{
+			myOutsGPFSEL0 = read32(ARM_GPIO_GPFSEL0);
+			myOutsGPFSEL1 = read32(ARM_GPIO_GPFSEL1);		
+			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
+			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
+		}
 		emuSpinLock.Acquire();
 		if (iec_initialized) 
 		{
@@ -380,6 +382,7 @@ public:
 			return;
 		}
 #if !defined(__PICO2__)	&& !defined(ESP32)
+		// Clear all outputs to 0
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
 #endif		
 		//CGPIOPin::WriteAll(0xffffffff, 0xffffffff);
@@ -484,7 +487,9 @@ public:
 			IEC_Bus::IO_OUT_LED.AssignPin(PIGPIO_OUT_LED); IEC_Bus::IO_OUT_LED.SetMode(GPIOModeOutput);
 			IEC_Bus::IO_OUT_CLOCK.AssignPin(PIGPIO_OUT_CLOCK); IEC_Bus::IO_OUT_CLOCK.SetMode(GPIOModeOutput);
 			IEC_Bus::IO_OUT_DATA.AssignPin(PIGPIO_OUT_DATA); IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
-			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);						
+			IEC_Bus::IO_OUT_SRQ.AssignPin(PIGPIO_OUT_SRQ); IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);
+
+			DEBUG_LOG("%s: assigned pins using circle GPIO functions", __FUNCTION__);					
 #elif defined(__PICO2__)
 	//#warning "PICO2 TODO SPLIT IEC lines init XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 			not_implemented(__FUNCTION__);
@@ -673,7 +678,7 @@ public:
 		if (!splitIECLines)
 		{
 			static unsigned out_dr9 = 0;
-#if 1			
+
 			emuSpinLock.Acquire();
 			// time_fn_arm();
 			if (device_id == 9)
@@ -683,7 +688,7 @@ public:
 				return;
 			}
 			emuSpinLock.Release();
-#endif			
+
 #if !defined(CIRCLE_GPIO)
 			static const unsigned outlist[4] = {
 				0,
@@ -720,6 +725,17 @@ public:
 		}
 		else
 		{
+			static unsigned outsplitLines_dr9 = 0;
+
+			emuSpinLock.Acquire();
+			// time_fn_arm();
+			if (device_id == 9)
+			{
+				outsplitLines_dr9 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
+				emuSpinLock.Release();
+				return;
+			}
+			emuSpinLock.Release();
 			static const unsigned setlist[4] = {
 				0,
 				1 << PIGPIO_OUT_DATA,
@@ -732,17 +748,19 @@ public:
 				0};
 			register unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1);
+				(ClockSetToOut << 1) | outsplitLines_dr9;
 
 #if !defined(CIRCLE_GPIO)
 			if (invertIECOutputs)
 			{
+				//DEBUG_LOG("%s: IEC Outputs INV 0x%08x!", __FUNCTION__, setlist[sel]);
 				/*7406 etal - inverters*/
 				write32(ARM_GPIO_GPCLR0, clearlist[sel]);
 				write32(ARM_GPIO_GPSET0, setlist[sel]);
 			}
 			else
 			{
+				//DEBUG_LOG("%s: IEC Outputs 0x%08x!", __FUNCTION__, setlist[sel]);
 				/*7407 etal - buffers*/
 				write32(ARM_GPIO_GPCLR0, setlist[sel]);
 				write32(ARM_GPIO_GPSET0, clearlist[sel]);
