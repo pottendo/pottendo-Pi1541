@@ -804,7 +804,7 @@ bool IEC_Commands::Enter(DIR& dir, FILINFO& filInfo)
 	}
 	else if (IsDirectory(filInfo))
 	{
-		DEBUG_LOG("!!!Enter\r\n");
+		//DEBUG_LOG("!!!Enter\r\n");
 		if (f_chdir(filInfo.fname) == FR_OK) updateAction = DIR_PUSHED;
 		else Error(ERROR_62_FILE_NOT_FOUND);
 	}
@@ -2106,7 +2106,7 @@ void IEC_Commands::LoadDirectory()
 	memcpy(channel.buffer, DirectoryHeader, sizeof(DirectoryHeader));
 	channel.cursor = sizeof(DirectoryHeader);
 
-	DEBUG_LOG("$\r\n");
+	DEBUG_LOG("%s: $\r\n", __FUNCTION__);
 
 	FileBrowser::BrowsableList::Entry entry;
 	std::vector<FileBrowser::BrowsableList::Entry> entries;
