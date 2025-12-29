@@ -267,7 +267,7 @@ TShutdownMode CKernel::Run(void)
 	append2version(dsp);
 
 	{
-		IEC_Bus iec(0);
+		IEC_Bus iec(0);	// initialize IEC bus
 	}
 	// launch everything
 	Kernel.launch_cores();
@@ -668,6 +668,10 @@ case 3:
 	default:
 		break;
 	}
+	char tmp[16];
+	snprintf(tmp, 15, "core %d", core);
+	logger.finished_booting(tmp);
+
 	Kernel.log("%s: halting core %d", __FUNCTION__, core);
 	halt();	// whenever a core function returns, we halt the core.
 }

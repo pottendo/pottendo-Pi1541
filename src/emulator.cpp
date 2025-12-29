@@ -386,7 +386,7 @@ extern int mount_new;
 				// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 				// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
 //#if defined(__PICO2__) || defined(ESP32)
-				DEBUG_LOG("! ct = %d\n", ct);
+				DEBUG_LOG("Drive %d lost cycles: cycle time = %dus", get_deviceID(), ct);
 //#endif				
 				//delay(1000 * 10);
 				//sprintf(tempBuffer, "-%d-", ct);
