@@ -37,18 +37,27 @@
 #include "Petscii.h"
 #include "iec_commands.h"
 #include "logger.h"
+#include "ScreenLCD.h"
 using namespace std;
 
 extern Options options;
 bool webserver_upload = false;
 char mount_img[256] = { 0 };
 char mount_path[256] = { 0 };
-int mount_new = 0;
-static int target_drive = 8;
+int mount_new = 0;	// == driveID to tell emualtion to do something
+// drive_ctrl indicate what emulation selected by mount_new shall do: 
+// 		0=none, 1 = mount image, 2 = mount lst, 3 = turn off emulation
+int drive_ctrl = 0;
+
+static int target_drive = 8; // current target drive for webserver operations
+
+extern volatile int emu_lock0, emu_lock1;
+extern volatile int dual_drive;
 
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
+static FileBrowser *webfileBrowser;		// used for previews
 
 #define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
 
@@ -78,6 +87,11 @@ static const char s_logger[] =
 #include "webcontent/logger.h"
 };
 
+static const char s_drives[] =
+{
+#include "webcontent/drives.h"
+};
+
 static const u8 s_Style[] =
 #include "webcontent/style.h"
 ;
@@ -99,16 +113,29 @@ static const u8 s_font[] =
 
 static const char FromWebServer[] = "webserver";
 
+extern ROMs roms;
+extern InputMappings* inputMappings;
+extern SpinLock core0RefreshingScreen;
+extern Screen *screen;
+extern Screen *screen_hdmi; 
+extern ScreenLCD* screenLCD;
+extern Options options;
+
+static u8 deviceIDdummy = 42;
+
 CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket)
 :	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
 	m_pActLED (pActLED)
 {
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
+	webfileBrowser = new FileBrowser(inputMappings, nullptr, &roms, &deviceIDdummy, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
 }
 
 CWebServer::~CWebServer (void)
 {
 	m_pActLED = 0;
+	delete webfileBrowser;
+	webfileBrowser = nullptr;
 }
 
 CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pSocket)
@@ -646,7 +673,6 @@ static FRESULT f_unlink_full(string path, string &msg)
 }
 
 static unsigned char img_buf[READBUFFER_SIZE];
-FileBrowser *webfileBrowser;
 
 FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
 {
@@ -757,7 +783,9 @@ static int read_dir(string name, list<string> &dir)
 	{
 		//DEBUG_LOG("%s: successfully opened '%s'", __FUNCTION__, name.c_str());
 		if (!webfileBrowser)
+		{
 			DEBUG_LOG("%s: webfileBrowser not initialized!", __FUNCTION__);
+		}
 		else
 			webfileBrowser->DisplayDiskInfo(diskImage, nullptr, &dir);
 	}
@@ -994,8 +1022,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned int temp;
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("Drive: <i>%d</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
-				target_drive,
+		DataSyncBarrier();
+		String.Format("selected Drive: <i>%d</i>, running Drives: <i>%d</u><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+				target_drive, (dual_drive + 1),
 				temp / 1000,
 				CPUThrottle.GetClockRate() / 1000000L,
 				t->c_str());
@@ -1137,9 +1166,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	}
 	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
-		const char *pPartHeader;
-		const u8 *pPartData;
-		unsigned nPartLength;
 		string msg = "";
 		string content = "No image selected";
 		list<string> dir;
@@ -1265,7 +1291,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					if (mount_it && DiskImage::IsLSTExtention(mount_img))
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
-						mount_new = target_drive + 2; /* indicate .lst mount */
+						mount_new = target_drive; 
+						drive_ctrl = 2; /* indicate .lst mount */
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
@@ -1297,6 +1324,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = target_drive;	/* indicate image mount */
+						drive_ctrl = 1;
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
@@ -1331,6 +1359,59 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
+	else if (strcmp(pPath, "/drives.html") == 0)
+	{
+		string msg = "no status";
+		stringstream ss(pParams);
+		string type, param1, param2;
+		getline(ss, type, '&');
+		getline(ss, param1, '&');
+		getline(ss, param2, '&');
+		type = urlDecode(type);
+		DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,", 
+			__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
+		if (type == "[toggleDrive]")
+		{
+			int d = (target_drive == 8) ? 9 : 8;
+			DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
+			msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
+			target_drive = d;
+		} 
+		else if (type == "[switchDrive]")
+		{
+			msg = string("Switch drive ") + param1 + " <i>" + param2 + "</i>";
+			mount_new = stoi(param1) + 8;
+			if (param2 == "off")
+			{
+				drive_ctrl = 3;
+				DEBUG_LOG("%s: lock emulator %s", __FUNCTION__, param1.c_str());
+				if (param1 == "0")
+					emu_lock0 = 1;
+				else if (param1 == "1")
+					emu_lock1 = 1;
+			}
+			else if (param2 == "on")
+			{
+				DEBUG_LOG("%s: unlock emulator %s", __FUNCTION__, param1.c_str());
+				if (param1 == "0")
+					emu_lock0 = 0;
+				else if (param1 == "1")
+					emu_lock1 = 0;
+			}
+		}
+		const char *st[] = { "off", "on" };
+
+		String.Format(s_drives, 
+			msg.c_str(), // Status line
+			8, // Drive 0, still hardcoded
+			9, // Drive 1, still hardcoded
+			st[emu_lock0], st[emu_lock0],
+			st[emu_lock1], st[emu_lock1],
+			Kernel.get_version(), mem.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
 	else if (strcmp(pPath, "/logger.html") == 0)
 	{
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)
@@ -1349,7 +1430,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	else if (strcmp(pPath, "/reset.html") == 0)
 	{
 		string msg;
-extern int reboot_req;
+		extern int reboot_req;	
 		DEBUG_LOG("%s: reset requested.", __FUNCTION__);
 		msg = "Reboot requested...";
 		reboot_req++;

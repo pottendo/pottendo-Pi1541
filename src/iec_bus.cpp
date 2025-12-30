@@ -82,7 +82,7 @@ IEC_Bus::IEC_Bus(u8 driveNumber) :
 	SetIgnoreReset(options.IgnoreReset());
 	emuSpinLock.Release();
 	DEBUG_LOG("%s: splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", __FUNCTION__, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
-	//gplev0 = 0;
+	gplev0 = 0; // not needed as static is used for a working emulation
 	Initialise();
 
 	DEBUG_LOG("%s: IEC Bus initialized for device %d", __FUNCTION__, device_id);
@@ -127,6 +127,7 @@ CGPIOPin IEC_Bus::IO_OUT_SRQ;
 bool IEC_Bus::iec_initialized = false;
 unsigned IEC_Bus::gplev0 = 0;
 unsigned IEC_Bus::_mask = 0;
+int IEC_Bus::dual_drive = -1;
 #endif
 
 void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)
@@ -302,7 +303,9 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 	//printf("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
 #else
 #if !defined (CIRCLE_GPIO)
-	if (device_id == 8) 
+	if (dual_drive == 0)
+		gplev0 = read32(ARM_GPIO_GPLEV0);
+	else if (device_id == 8) 
 		gplev0 = read32(ARM_GPIO_GPLEV0);
 	//DEBUG_LOG("%s: gplev0 = %08x, device = %d", __FUNCTION__, gplev0, device_id);
 #else	

@@ -54,9 +54,10 @@ extern bool usb_mass_update;
 emulator_t *emulator_instance = nullptr;
 emulator_t *emulator_instance_dr9 = nullptr;
 IEC_Bus *iec_bus_instance = nullptr;
-extern FileBrowser *webfileBrowser;	/* used for previews */
 
 SpinLock emuSpinLock;
+//SpinLock drive0, drive1;
+volatile int dual_drive = -1;
 
 /* fixme's - declared twice, etc. */
 #define FAST_BOOT_CYCLES 1003061
@@ -102,6 +103,7 @@ emulator_t::emulator_t(u8 driveNumber)
 emulator_t::~emulator_t()
 {
     // Destructor implementation
+	DEBUG_LOG("%s: destructor called for drive = %d\n", __FUNCTION__, deviceID);
     delete _m_IEC_Commands;
 }
 
@@ -187,6 +189,7 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM_dr9 : read6502_dr9;
 		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM_dr9 : write6502_dr9;
 		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+		//drive0.Acquire();
 	}
 	else
 	{
@@ -194,6 +197,7 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM : read6502;
 		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM : write6502;
 		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+		//drive1.Acquire();
 	}
 
 	iec_bus.VIA = &pi1541.VIA[0];
@@ -235,9 +239,15 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 	}
 #if defined(__PICO2__)	
 	overclock(312000);
-#endif	
+#endif
 	//DEBUG_LOG("%s: Fast booted 1541 in %d cycles", __FUNCTION__, cycleCount);
+
 	// Self test code done. Begin realtime emulation.
+	emuSpinLock.Acquire();
+	dual_drive++;
+	IEC_Bus::dual_drive = dual_drive;
+	//dual_drive = 0;
+	emuSpinLock.Release();
 	while (exitReason == EXIT_UNKNOWN)
 	{
 #if defined(RPI2)
@@ -254,6 +264,14 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 #endif	
 #endif
 
+#if 0 // won't work sync with this method causes delay of >5ms		
+		/* sync code of 2 emulators */
+		if (dual_drive && get_deviceID() == 9)
+		{
+			drive1.Acquire(); // wait until drive 0 has reached a later point to be able to continue
+			drive0.Release(); // let drive 0 run
+		}
+#endif
 		if (refreshOutsAfterCPUStep)
 			iec_bus.ReadEmulationMode1541();
 		if (pi1541.m6502.SYNC())	// About to start a new instruction.
@@ -287,6 +305,7 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		//read32(ARM_SYSTIMER_CLO);
 
 //		iec_bus.ReadEmulationMode1541();
+
 		if (refreshOutsAfterCPUStep)
 			iec_bus.RefreshOuts1541();	// Now output all outputs.
 		iec_bus.OutputLED = pi1541.drive.IsLEDOn();
@@ -318,6 +337,14 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		}
 
 		iec_bus.ReadGPIOUserInput(true);
+#if 0 // won't work sync with this method causes delay of >5ms		
+		/* sync code of 2 emulators */
+		if (dual_drive && get_deviceID() == 8)
+		{
+			drive1.Release(); // let drive 1 run
+			drive0.Acquire(); // wait until drive 0 has reached a later point to be able to continue
+		}
+#endif
 
 		// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
 #if not defined(EXPERIMENTALZERO)
@@ -463,6 +490,12 @@ extern int mount_new;
 #endif
 		}
 	}
+	//if (get_deviceID() == 8) drive1.Release();
+	//if (get_deviceID() == 9) drive0.Release();
+	emuSpinLock.Acquire();
+	dual_drive--;
+	IEC_Bus::dual_drive = dual_drive;
+	emuSpinLock.Release();
 	return exitReason;
 }
 
@@ -626,6 +659,7 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 				exitReason = EXIT_KEYBOARD;
 			if (exitDoAutoLoad)
 				exitReason = EXIT_AUTOLOAD;
+
 		}
 
 #if defined(RPI2)
@@ -724,14 +758,10 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 	Keyboard* keyboard = Keyboard::Instance();
 #endif
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
-
+	bool shutdown = false;
 	roms.lastManualSelectedROMIndex = 0;
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
-	emuSpinLock.Acquire();
-	if (webfileBrowser == nullptr)
-		webfileBrowser = fileBrowser;
-	emuSpinLock.Release();
 	pi1541.Initialise();
 
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
@@ -742,7 +772,7 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 
 	emulating = IEC_COMMANDS;
 	DEBUG_LOG("%s: Drive %d, enter main emulation loop", __FUNCTION__, deviceID);
-	while (1)
+	while (!shutdown)
 	{
 		if (emulating == IEC_COMMANDS)
 		{
@@ -878,13 +908,14 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 extern char mount_img[256];
 extern char mount_path[256];
 extern int mount_new;
+extern int drive_ctrl;
 					FILINFO fi;
 					if (mount_new)
 					{
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
-						else if (mount_new == deviceID)
+						else if (drive_ctrl == 1)
 						{
 
 							fileBrowser->FolderChanged();
@@ -892,14 +923,20 @@ extern int mount_new;
 							diskCaddy.Insert(&fi, false);
 							fileBrowser->Update();
 							emulating = BeginEmulating(fileBrowser, mount_img);
-						}
-						if (mount_new == (deviceID + 2))/* .LST - XXX FIXME not yet clean for dual drive */
+						} 
+						else if (drive_ctrl == 2)/* .LST - XXX FIXME not yet clean for dual drive */
 						{
 							fileBrowser->FolderChanged();
 							if (fileBrowser->SelectLST(mount_img))
 								fileBrowser->SetSelectionsMade(true);
 						}
+						else if (drive_ctrl == 3)/* shut down emulator */
+						{
+							DEBUG_LOG("%s: webserver requests to shut down emulator for drive %d", __FUNCTION__, deviceID);
+							emulating = EMULATION_SHUTDOWN;
+						}
 						mount_new = 0;
+						drive_ctrl = 0;				
 					}
 #endif
 					usDelay(1);
@@ -913,13 +950,14 @@ extern int mount_new;
 extern char mount_img[256];
 extern char mount_path[256];
 extern int mount_new;
+extern int drive_ctrl;
 					FILINFO fi;
 					if (mount_new)
 					{
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
-						else if (mount_new == deviceID)
+						else if (drive_ctrl == 1)
 						{
 
 							fileBrowser->FolderChanged();
@@ -928,14 +966,20 @@ extern int mount_new;
 							fileBrowser->Update();
 							emulating = BeginEmulating(fileBrowser, mount_img);
 						}
-						if (mount_new == (deviceID + 2))/* .LST XXX Fixme note yet clean for dual drive */
+						else if (drive_ctrl == 2)/* .LST */
 						{
 							fileBrowser->FolderChanged();
 							fileBrowser->SelectLST(mount_img);
 							if (fileBrowser->SelectLST(mount_img))
 								fileBrowser->SetSelectionsMade(true);
 						}
-						mount_new = 0;						
+						else if (drive_ctrl == 3)/* exit emulation */
+						{
+							DEBUG_LOG("%s: webserver requests to exit emulation for drive %d", __FUNCTION__, deviceID);
+							emulating = EMULATION_SHUTDOWN;
+						}
+						mount_new = 0;
+						drive_ctrl = 0;				
 					}
 #endif
 					fileBrowser->Update();
@@ -950,9 +994,14 @@ extern int mount_new;
 			if (emulating == EMULATING_1541)
 				exitReason = Emulate1541(fileBrowser);
 #if defined(PI1581SUPPORT)
-			else
+			else if (emulating == EMULATING_1581)
 				exitReason = Emulate1581(fileBrowser);
 #endif
+			else
+			{
+				DEBUG_LOG("%s: Drive %d shutting down emulator", __FUNCTION__, deviceID);
+				shutdown = true;
+			}
 
 			DEBUG_LOG("Drive %d exited emulation %d\r\n", deviceID, exitReason);
 

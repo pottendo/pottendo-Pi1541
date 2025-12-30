@@ -59,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541 WebUI</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Update Pi1541</h3>
+					<h3 style="text-align:left">Drives</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -76,15 +76,15 @@
 				<tr>
 					<td>
 						<div style="display: flex; justify-content: space-between; width: 100%;">
-							<a href="index.html"><input type="submit" class="btn btn-success"
+							<a href="index.html"><input type="submit" class="btn btn-success" 
 									value="Upload/Manage SDCard" /></a>
 							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
 									value="Mount Images" /></a>
-							<a href="drives.html"><input type="submit" class="btn btn-success"
+							<a href="drives.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
 									value="Drives" /></a>
 							<a href="edit-config.html"><input type="submit" class="btn btn-success"
 									value="Change Config" /></a>
-							<a href="update.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
+							<a href="update.html"><input type="submit" class="btn btn-success"
 									value="Update Pi1541" /></a>
 							<a href="logger.html"><input type="submit" class="btn btn-success"
 									value="Logging" /></a>
@@ -95,46 +95,56 @@
 				</tr>
 			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<table style="width: 100%;">
-				<tr><td>
-					<div style="display: flex; justify-content: space-between; width: 100%;">
-						<h4 style="text-align: left">Status</h4>
-						<div style="text-align: right" id="externalText">Loading...</div>
-					</div>
-				</td></tr>
-			</table>
+            <table style="width: 100%;">
+                <tr>
+                    <td>
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <h4 style="text-align: left">Status</h4>
+                            <div style="text-align: right" id="externalText">Loading...</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="text-align:right;">
+                            <a href="drives.html?[toggleDrive]&">
+                                <button type="button" class="btn btn-success">Toggle Drive</button>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h4 style="text-align:left">Pi1541 kernel upload</h4>
-			<form action="update.html" method="post" name="config-form" accept-charset="UTF-8" enctype="multipart/form-data">
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input1" id="UploadKernel" name="kernelimage">
-						<label class="custom-file-label" for="UploadKernel">Choose file</label>
-					</div>
-					<br /> <br />
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload Kernel" />
-				</div>
-			</form>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<h4 style="text-align:left">Pi1541 other files upload</h2>
-			<form action="options.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input2" id="UploadOptions" name="options">
-						<label class="custom-file-label" for="UploadOptions">Choose file</label>
-					</div>
-					<br /> <br />
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload file to SD:/" />
-				</div>
-			</form>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+            <h3 style="text-align: left;">Drive Controls</h3>
+
+            <table style="width: 100%;">
+                <tr>
+                    <th>Drive 0</th>
+                    <th>Drive 1</th>
+                </tr>
+                <tr>
+                    <td>Drive ID: %d</td>
+                    <td>Drive ID: %d</td>
+                </tr>
+                <tr>
+                    <td>
+                        <a href="drives.html?[switchDrive]&0&%s&">
+                            <button type="button" class="btn btn-success">Switch %s</button>
+                        </a>
+                    </td>
+                    <td> <a href="drives.html?[switchDrive]&1&%s&">
+                            <button type="button" class="btn btn-success">Switch %s</button>
+                        </a>
+                    </td>
+                </tr>
+            </table>
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
 				target="_blank">Pi1541 firebase</a>.</p>
-		<p class="small">Find the pottendo-Pi1541 project resources here <a
-				href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
+		<p class="small">Find the pottendo-Pi1541 project resources here
+			<a href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
 		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
 			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
 			crossorigin="anonymous"></script>
@@ -145,26 +155,13 @@
 			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
 			crossorigin="anonymous"></script>
 		<script>
-			$(document).ready(function () {
-				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadKernel").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-				document.querySelector('.custom-file-input2').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadOptions").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-			});
-		</script>
-		<script>
 			function delConfirm(envent) {
-				if (confirm("Are you sure?"))
-					return true;
-				else {
+			  	if (confirm("Are you sure?"))
+				  	return true;
+				else 
+				{
 					event.preventDefault();
-					return false;
+				  	return false;
 				}
 			};
 		</script>
@@ -184,5 +181,5 @@
 		</script>
 	</div>
 </body>
-
-</html>
+		
+</html>            

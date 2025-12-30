@@ -39,6 +39,7 @@
 #define INPUT_BUTTON_REPEAT_THRESHOLD 460000
 
 extern SpinLock emuSpinLock;
+
 /* moved to variables in InputMapping
 #define INPUT_BUTTON_ENTER 0
 #define INPUT_BUTTON_UP 1
@@ -358,7 +359,7 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_CLOCK;
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
-	u8 device_id;
+	const u8 device_id;
 	static bool iec_initialized;
 #endif	
 public:
@@ -675,10 +676,10 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
-		if (!splitIECLines)
+		static unsigned out_dr9 = 0;
+#if 1
+		if (dual_drive > 0)
 		{
-			static unsigned out_dr9 = 0;
-
 			emuSpinLock.Acquire();
 			// time_fn_arm();
 			if (device_id == 9)
@@ -688,7 +689,10 @@ public:
 				return;
 			}
 			emuSpinLock.Release();
-
+		}
+#endif
+		if (!splitIECLines)
+		{
 #if !defined(CIRCLE_GPIO)
 			static const unsigned outlist[4] = {
 				0,
@@ -725,17 +729,6 @@ public:
 		}
 		else
 		{
-			static unsigned outsplitLines_dr9 = 0;
-
-			emuSpinLock.Acquire();
-			// time_fn_arm();
-			if (device_id == 9)
-			{
-				outsplitLines_dr9 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
-				emuSpinLock.Release();
-				return;
-			}
-			emuSpinLock.Release();
 			static const unsigned setlist[4] = {
 				0,
 				1 << PIGPIO_OUT_DATA,
@@ -748,7 +741,7 @@ public:
 				0};
 			register unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1) | outsplitLines_dr9;
+				(ClockSetToOut << 1) | out_dr9;
 
 #if !defined(CIRCLE_GPIO)
 			if (invertIECOutputs)
@@ -1041,7 +1034,7 @@ public:
 
 	bool OutputLED;
 	bool OutputSound;
-
+	static int dual_drive;
 private:
 
 	static bool splitIECLines;

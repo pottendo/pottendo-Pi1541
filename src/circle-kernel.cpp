@@ -204,6 +204,9 @@ extern ScreenLCD *screenLCD;
 extern DiskCaddy diskCaddy;
 extern CSpinLock core0RefreshingScreen;
 
+volatile int emu_lock0 = 0;
+volatile int emu_lock1 = 1;
+
 TShutdownMode CKernel::Run(void)
 {
 	CMachineInfo *mi = CMachineInfo::Get();
@@ -582,39 +585,53 @@ char *CKernel::get_version(void)
 	return pPi1541Version;
 }
 
+static void launch_emulator(int deviceID, int core)
+{
+	emulator_t *em = new emulator_t(deviceID);
+	Kernel.log("%s: emulator for device %d started on core %d", __FUNCTION__, deviceID, core);
+	em->run_emulator();
+	delete em;
+}
+
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	int i = 0;
 	switch (core) {
 	case 1:
-		if (1)
+		logger.finished_booting("emulator core 1");
+		while (1)
 		{
-			emulator_t *em = new emulator_t(8);
-			Kernel.log("%s: emulator for device 8 on core %d", __FUNCTION__, core);
-			logger.finished_booting("emulator core 8");
-			em->run_emulator();
-			delete em;
+			while (emu_lock0) // if block, wait until webserver releases
+			{
+				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
+				MsDelay(1000);
+			}
+			launch_emulator(8, core);
 		}
 		break;
 	case 2:	/* health monitoring */
-		logger.finished_booting("system monitor core");
+	{
 		if (options.GetHealthMonitor() == 1)
 			Kernel.log("disabling health monitoring on core %d", core);
 		else
 		{
+			logger.finished_booting("system monitor core");
 			Kernel.log("launching system monitoring on core %d", core);
 			Kernel.run_tempmonitor();
 		}
-		if (1) {
-			/* experimental second emulation for device 8 on core 2*/
-			emulator_t *em = new emulator_t(9);
-			Kernel.log("%s: emulator for device 9 on core %d", __FUNCTION__, core);
-			logger.finished_booting("emulator core 9");
-			em->run_emulator();
-			delete em;
+		logger.finished_booting("emulator core 2");
+		while (1) 
+		{
+			while (emu_lock1) // if block, wait until webserver releases
+			{
+				MsDelay(1000);
+				//DEBUG_LOG("%s: core %d waiting for emu_lock1 to be released... emu_lock1 = %d", __FUNCTION__, core, emu_lock1);
+			}
+			launch_emulator(9, core);
 		}
-		break;
-case 3:
+	}
+	break;
+	case 3:
 #if RASPPI >= 3
 		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
 		do
