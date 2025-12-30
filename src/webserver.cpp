@@ -38,6 +38,7 @@
 #include "iec_commands.h"
 #include "logger.h"
 #include "ScreenLCD.h"
+#include "emulator.h"
 using namespace std;
 
 extern Options options;
@@ -53,6 +54,8 @@ static int target_drive = 8; // current target drive for webserver operations
 
 extern volatile int emu_lock0, emu_lock1;
 extern volatile int dual_drive;
+extern emulator_t *emu_drive0;
+extern emulator_t *emu_drive1;
 
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
@@ -1186,7 +1189,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
 		DEBUG_LOG("type = %s / curr_path = %s, td = %s", type.c_str(), curr_path.c_str(), td.c_str());
-		if (td.length() > 0)
+		if ((td.length() > 0) && (td != "n/a"))
 		{
 			target_drive = atoi(td.c_str());
 			DEBUG_LOG("%s: setting target drive to %d", __FUNCTION__, target_drive);
@@ -1405,17 +1408,22 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				else if (param1 == "1")
 					emu_lock1 = 0;
 			}
+			MsDelay(1000); // let the drive "spin up" to sync the display
 		}
 		const char *st[] = { "off", "on" };
-
+		string id0, id1;
+		emuSpinLock.Acquire();
+		id0 = emu_drive0 ? to_string(emu_drive0->get_deviceID()) : "n/a";
+		id1 = emu_drive1 ? to_string(emu_drive1->get_deviceID()) : "n/a";
+		emuSpinLock.Release();
 		String.Format(s_drives, 
 			msg.c_str(), // Status line
-			8, // Drive 0, still hardcoded
-			9, // Drive 1, still hardcoded
+			id0.c_str(), // Drive 0, still hardcoded
+			id1.c_str(), // Drive 1, still hardcoded
 			st[emu_lock0], st[emu_lock0],
-			8, // Drive 0
+			id0.c_str(), // Drive 0
 			st[emu_lock1], st[emu_lock1],
-			9, // Drive 1
+			id1.c_str(), // Drive 1
 			Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();

@@ -206,6 +206,8 @@ extern CSpinLock core0RefreshingScreen;
 
 volatile int emu_lock0 = 0;
 volatile int emu_lock1 = 1;
+emulator_t *emu_drive0 = nullptr;
+emulator_t *emu_drive1 = nullptr;
 
 TShutdownMode CKernel::Run(void)
 {
@@ -588,8 +590,20 @@ char *CKernel::get_version(void)
 static void launch_emulator(int deviceID, int core)
 {
 	emulator_t *em = new emulator_t(deviceID);
+	emuSpinLock.Acquire();
+	if (core == 1)
+		emu_drive0 = em;
+	else
+		emu_drive1 = em;
+	emuSpinLock.Release();
 	Kernel.log("%s: emulator for device %d started on core %d", __FUNCTION__, deviceID, core);
 	em->run_emulator();
+	emuSpinLock.Acquire();
+	if (core == 1)
+		emu_drive0 = nullptr;
+	else
+		emu_drive1 = nullptr;
+	emuSpinLock.Release();
 	delete em;
 }
 
@@ -606,7 +620,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
 			}
-			launch_emulator(8, core);
+			launch_emulator(options.GetDeviceID(), core);
 		}
 		break;
 	case 2:	/* health monitoring */
