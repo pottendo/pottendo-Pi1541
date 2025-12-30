@@ -1172,7 +1172,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "mount-imgs.html";
-		string cwd, img;
+		string cwd, img, td;
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
@@ -1182,10 +1182,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		FILINFO fi;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
+		getline(ss, td, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
-		if (type == "[DIR]" || type == "") 
+		DEBUG_LOG("type = %s / curr_path = %s, td = %s", type.c_str(), curr_path.c_str(), td.c_str());
+		if (td.length() > 0)
+		{
+			target_drive = atoi(td.c_str());
+			DEBUG_LOG("%s: setting target drive to %d", __FUNCTION__, target_drive);
+		}
+		if (type == "[DIR]" || type == "")
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
 				(direntry_table(header_NTD, files, curr_path, page, ~AM_DIR) < 0))
@@ -1352,6 +1358,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					_t, img.c_str(), // Download
 					(is_dir ? "-->" : ""),
 					_t, // toggleDrive
+					to_string(target_drive).c_str(),
 					//("<I>" + def_prefix + curr_path + "</i>").c_str(),
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str());
@@ -1368,8 +1375,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, param1, '&');
 		getline(ss, param2, '&');
 		type = urlDecode(type);
-		DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,", 
-			__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
+		//DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,", 
+		//	__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
 		if (type == "[toggleDrive]")
 		{
 			int d = (target_drive == 8) ? 9 : 8;
@@ -1384,7 +1391,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (param2 == "off")
 			{
 				drive_ctrl = 3;
-				DEBUG_LOG("%s: lock emulator %s", __FUNCTION__, param1.c_str());
+				DEBUG_LOG("%s: lock emulator drive %s", __FUNCTION__, param1.c_str());
 				if (param1 == "0")
 					emu_lock0 = 1;
 				else if (param1 == "1")
@@ -1392,7 +1399,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 			else if (param2 == "on")
 			{
-				DEBUG_LOG("%s: unlock emulator %s", __FUNCTION__, param1.c_str());
+				DEBUG_LOG("%s: unlock emulator drive %s", __FUNCTION__, param1.c_str());
 				if (param1 == "0")
 					emu_lock0 = 0;
 				else if (param1 == "1")
@@ -1406,7 +1413,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			8, // Drive 0, still hardcoded
 			9, // Drive 1, still hardcoded
 			st[emu_lock0], st[emu_lock0],
+			8, // Drive 0
 			st[emu_lock1], st[emu_lock1],
+			9, // Drive 1
 			Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();

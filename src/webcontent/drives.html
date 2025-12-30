@@ -108,7 +108,7 @@
                     <td>
                         <div style="text-align:right;">
                             <a href="drives.html?[toggleDrive]&">
-                                <button type="button" class="btn btn-success">Toggle Drive</button>
+                                <button type="button" class="btn btn-success">Select Drive</button>
                             </a>
                         </div>
                     </td>
@@ -129,13 +129,36 @@
                 </tr>
                 <tr>
                     <td>
-                        <a href="drives.html?[switchDrive]&0&%s&">
-                            <button type="button" class="btn btn-success">Switch %s</button>
-                        </a>
+                        <table style="width: 100%;">
+                            <tr>
+                                <td>
+                                    <div style="display: flex; justify-content: left; width: 100%;"></div>
+                                    <a href="drives.html?[switchDrive]&0&%s&">
+                                        <button type="button" class="btn btn-success">Switch %s</button>
+                                    </a>
+                                    <a href="mount-imgs.html?&&%d&">
+                                        <button type="button" class="btn btn-success">Mount</button>
+                                    </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
-                    <td> <a href="drives.html?[switchDrive]&1&%s&">
-                            <button type="button" class="btn btn-success">Switch %s</button>
-                        </a>
+                    <td>
+                        <table style="width: 100%;">
+                            <tr>
+                                <td>
+                                    <div style="display: flex; justify-content: left; width: 100%;">
+                                        <a href="drives.html?[switchDrive]&1&%s&">
+                                            <button type="button" class="btn btn-success">Switch %s</button>
+                                        </a>
+                                        <a href="mount-imgs.html?&&%d&">
+                                            <button type="button" class="btn btn-success">Mount</button>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
             </table>
