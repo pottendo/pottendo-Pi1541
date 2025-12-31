@@ -122,6 +122,8 @@ bool TextParser::ParseComment()
 Options::Options(void)
 	: TextParser()
 	, deviceID(8)
+	, drive0DeviceID(8)
+	, drive1DeviceID(9)
 	, onResetChangeToStartingFolder(0)
 	, extraRAM(0)
 	, RAMBOard(0)
@@ -225,6 +227,8 @@ void Options::Process(char* buffer)
 			strncpy(autoMountImageName, pValue, 255);
 		}
 		ELSE_CHECK_DECIMAL_OPTION(deviceID)
+		ELSE_CHECK_DECIMAL_OPTION(drive0DeviceID)
+		ELSE_CHECK_DECIMAL_OPTION(drive1DeviceID)
 		ELSE_CHECK_DECIMAL_OPTION(onResetChangeToStartingFolder)
 		ELSE_CHECK_DECIMAL_OPTION(extraRAM)
 		ELSE_CHECK_DECIMAL_OPTION(RAMBOard)
@@ -387,6 +391,8 @@ void Options::Process(char* buffer)
 		// If using non split lines then only the 1st bus master can be used (as ATN is using the 2nd)
 		i2cBusMaster = 0;
 	}
+	// Backward compatibility for old config files
+	drive0DeviceID = deviceID;
 }
 
 int Options::GetDecimal(char* pString)

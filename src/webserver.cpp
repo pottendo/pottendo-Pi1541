@@ -132,6 +132,7 @@ CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket 
 {
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
 	webfileBrowser = new FileBrowser(inputMappings, nullptr, &roms, &deviceIDdummy, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
+	//DEBUG_LOG("%s: WebServer created", __FUNCTION__);
 }
 
 CWebServer::~CWebServer (void)
@@ -139,6 +140,7 @@ CWebServer::~CWebServer (void)
 	m_pActLED = 0;
 	delete webfileBrowser;
 	webfileBrowser = nullptr;
+	//DEBUG_LOG("%s: WebServer destroyed", __FUNCTION__);
 }
 
 CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pSocket)
@@ -1193,6 +1195,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			target_drive = atoi(td.c_str());
 			DEBUG_LOG("%s: setting target drive to %d", __FUNCTION__, target_drive);
+			msg = "Setting target drive to <i>" + to_string(target_drive) + "</i>";
 		}
 		if (type == "[DIR]" || type == "")
 		{
@@ -1210,10 +1213,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			if (type == "[toggleDrive]")
 			{
-				int d = (target_drive == 8) ? 9 : 8;
-				DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
-				msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
-				target_drive = d;
+				if (dual_drive < 1)
+					msg = "Dual drive not detected, can't toggle drive";
+				else
+				{
+					int d = (target_drive == emu_drive0->get_deviceID()) ? emu_drive1->get_deviceID() : emu_drive0->get_deviceID();
+					DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
+					msg = "Toggled target drive from <i>" + to_string(target_drive) + "</i> to <i>" + to_string(d) + "</i>";
+					target_drive = d;
+				}
 			}
 			if (fi.fattrib & AM_DIR)
 				is_dir = true;
@@ -1378,15 +1386,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, param1, '&');
 		getline(ss, param2, '&');
 		type = urlDecode(type);
-		//DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,", 
+		// DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,",
 		//	__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
 		if (type == "[toggleDrive]")
 		{
-			int d = (target_drive == 8) ? 9 : 8;
-			DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
-			msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
-			target_drive = d;
-		} 
+			if (dual_drive < 1)
+				msg = "Dual drive not detected, can't toggle drive";
+			else
+			{
+				int d = (target_drive == emu_drive0->get_deviceID()) ? emu_drive1->get_deviceID() : emu_drive0->get_deviceID();
+				DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
+				msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
+				target_drive = d;
+			}
+		}
 		else if (type == "[switchDrive]")
 		{
 			msg = string("Switch drive ") + param1 + " <i>" + param2 + "</i>";
@@ -1411,19 +1424,36 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			MsDelay(1000); // let the drive "spin up" to sync the display
 		}
 		const char *st[] = { "off", "on" };
-		string id0, id1;
+		string id0, id1, di0, di1, dm0, dm1;
 		emuSpinLock.Acquire();
 		id0 = emu_drive0 ? to_string(emu_drive0->get_deviceID()) : "n/a";
 		id1 = emu_drive1 ? to_string(emu_drive1->get_deviceID()) : "n/a";
+
+		if (emu_drive0 && ((emu_drive0->get_emulatingMode() == EMULATING_1541) || (emu_drive0->get_emulatingMode() == EMULATING_1581)))
+			di0 = emu_drive0->get_diskCaddy()->GetCurrentDisk()->GetName();
+		else
+			di0 = "no disk";
+
+		if (emu_drive1 && (emu_drive1->get_emulatingMode() == EMULATING_1541 || emu_drive1->get_emulatingMode() == EMULATING_1581))
+			di1 = emu_drive1->get_diskCaddy()->GetCurrentDisk()->GetName();
+		else
+			di1 = "no disk";
+
+		dm0 = emu_drive0 ? emu_drive0->get_emulationModeString() : "n/a";
+		dm1 = emu_drive1 ? emu_drive1->get_emulationModeString() : "n/a";
 		emuSpinLock.Release();
 		String.Format(s_drives, 
 			msg.c_str(), // Status line
-			id0.c_str(), // Drive 0, still hardcoded
-			id1.c_str(), // Drive 1, still hardcoded
-			st[emu_lock0], st[emu_lock0],
-			id0.c_str(), // Drive 0
-			st[emu_lock1], st[emu_lock1],
-			id1.c_str(), // Drive 1
+			id0.c_str(), // Drive 0 deviceID
+			id1.c_str(), // Drive 1 deviceID
+			dm0.c_str(), // Drive 0 emulation mode
+			dm1.c_str(), // Drive 1 emulation mode
+			di0.c_str(), // Drive 0 diskimage name
+			di1.c_str(), // Drive 1 diskimage name
+			st[emu_lock0], st[emu_lock0], // on/off button drive 0
+			id0.c_str(), // Drive 0 mount button
+			st[emu_lock1], st[emu_lock1], //on/off button drive 1
+			id1.c_str(), // Drive 1 mount button
 			Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();

@@ -82,13 +82,15 @@ void xPortB_OnPortOut(void* pUserData, unsigned char status)
 	emu->get_iec_bus()->PortB_OnPortOut(nullptr, status);
 }
 
-emulator_t::emulator_t(u8 driveNumber)
+emulator_t::emulator_t(u8 driveNumber, const uint32_t core)
     : selectedViaIECCommands(false), 
     deviceID(driveNumber),
+	driveID(core),
 	diskCaddy(driveNumber),
-	iec_bus(driveNumber)
+	iec_bus(driveNumber, driveID),
+	shared_IEC(false)
 {
-    DEBUG_LOG("%s: emulator for drive = %d\n", __FUNCTION__, driveNumber);
+    DEBUG_LOG("%s: emulator for drive = %d", __FUNCTION__, driveNumber);
 	_m_IEC_Commands = new IEC_Commands(&iec_bus);
 
 	_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
@@ -96,15 +98,55 @@ emulator_t::emulator_t(u8 driveNumber)
 
 	pi1541.drive.SetVIA(&pi1541.VIA[1]);
 	pi1541.VIA[0].GetPortB()->SetPortOut(this, xPortB_OnPortOut);
-
-	iec_bus_instance = &iec_bus;
+	emuSpinLock.Acquire();
+	share_IECBus();
+	emuSpinLock.Release();
 }
 
 emulator_t::~emulator_t()
 {
-    // Destructor implementation
-	DEBUG_LOG("%s: destructor called for drive = %d\n", __FUNCTION__, deviceID);
+	extern emulator_t *emu_drive0, *emu_drive1;	/* ugly, quick & dirty */
+	DEBUG_LOG("%s: destructor called for drive = %d", __FUNCTION__, deviceID);
+	emuSpinLock.Acquire();
+	if (shared_IEC)
+	{
+		// need to hand over iec for other emulator, otherwise we're doomed on UI/button presses
+		iec_bus_instance = nullptr;	// race condition, Fixme one day - if user presses button here, we're crashing
+		if ((get_driveID() == 0) && emu_drive1)
+			emu_drive1->share_IECBus();
+		else if ((get_driveID() == 1) && emu_drive0)
+			emu_drive0->share_IECBus();
+		else		
+			DEBUG_LOG("%s: we're doomed, no IEC bus left for Inputmappings - expect crash NOW", __FUNCTION__);
+	}
+	emuSpinLock.Release();
     delete _m_IEC_Commands;
+}
+
+std::string emulator_t::get_emulationModeString() const
+{
+	switch (emulating)
+	{
+	case IEC_COMMANDS:
+		return "IEC Commands Mode";
+	case EMULATING_1541:
+		return "Emulating 1541";
+	case EMULATING_1581:
+		return "Emulating 1581";
+	case EMULATION_SHUTDOWN:
+		return "Emulation Shutdown";
+	default:
+		return "Unknown Mode";
+	}
+}
+
+void emulator_t::share_IECBus(void)
+{
+	if (!iec_bus_instance)
+	{
+		inputMappings->SetIECBus(&iec_bus);
+		shared_IEC = true; // need to remember that this instance is the master of UI Inputs
+	}
 }
 
 EmulatingMode emulator_t::BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)

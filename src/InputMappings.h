@@ -20,6 +20,8 @@
 #define InputMappings_H
 #include "types.h"
 #include "Keyboard.h"
+#include "iec_bus.h"
+#include "debug.h"
 
 #define ESC_FLAG		(1 << 0)
 #define NEXT_FLAG		(1 << 1)
@@ -49,6 +51,7 @@
 #define FUNCTION_FLAG		(1 << 21)
 // dont exceed 32!!
 
+extern IEC_Bus *iec_bus_instance;
 
 class InputMappings //: public Singleton<InputMappings>
 {
@@ -92,6 +95,12 @@ public:
 	static u8 INPUT_BUTTON_DOWN;
 	static u8 INPUT_BUTTON_BACK;
 	static u8 INPUT_BUTTON_INSERT;
+
+	void SetIECBus(IEC_Bus *iec) 
+	{
+		DEBUG_LOG("Inputmappings: setting IEC bus from device %d", iec->get_deviceID());
+		iec_bus_instance = iec;
+	}
 
 	void Reset()
 	{

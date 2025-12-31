@@ -16,6 +16,7 @@
 //
 // written by pottendo
 //
+#include <string>
 #include "iec_commands.h"
 #include "FileBrowser.h"
 #include "Pi1541.h"
@@ -28,6 +29,7 @@ class emulator_t {
     bool selectedViaIECCommands;
     const char* fileBrowserSelectedName;
     u8 deviceID = 8;
+    const uint32_t driveID = 0;
     DiskCaddy diskCaddy;
     Pi1541 pi1541;
     #if defined(PI1581SUPPORT)
@@ -36,9 +38,9 @@ class emulator_t {
     EmulatingMode emulating;
     u16 pc;
     IEC_Bus iec_bus;
-
+    bool shared_IEC;
 public:
-    emulator_t(u8 driveNumber);
+    emulator_t(u8 deviceID, const uint32_t drive);
     ~emulator_t();
 
     EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon);
@@ -49,4 +51,9 @@ public:
     inline Pi1541 *get_pi1541() { return &pi1541; }
     inline IEC_Bus *get_iec_bus() { return &iec_bus; }
     inline u8 get_deviceID() const { return deviceID; }
+    inline uint32_t get_driveID() const { return driveID; }
+    inline DiskCaddy *get_diskCaddy() { return &diskCaddy; }
+    inline EmulatingMode get_emulatingMode() const { return emulating; }
+    std::string get_emulationModeString(void) const;
+    void share_IECBus(void);
 };

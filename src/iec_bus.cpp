@@ -38,8 +38,9 @@ bool IEC_Bus::invertIECInputs = false;
 bool IEC_Bus::invertIECOutputs = false;
 bool IEC_Bus::ignoreReset = false;
 
-IEC_Bus::IEC_Bus(u8 driveNumber) :
-	device_id(driveNumber)
+IEC_Bus::IEC_Bus(u8 deviceID, const uint32_t driveID) :
+	device_id(deviceID),
+	drive_id(driveID)
 {
 	PI_Atn = false;
 	PI_Data = false;
@@ -305,7 +306,7 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 #if !defined (CIRCLE_GPIO)
 	if (dual_drive == 0)
 		gplev0 = read32(ARM_GPIO_GPLEV0);
-	else if (device_id == 8) 
+	else if (get_driveID() == 0) 
 		gplev0 = read32(ARM_GPIO_GPLEV0);
 	//DEBUG_LOG("%s: gplev0 = %08x, device = %d", __FUNCTION__, gplev0, device_id);
 #else	

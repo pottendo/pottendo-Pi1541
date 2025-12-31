@@ -359,11 +359,12 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_CLOCK;
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
-	const u8 device_id;
+	const uint32_t device_id;
+	const uint32_t drive_id;
 	static bool iec_initialized;
 #endif	
 public:
-	IEC_Bus(u8 driveNumber = 8);
+	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
 	~IEC_Bus() = default;
 
 	inline void Initialise(void)
@@ -676,15 +677,15 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
-		static unsigned out_dr9 = 0;
+		static unsigned out_dr1 = 0;
 #if 1
 		if (dual_drive > 0)
 		{
 			emuSpinLock.Acquire();
 			// time_fn_arm();
-			if (device_id == 9)
+			if (get_driveID() == 1)/* secondary drive only or'd to main drive 0 cycle */
 			{
-				out_dr9 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
+				out_dr1 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);
 				emuSpinLock.Release();
 				return;
 			}
@@ -702,7 +703,7 @@ public:
 					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
 			register unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1) | out_dr9;
+				(ClockSetToOut << 1) | out_dr1;
 
 			write32(ARM_GPIO_GPFSEL1, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
 			//DEBUG_LOG("%s: GPFSEL1=0x%08X", __FUNCTION__, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
@@ -741,7 +742,7 @@ public:
 				0};
 			register unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1) | out_dr9;
+				(ClockSetToOut << 1) | out_dr1;
 
 #if !defined(CIRCLE_GPIO)
 			if (invertIECOutputs)
@@ -955,6 +956,8 @@ public:
 	//static inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
 	inline bool IsClockSetToOut() { return ClockSetToOut; }
 	inline bool IsReset() { return Resetting; }
+	inline uint32_t get_driveID(void) const { return drive_id; }
+	inline uint32_t get_deviceID(void) const { return device_id; }
 
 	inline void WaitWhileAtnAsserted()
 	{

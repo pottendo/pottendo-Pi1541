@@ -587,16 +587,16 @@ char *CKernel::get_version(void)
 	return pPi1541Version;
 }
 
-static void launch_emulator(int deviceID, int core)
+static void launch_emulator(int deviceID, const uint32_t driveID, int core)
 {
-	emulator_t *em = new emulator_t(deviceID);
+	emulator_t *em = new emulator_t(deviceID, driveID);
 	emuSpinLock.Acquire();
 	if (core == 1)
 		emu_drive0 = em;
 	else
 		emu_drive1 = em;
 	emuSpinLock.Release();
-	Kernel.log("%s: emulator for device %d started on core %d", __FUNCTION__, deviceID, core);
+	Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, driveID, deviceID, core);
 	em->run_emulator();
 	emuSpinLock.Acquire();
 	if (core == 1)
@@ -620,7 +620,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
 			}
-			launch_emulator(options.GetDeviceID(), core);
+			launch_emulator(options.GetDrive0DeviceID(), 0, core);
 		}
 		break;
 	case 2:	/* health monitoring */
@@ -641,7 +641,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				MsDelay(1000);
 				//DEBUG_LOG("%s: core %d waiting for emu_lock1 to be released... emu_lock1 = %d", __FUNCTION__, core, emu_lock1);
 			}
-			launch_emulator(9, core);
+			launch_emulator(options.GetDrive1DeviceID(), 1, core);
 		}
 	}
 	break;
