@@ -108,7 +108,7 @@
 "                    <td>\n"
 "                        <div style=\"text-align:right;\">\n"
 "                            <a href=\"drives.html?[toggleDrive]&\">\n"
-"                                <button type=\"button\" class=\"btn btn-success\">Select Drive</button>\n"
+"                                <button type=\"button\" class=\"btn btn-success\">Toggle Drive</button>\n"
 "                            </a>\n"
 "                        </div>\n"
 "                    </td>\n"

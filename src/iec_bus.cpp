@@ -19,8 +19,10 @@
 #include "iec_bus.h"
 #include "InputMappings.h"
 #include "options.h"
+#include "emulator.h"
 
 extern Options options;
+extern emulator_t *emu_selected;
 //#define REAL_XOR 1
 
 int IEC_Bus::buttonCount = sizeof(ButtonPinFlags) / sizeof(unsigned);
@@ -238,13 +240,14 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 	gplev0 |= (gpio_get_level((gpio_num_t)PIGPIO_RESET) << PIGPIO_RESET);
 	//printf("%s: - gplev0 = %08x\n", __FUNCTION__, gplev0);
 #else
-#if !defined (CIRCLE_GPIO)	
+#if !defined (CIRCLE_GPIO)
 	gplev0 = read32(ARM_GPIO_GPLEV0);
 #else
 	gplev0 = CGPIOPin::ReadAll();
 #endif	
 #endif
-	ReadGPIOUserInput();
+	if (get_driveID() == emu_selected->get_driveID())
+		ReadGPIOUserInput();
 
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 	if (PI_Atn != ATNIn)

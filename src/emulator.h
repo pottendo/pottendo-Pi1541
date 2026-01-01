@@ -55,5 +55,7 @@ public:
     inline DiskCaddy *get_diskCaddy() { return &diskCaddy; }
     inline EmulatingMode get_emulatingMode() const { return emulating; }
     std::string get_emulationModeString(void) const;
+    void refresh_display(void);
     void share_IECBus(void);
+    std::string select_drive(bool switch_drive = false);
 };

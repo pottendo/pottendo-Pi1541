@@ -53,6 +53,11 @@ extern bool usb_mass_update;
 
 emulator_t *emulator_instance = nullptr;
 emulator_t *emulator_instance_dr9 = nullptr;
+
+emulator_t *emu_drive0;
+emulator_t *emu_drive1;
+emulator_t *emu_selected;
+int target_drive;
 IEC_Bus *iec_bus_instance = nullptr;
 
 SpinLock emuSpinLock;
@@ -100,26 +105,17 @@ emulator_t::emulator_t(u8 driveNumber, const uint32_t core)
 	pi1541.VIA[0].GetPortB()->SetPortOut(this, xPortB_OnPortOut);
 	emuSpinLock.Acquire();
 	share_IECBus();
+	if (!emu_selected)
+	{
+		emu_selected = this;
+		target_drive = get_deviceID();
+	}
 	emuSpinLock.Release();
 }
 
 emulator_t::~emulator_t()
 {
-	extern emulator_t *emu_drive0, *emu_drive1;	/* ugly, quick & dirty */
 	DEBUG_LOG("%s: destructor called for drive = %d", __FUNCTION__, deviceID);
-	emuSpinLock.Acquire();
-	if (shared_IEC)
-	{
-		// need to hand over iec for other emulator, otherwise we're doomed on UI/button presses
-		iec_bus_instance = nullptr;	// race condition, Fixme one day - if user presses button here, we're crashing
-		if ((get_driveID() == 0) && emu_drive1)
-			emu_drive1->share_IECBus();
-		else if ((get_driveID() == 1) && emu_drive0)
-			emu_drive0->share_IECBus();
-		else		
-			DEBUG_LOG("%s: we're doomed, no IEC bus left for Inputmappings - expect crash NOW", __FUNCTION__);
-	}
-	emuSpinLock.Release();
     delete _m_IEC_Commands;
 }
 
@@ -140,13 +136,51 @@ std::string emulator_t::get_emulationModeString() const
 	}
 }
 
+void emulator_t::refresh_display(void)
+ { 
+	fileBrowser->ClearScreen(); 
+	if (emulating == EMULATING_1541 || emulating == EMULATING_1581)
+		diskCaddy.Display();
+	else
+		fileBrowser->RefeshDisplay(); 
+}
+
+std::string emulator_t::select_drive(bool switch_drive)
+{
+	std::string msg;
+	emuSpinLock.Acquire();
+	if (switch_drive)
+	{
+		if ((get_driveID() == 0) && emu_drive1)
+			emu_selected = emu_drive1;
+		else if ((get_driveID() == 1) && emu_drive0)
+			emu_selected = emu_drive0;
+		else
+			emu_selected = this;
+	}
+	if (emu_selected)
+		emu_selected->share_IECBus();
+	emuSpinLock.Release();
+	if (emu_selected)
+	{
+		target_drive = emu_selected->get_deviceID();	// webserver cache
+		emu_selected->refresh_display();
+		msg = std::string("Drive ") + std::to_string(emu_selected->get_driveID()) +
+		   " with device ID " + std::to_string(emu_selected->get_deviceID()) + " selected";
+	}
+	else
+	{
+		msg = "All drives are turned off";
+		target_drive = -1;
+	}
+
+	return msg;
+}
+
 void emulator_t::share_IECBus(void)
 {
-	if (!iec_bus_instance)
-	{
-		inputMappings->SetIECBus(&iec_bus);
-		shared_IEC = true; // need to remember that this instance is the master of UI Inputs
-	}
+	inputMappings->SetIECBus(&iec_bus);
+	shared_IEC = true; // need to remember that this instance is the master of UI Inputs
 }
 
 EmulatingMode emulator_t::BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)

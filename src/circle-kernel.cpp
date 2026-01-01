@@ -206,8 +206,9 @@ extern CSpinLock core0RefreshingScreen;
 
 volatile int emu_lock0 = 0;
 volatile int emu_lock1 = 1;
-emulator_t *emu_drive0 = nullptr;
-emulator_t *emu_drive1 = nullptr;
+extern emulator_t *emu_drive0;
+extern emulator_t *emu_drive1;
+extern emulator_t *emu_selected;
 
 TShutdownMode CKernel::Run(void)
 {
@@ -587,26 +588,6 @@ char *CKernel::get_version(void)
 	return pPi1541Version;
 }
 
-static void launch_emulator(int deviceID, const uint32_t driveID, int core)
-{
-	emulator_t *em = new emulator_t(deviceID, driveID);
-	emuSpinLock.Acquire();
-	if (core == 1)
-		emu_drive0 = em;
-	else
-		emu_drive1 = em;
-	emuSpinLock.Release();
-	Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, driveID, deviceID, core);
-	em->run_emulator();
-	emuSpinLock.Acquire();
-	if (core == 1)
-		emu_drive0 = nullptr;
-	else
-		emu_drive1 = nullptr;
-	emuSpinLock.Release();
-	delete em;
-}
-
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	int i = 0;
@@ -620,7 +601,19 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
 			}
-			launch_emulator(options.GetDrive0DeviceID(), 0, core);
+			emulator_t *em = new emulator_t(options.GetDrive0DeviceID(), 0);
+			emuSpinLock.Acquire();
+			emu_drive0 = em;
+			emuSpinLock.Release();
+			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 0, options.GetDrive0DeviceID(), core);
+			em->run_emulator();
+			emuSpinLock.Acquire();
+			emu_drive0 = nullptr;
+			emu_selected = emu_drive1;
+			emuSpinLock.Release();
+			if (emu_selected)
+				emu_selected->select_drive(false);
+			delete em;
 		}
 		break;
 	case 2:	/* health monitoring */
@@ -634,14 +627,26 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			Kernel.run_tempmonitor();
 		}
 		logger.finished_booting("emulator core 2");
-		while (1) 
+		while (1)
 		{
 			while (emu_lock1) // if block, wait until webserver releases
 			{
+				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
-				//DEBUG_LOG("%s: core %d waiting for emu_lock1 to be released... emu_lock1 = %d", __FUNCTION__, core, emu_lock1);
 			}
-			launch_emulator(options.GetDrive1DeviceID(), 1, core);
+			emulator_t *em = new emulator_t(options.GetDrive1DeviceID(), 1);
+			emuSpinLock.Acquire();
+			emu_drive1 = em;
+			emuSpinLock.Release();
+			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 1, options.GetDrive0DeviceID(), core);
+			em->run_emulator();
+			emuSpinLock.Acquire();
+			emu_drive1 = nullptr;
+			emu_selected = emu_drive0;
+			emuSpinLock.Release();
+			if (emu_selected)
+				emu_selected->select_drive(false);
+			delete em;
 		}
 	}
 	break;

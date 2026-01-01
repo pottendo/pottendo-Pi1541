@@ -50,12 +50,13 @@ int mount_new = 0;	// == driveID to tell emualtion to do something
 // 		0=none, 1 = mount image, 2 = mount lst, 3 = turn off emulation
 int drive_ctrl = 0;
 
-static int target_drive = 8; // current target drive for webserver operations
+extern int target_drive; // current target drive for webserver operations
 
 extern volatile int emu_lock0, emu_lock1;
 extern volatile int dual_drive;
 extern emulator_t *emu_drive0;
 extern emulator_t *emu_drive1;
+extern emulator_t *emu_selected;
 
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
@@ -1193,9 +1194,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		DEBUG_LOG("type = %s / curr_path = %s, td = %s", type.c_str(), curr_path.c_str(), td.c_str());
 		if ((td.length() > 0) && (td != "n/a"))
 		{
-			target_drive = atoi(td.c_str());
-			DEBUG_LOG("%s: setting target drive to %d", __FUNCTION__, target_drive);
-			msg = "Setting target drive to <i>" + to_string(target_drive) + "</i>";
+			int tmp = stoi(td);
+			if ((tmp != target_drive) && emu_selected)
+			{
+				emu_selected->select_drive(true);
+				DEBUG_LOG("%s: setting target drive to %d", __FUNCTION__, target_drive);
+				msg = "Setting target drive to <i>" + to_string(target_drive) + "</i>";
+			}
+			else
+				msg = "Target drive turned off, selected drive is <i>" + to_string(target_drive) + "</i>";
+
 		}
 		if (type == "[DIR]" || type == "")
 		{
@@ -1213,15 +1221,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			if (type == "[toggleDrive]")
 			{
-				if (dual_drive < 1)
-					msg = "Dual drive not detected, can't toggle drive";
-				else
+				if (emu_selected)
 				{
-					int d = (target_drive == emu_drive0->get_deviceID()) ? emu_drive1->get_deviceID() : emu_drive0->get_deviceID();
-					DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
-					msg = "Toggled target drive from <i>" + to_string(target_drive) + "</i> to <i>" + to_string(d) + "</i>";
-					target_drive = d;
+					msg = emu_selected->select_drive(true);
+					target_drive = emu_selected->get_deviceID();
 				}
+				else
+					msg = "All drives turned off";
 			}
 			if (fi.fattrib & AM_DIR)
 				is_dir = true;
@@ -1390,19 +1396,17 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		//	__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
 		if (type == "[toggleDrive]")
 		{
-			if (dual_drive < 1)
-				msg = "Dual drive not detected, can't toggle drive";
-			else
+			if (emu_selected)
 			{
-				int d = (target_drive == emu_drive0->get_deviceID()) ? emu_drive1->get_deviceID() : emu_drive0->get_deviceID();
-				DEBUG_LOG("%s: toggling drive %d -> %d", __FUNCTION__, target_drive, d);
-				msg = "Toggled target drive from " + to_string(target_drive) + " to " + to_string(d);
-				target_drive = d;
+				msg = emu_selected->select_drive(true);
+				target_drive = emu_selected->get_deviceID();
 			}
-		}
+			else 
+				msg = "All drives turned off";
+ 		}
 		else if (type == "[switchDrive]")
 		{
-			msg = string("Switch drive ") + param1 + " <i>" + param2 + "</i>";
+			msg = string("Drive ") + param1 + " switched <i>" + param2 + "</i>";
 			mount_new = stoi(param1) + 8;
 			if (param2 == "off")
 			{
