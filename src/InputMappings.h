@@ -30,7 +30,7 @@
 #define UP_FLAG			(1 << 4)
 #define PAGEUP_FLAG		(1 << 5)
 #define DOWN_FLAG		(1 << 6)
-#define PAGEDOWN_FLAG		(1 << 7)
+#define PAGEDOWN_FLAG	(1 << 7)
 #define SPACE_FLAG		(1 << 8)
 #define BACK_FLAG		(1 << 9)
 #define INSERT_FLAG		(1 << 10)
@@ -48,7 +48,8 @@
 #define HOME_FLAG		(1 << 19)
 #define END_FLAG		(1 << 20)
 
-#define FUNCTION_FLAG		(1 << 21)
+#define FUNCTION_FLAG	(1 << 21)
+#define TOGGLE_FLAG 	(1 << 22)
 // dont exceed 32!!
 
 extern IEC_Bus *iec_bus_instance;
@@ -161,6 +162,11 @@ public:
 	inline bool BrowseBack()
 	{
 		return KeyboardFlag(BACK_FLAG)/* | UartFlag(BACK_FLAG)*/ | ButtonFlag(BACK_FLAG);
+	}
+
+	inline bool BrowseToggle()
+	{
+		return KeyboardFlag(TOGGLE_FLAG)/* | UartFlag(TOGGLE_FLAG)*/ | ButtonFlag(TOGGLE_FLAG);
 	}
 
 	inline bool BrowseUp()

@@ -61,7 +61,6 @@ int target_drive;
 IEC_Bus *iec_bus_instance = nullptr;
 
 SpinLock emuSpinLock;
-//SpinLock drive0, drive1;
 volatile int dual_drive = -1;
 
 /* fixme's - declared twice, etc. */
@@ -194,16 +193,22 @@ EmulatingMode emulator_t::BeginEmulating(FileBrowser* fileBrowser, const char* f
 		if (diskImage->IsD81())
 		{
 			pi1581.Insert(diskImage);
-			fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
-			fileBrowser->ShowDeviceAndROM( roms.ROMName1581 );
+			if (get_driveID() == emu_selected->get_driveID())
+			{
+				fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
+				fileBrowser->ShowDeviceAndROM( roms.ROMName1581 );
+			}
 			return EMULATING_1581;
 		}
 		else
 #endif
 		{
 			pi1541.drive.Insert(diskImage);
-			fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
-			fileBrowser->ShowDeviceAndROM();
+			if (get_driveID() == emu_selected->get_driveID())
+			{
+				fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
+				fileBrowser->ShowDeviceAndROM();
+			}
 			return EMULATING_1541;
 		}
 	}
@@ -340,14 +345,6 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 #endif	
 #endif
 
-#if 0 // won't work sync with this method causes delay of >5ms		
-		/* sync code of 2 emulators */
-		if (dual_drive && get_deviceID() == 9)
-		{
-			drive1.Acquire(); // wait until drive 0 has reached a later point to be able to continue
-			drive0.Release(); // let drive 0 run
-		}
-#endif
 		if (refreshOutsAfterCPUStep)
 			iec_bus.ReadEmulationMode1541();
 		if (pi1541.m6502.SYNC())	// About to start a new instruction.
@@ -412,25 +409,24 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 			}
 		}
 
-		iec_bus.ReadGPIOUserInput(true);
-#if 0 // won't work sync with this method causes delay of >5ms		
-		/* sync code of 2 emulators */
-		if (dual_drive && get_deviceID() == 8)
+		// handle Button I/O only for selected drive
+		bool exitEmulation = false;
+		bool exitDoAutoLoad = false;
+		if (get_driveID() == emu_selected->get_driveID())
 		{
-			drive1.Release(); // let drive 1 run
-			drive0.Acquire(); // wait until drive 0 has reached a later point to be able to continue
-		}
-#endif
-
-		// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
+			iec_bus.ReadGPIOUserInput(true);
+			iec_bus.UpdateButton(InputMappings::INPUT_BUTTON_BACK);
+			// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
 #if not defined(EXPERIMENTALZERO)
-		inputMappings->CheckKeyboardEmulationMode(numberOfImages, numberOfImagesMax);
+			inputMappings->CheckKeyboardEmulationMode(numberOfImages, numberOfImagesMax);
 #endif
-		inputMappings->CheckButtonsEmulationMode();
+			inputMappings->CheckButtonsEmulationMode();
 
-		bool exitEmulation = inputMappings->Exit();
-		bool exitDoAutoLoad = inputMappings->AutoLoad();
-
+			exitEmulation = inputMappings->Exit();
+			exitDoAutoLoad = inputMappings->AutoLoad();
+			if (inputMappings->BrowseToggle())
+				select_drive(true);
+		}
 		// We have now output so HERE is where the next phi2 cycle starts.
 		pi1541.Update();
 
@@ -566,8 +562,6 @@ extern int mount_new;
 #endif
 		}
 	}
-	//if (get_deviceID() == 8) drive1.Release();
-	//if (get_deviceID() == 9) drive0.Release();
 	emuSpinLock.Acquire();
 	dual_drive--;
 	IEC_Bus::dual_drive = dual_drive;
@@ -896,7 +890,10 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 
 				while (emulating == IEC_COMMANDS)
 				{
-					IEC_Commands::UpdateAction updateAction = _m_IEC_Commands->SimulateIECUpdate();
+					IEC_Commands::UpdateAction updateAction = IEC_Commands::DO_NOTHING;
+					
+					if (get_driveID() == emu_selected->get_driveID())
+						updateAction = _m_IEC_Commands->SimulateIECUpdate();
 
 					switch (updateAction)
 					{
@@ -976,6 +973,9 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 						case IEC_Commands::DEVICE_SWITCHED:
 							DEBUG_LOG("DECIVE_SWITCHED\r\n");
 							fileBrowser->DeviceSwitched();
+							break;
+						case IEC_Commands::DO_NOTHING:
+							//MsDelay(500);
 							break;
 						default:
 							break;

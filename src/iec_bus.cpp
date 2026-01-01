@@ -246,8 +246,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 	gplev0 = CGPIOPin::ReadAll();
 #endif	
 #endif
-	if (get_driveID() == emu_selected->get_driveID())
-		ReadGPIOUserInput();
+	ReadGPIOUserInput();
 
 	bool ATNIn = (gplev0 & PIGPIO_MASK_IN_ATN) == (invertIECInputs ? PIGPIO_MASK_IN_ATN : 0);
 	if (PI_Atn != ATNIn)

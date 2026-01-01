@@ -27,6 +27,7 @@
 #include "InputMappings.h"
 #include "stb_image.h"
 #include "Petscii.h"
+#include "emulator.h"
 #if defined(__CIRCLE__)
 const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03"};
 #elif defined(__PICO2__)
@@ -44,7 +45,7 @@ extern "C"
 #include "iec_commands.h"
 extern IEC_Commands *_m_IEC_Commands;
 extern Options options;
-
+extern emulator_t *emu_selected;
 
 #define PNG_WIDTH 384
 #define PNG_HEIGHT 272
@@ -1279,6 +1280,10 @@ void FileBrowser::UpdateInputFolders()
 				break;
 			}
 		}
+	}
+	else if (inputMappings->BrowseToggle())
+	{
+		emu_selected->select_drive(true);
 	}
 	else
 	{

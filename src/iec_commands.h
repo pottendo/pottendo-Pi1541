@@ -71,7 +71,8 @@ public:
 		REFRESH,
 		DEVICEID_CHANGED,
 		DEVICE_SWITCHED,
-		RESET
+		RESET,
+		DO_NOTHING // for dual drive, non-selected drive
 	};
 
 	IEC_Commands(IEC_Bus* ib);

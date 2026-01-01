@@ -110,7 +110,7 @@ bool InputMappings::CheckButtonsBrowseMode()
 	else if (iec_bus_instance->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(DOWN_FLAG);
 	else if (iec_bus_instance->GetInputButtonPressed(INPUT_BUTTON_BACK))
-		SetButtonFlag(BACK_FLAG);
+		SetButtonFlag(TOGGLE_FLAG); // was BACK_FLAG
 	else
 	{
 		// edge detection
@@ -154,8 +154,8 @@ void InputMappings::CheckButtonsEmulationMode()
 		SetButtonFlag(NEXT_FLAG);
 	else if (iec_bus_instance->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(PREV_FLAG);
-	//else if (iec_bus_instance->GetInputButtonPressed(INPUT_BUTTON_BACK))
-	//	SetButtonFlag(BACK_FLAG);
+	else if (iec_bus_instance->GetInputButton(INPUT_BUTTON_BACK))
+		SetButtonFlag(TOGGLE_FLAG);
 	//else if (iec_bus_instance->GetInputButtonPressed(INPUT_BUTTON_INSERT))
 	//	SetButtonFlag(INSERT_FLAG);
 	else {
