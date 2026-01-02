@@ -138,10 +138,13 @@ std::string emulator_t::get_emulationModeString() const
 void emulator_t::refresh_display(void)
  { 
 	fileBrowser->ClearScreen(); 
+	if (screenLCD)
+		screenLCD->Clear(RGBA(0xff, 0xff, 0xff, 0xff));
 	if (emulating == EMULATING_1541 || emulating == EMULATING_1581)
 		diskCaddy.Display();
 	else
-		fileBrowser->RefeshDisplay(); 
+		fileBrowser->RefeshDisplay();
+	DEBUG_LOG("%s: refresh display by Drive %d(%d)", __FUNCTION__, get_driveID(), get_deviceID());
 }
 
 std::string emulator_t::select_drive(bool switch_drive)
@@ -158,7 +161,10 @@ std::string emulator_t::select_drive(bool switch_drive)
 			emu_selected = this;
 	}
 	if (emu_selected)
+	{
 		emu_selected->share_IECBus();
+		inputMappings->Reset();
+	}
 	emuSpinLock.Release();
 	if (emu_selected)
 	{
@@ -890,10 +896,12 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 
 				while (emulating == IEC_COMMANDS)
 				{
-					IEC_Commands::UpdateAction updateAction = IEC_Commands::DO_NOTHING;
+					IEC_Commands::UpdateAction updateAction;
 					
 					if (get_driveID() == emu_selected->get_driveID())
 						updateAction = _m_IEC_Commands->SimulateIECUpdate();
+					else
+						updateAction = IEC_Commands::DO_NOTHING;
 
 					switch (updateAction)
 					{
@@ -986,13 +994,13 @@ extern char mount_path[256];
 extern int mount_new;
 extern int drive_ctrl;
 					FILINFO fi;
-					if (mount_new)
+					if (mount_new == deviceID)
 					{
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (drive_ctrl == 1)
 						{
-							DEBUG_LOG("%s: webserver requests to Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
+							DEBUG_LOG("%s: webserver requests Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
@@ -1002,7 +1010,7 @@ extern int drive_ctrl;
 						} 
 						else if (drive_ctrl == 2)/* .LST - XXX FIXME not yet clean for dual drive */
 						{
-							DEBUG_LOG("%s: webserver requests to Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
+							DEBUG_LOG("%s: webserver requests Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
 							fileBrowser->FolderChanged();
 							if (fileBrowser->SelectLST(mount_img))
 								fileBrowser->SetSelectionsMade(true);
@@ -1029,7 +1037,7 @@ extern char mount_path[256];
 extern int mount_new;
 extern int drive_ctrl;
 					FILINFO fi;
-					if (mount_new)
+					if (mount_new == deviceID)
 					{
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)

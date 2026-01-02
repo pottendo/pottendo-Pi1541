@@ -227,7 +227,7 @@ void SSD1306::RefreshPage(u32 page)
 void SSD1306::ClearScreen()
 {
 	memset(frame, 0, sizeof_frame);
-	//memset(oldFrame, 0xff, sizeof_frame);	// to force update
+	memset(oldFrame, 0xff, sizeof_frame);	// to force update
 	RefreshScreen();
 }
 

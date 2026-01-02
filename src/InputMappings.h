@@ -70,6 +70,9 @@ protected:
 	bool enterButtonPressedPrev;
 	bool enterButtonPressed;
 
+	bool backButtonPressedPrev;
+	bool backButtonPressed;
+
 	unsigned keyboardNumLetter;
 	unsigned inputROMOrDevice;
 

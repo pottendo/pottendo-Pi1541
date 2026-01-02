@@ -21,6 +21,7 @@
 #include "FileBrowser.h"
 #include "iec_bus.h"
 #include "debug.h"
+#include "emulator.h"
 #if !defined (__CIRCLE__) && !defined (__PICO2__)
 extern "C"
 {
@@ -31,6 +32,7 @@ extern void Reboot_Pi(void);
 #endif
 
 extern IEC_Bus *iec_bus_instance;
+extern emulator_t *emu_selected;
 // If disk swaps can be done via multiple cores then directDiskSwapRequest needs to be volatile. WARNING: volatile acesses can be very expensive.
 //volatile unsigned InputMappings::directDiskSwapRequest = 0;
 unsigned InputMappings::directDiskSwapRequest = 0;
@@ -110,7 +112,7 @@ bool InputMappings::CheckButtonsBrowseMode()
 	else if (iec_bus_instance->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(DOWN_FLAG);
 	else if (iec_bus_instance->GetInputButtonRepeating(INPUT_BUTTON_BACK))
-		SetButtonFlag(TOGGLE_FLAG); // was BACK_FLAG
+		; //SetButtonFlag(TOGGLE_FLAG); // was BACK_FLAG
 	else
 	{
 		// edge detection
@@ -123,6 +125,11 @@ bool InputMappings::CheckButtonsBrowseMode()
 		if (enterButtonPressedPrev && !enterButtonPressed)
 			SetButtonFlag(ENTER_FLAG);
 		enterButtonPressedPrev = enterButtonPressed;
+
+		backButtonPressed = !iec_bus_instance->GetInputButtonReleased(INPUT_BUTTON_BACK);
+		if (backButtonPressedPrev && !backButtonPressed)
+			SetButtonFlag(TOGGLE_FLAG);
+		backButtonPressedPrev = backButtonPressed;
 	}
 
 	return buttonFlags != 0;
