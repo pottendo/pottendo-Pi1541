@@ -712,7 +712,7 @@ void FileBrowser::RefreshFolderEntries()
 		else
 		{
 			//DEBUG_LOG("Cannot open dir");
-			printf("%s: can't open cwd\n", __FUNCTION__);
+			DEBUG_LOG("%s: can't open cwd\n", __FUNCTION__);
 		}
 	}
 
