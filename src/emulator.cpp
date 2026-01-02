@@ -988,11 +988,11 @@ extern int drive_ctrl;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (drive_ctrl == 1)
 						{
+							DEBUG_LOG("%s: webserver requests to Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
@@ -1002,6 +1002,7 @@ extern int drive_ctrl;
 						} 
 						else if (drive_ctrl == 2)/* .LST - XXX FIXME not yet clean for dual drive */
 						{
+							DEBUG_LOG("%s: webserver requests to Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
 							fileBrowser->FolderChanged();
 							if (fileBrowser->SelectLST(mount_img))
 								fileBrowser->SetSelectionsMade(true);
