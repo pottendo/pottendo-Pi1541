@@ -128,7 +128,7 @@ int numberOfUSBMassStorageDevices = 0;
 static DiskCaddy diskCaddy;
 static Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
-Pi1581 pi1581;
+static Pi1581 pi1581;
 #endif
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
@@ -806,6 +806,7 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
+#if 0	
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
 	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
 	if (diskImage)
@@ -828,6 +829,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 		}
 	}
 	inputMappings->WaitForClearButtons();
+#endif	
 	return IEC_COMMANDS;
 }
 #if !defined (__CIRCLE__)
@@ -1223,6 +1225,7 @@ extern int mount_new;
 EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
+#if 0
 	bool oldLED = false;
 	unsigned ctBefore = 0;
 	unsigned ctAfter = 0;
@@ -1467,6 +1470,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 		}
 
 	}
+#endif /* if 0 */
 	return exitReason;
 }
 #endif

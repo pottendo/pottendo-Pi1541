@@ -49,6 +49,7 @@ public:
     EXIT_TYPE Emulate1541(FileBrowser* fileBrowser);
     void run_emulator(void);
     inline Pi1541 *get_pi1541() { return &pi1541; }
+    inline Pi1581 *get_pi1581() { return &pi1581; }
     inline IEC_Bus *get_iec_bus() { return &iec_bus; }
     inline u8 get_deviceID() const { return deviceID; }
     inline uint32_t get_driveID() const { return driveID; }

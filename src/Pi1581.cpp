@@ -16,16 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
-#if defined (PI1581SUPPORT)
 #include "defs.h"
+#if defined (PI1581SUPPORT)
 #include "Pi1581.h"
 #include "iec_bus.h"
 #include "options.h"
 #include "ROMs.h"
 #include "debug.h"
+#include "emulator.h"
 
-extern Pi1581 pi1581;
-extern u8 s_u8Memory[0xc000];
+extern emulator_t* emulator_instance;
+extern emulator_t* emulator_instance_dr9;
+static u8 s_u8Memory[0xc000];
+static u8 s_u8Memory_dr9[0xc000];
 extern ROMs roms;
 
 // PA0 SIDE0
@@ -77,7 +80,7 @@ enum
 	FAST_SERIAL_DIR_OUT
 };
 
-extern u16 pc;
+extern u16 _pc;
 
 // CS
 // 8520
@@ -95,20 +98,19 @@ extern u16 pc;
 u8 read6502_1581(u16 address)
 {
 	u8 value = 0;
-#if defined(PI1581SUPPORT)
 	if (address & 0x8000)
 	{
 		value = roms.Read1581(address);
 	}
 	else if (address >= 0x6000)
 	{
-		value = pi1581.wd177x.Read(address);
-		//DEBUG_LOG("177x r %04x %02x %04x\r\n", address, value, pc);
+		value = emulator_instance->get_pi1581()->wd177x.Read(address);
+		DEBUG_LOG("%s: 177x r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 	}
 	else if (address >= 0x4000)
 	{
-		value = pi1581.CIA.Read(address);
-		//DEBUG_LOG("CIA r %04x %02x %04x\r\n", address, value, pc);
+		value = emulator_instance->get_pi1581()->CIA.Read(address);
+		DEBUG_LOG("%s: CIA r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 	}
 	else if (address < 0x2000)
 	{
@@ -118,7 +120,6 @@ u8 read6502_1581(u16 address)
 	{
 		value = address >> 8;	// Empty address bus
 	}
-#endif
 	return value;
 }
 
@@ -131,26 +132,82 @@ u8 peek6502_1581(u16 address)
 
 void write6502_1581(u16 address, const u8 value)
 {
-#if defined(PI1581SUPPORT)
 	if (address & 0x8000)
 	{
 		return;
 	}
 	else if (address >= 0x6000)
 	{
-		//DEBUG_LOG("177x w %04x %02x %04x\r\n", address, value, pc);
-		pi1581.wd177x.Write(address, value);
+		DEBUG_LOG("%s: 177x w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		emulator_instance->get_pi1581()->wd177x.Write(address, value);
 	}
 	else if (address >= 0x4000)
 	{
-		//DEBUG_LOG("CIA w %04x %02x %04x\r\n", address, value, pc);
-		pi1581.CIA.Write(address, value);
+		DEBUG_LOG("%s: CIA w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		emulator_instance->get_pi1581()->CIA.Write(address, value);
 	}
 	else if (address < 0x2000)
 	{
 		s_u8Memory[address & 0x1fff] = value;
 	}
-#endif
+}
+
+// drive 9 versions, ugly Fixme
+u8 read6502_1581_dr9(u16 address)
+{
+	u8 value = 0;
+	if (address & 0x8000)
+	{
+		value = roms.Read1581(address);
+	}
+	else if (address >= 0x6000)
+	{
+		value = emulator_instance_dr9->get_pi1581()->wd177x.Read(address);
+		//DEBUG_LOG("177x r %04x %02x %04x\r\n", address, value, _pc);
+	}
+	else if (address >= 0x4000)
+	{
+		value = emulator_instance_dr9->get_pi1581()->CIA.Read(address);
+		//DEBUG_LOG("CIA r %04x %02x %04x\r\n", address, value, _pc);
+	}
+	else if (address < 0x2000)
+	{
+		value = s_u8Memory_dr9[address & 0x1fff];
+	}
+	else
+	{
+		value = address >> 8;	// Empty address bus
+	}
+	return value;
+}
+
+// Use for debugging (Reads VIA registers without the regular VIA read side effects)
+u8 peek6502_1581_dr9(u16 address)
+{
+	u8 value = 0;
+	return value;
+}
+
+void write6502_1581_dr9(u16 address, const u8 value)
+{
+	if (address & 0x8000)
+	{
+		return;
+	}
+	else if (address >= 0x6000)
+	{
+		DEBUG_LOG("177x w %04x %02x %04x\r\n", address, value, _pc);
+		emulator_instance_dr9->get_pi1581()->wd177x.Write(address, value);
+	}
+	else if (address >= 0x4000)
+	{
+		DEBUG_LOG("CIA w %04x %02x %04x\r\n", address, value, _pc);
+		emulator_instance_dr9->get_pi1581()->CIA.Write(address, value);
+	}
+	else if (address < 0x2000)
+	{
+		s_u8Memory_dr9[address & 0x1fff] = value;
+	}
 }
 
 static void CIAPortA_OnPortOut(void* pUserData, unsigned char status)
@@ -177,7 +234,7 @@ static void CIAPortA_OnPortOut(void* pUserData, unsigned char status)
 		pi1581->CIA.GetPortA()->SetInput(PORTA_PINS_RDY, true);
 		if (pi1581->wd177x.IsExternalMotorAsserted())
 		{
-			//DEBUG_LOG("pc=%04x\r\n", pc);
+			//DEBUG_LOG("_pc=%04x\r\n", _pc);
 			pi1581->wd177x.AssertExternalMotor(motorAsserted); // !MOTOR
 		}
 	}
@@ -189,6 +246,8 @@ static void CIAPortB_OnPortOut(void* pUserData, unsigned char status)
 {
 	Pi1581* pi1581 = (Pi1581*)pUserData;
 
+	//DEBUG_LOG("%s: pi1581 = %p, iec_bus = %p", __FUNCTION__, pi1581, pi1581->iec_bus);
+
 	pi1581->wd177x.SetWPRTPin(status & PORTB_PINS_WPAT); // !WPAT
 
 	if (status & PORTB_PINS_FAST_SER_DIR)
@@ -196,8 +255,7 @@ static void CIAPortB_OnPortOut(void* pUserData, unsigned char status)
 	else
 		pi1581->fastSerialDirection = FAST_SERIAL_DIR_IN;
 
-
-	IEC_Bus::PortB_OnPortOut(0, status);
+	pi1581->iec_bus->PortB_OnPortOut(0, status);
 }
 
 Pi1581::Pi1581()
@@ -212,7 +270,7 @@ void Pi1581::Initialise()
 	CIA.ConnectIRQ(&m6502.IRQ);
 	// IRQ is not connected on a 1581
 	//wd177x.ConnectIRQ(&m6502.IRQ);
-
+	DEBUG_LOG("%s: pi1581, this = %p", __FUNCTION__, this);
 	CIA.GetPortA()->SetPortOut(this, CIAPortA_OnPortOut);
 	CIA.GetPortB()->SetPortOut(this, CIAPortB_OnPortOut);
 
@@ -256,8 +314,8 @@ void Pi1581::Update()
 		// When 1
 		//	- SP is sent to DATA
 		//	- Fast Clock (SRQ) is sent to CNT
-		IEC_Bus::SetFastSerialData(!CIA.GetPinSP());	// Communication on fast serial is done after the inverter.
-		IEC_Bus::SetFastSerialSRQ(CIA.GetPinCNT());
+		iec_bus->SetFastSerialData(!CIA.GetPinSP());	// Communication on fast serial is done after the inverter.
+		iec_bus->SetFastSerialSRQ(CIA.GetPinCNT());
 		//trace lines and see it this needs to set other lines
 	}
 	else
@@ -265,8 +323,8 @@ void Pi1581::Update()
 		// When 0
 		//	- DATA is sent to SP
 		//	- CNT is sent to Fast Clock (SRQ)
-		CIA.SetPinSP(!IEC_Bus::GetPI_Data());	// Communication on fast serial is done before the inverter.
-		CIA.SetPinCNT(IEC_Bus::GetPI_SRQ());
+		CIA.SetPinSP(!iec_bus->GetPI_Data());	// Communication on fast serial is done before the inverter.
+		CIA.SetPinCNT(iec_bus->GetPI_SRQ());
 	}
 
 	for (int i = 0; i < 4; ++i)
@@ -282,7 +340,7 @@ void Pi1581::Reset()
 	fastSerialDirection = FAST_SERIAL_DIR_IN;
 	CIA.Reset();
 	wd177x.Reset();
-	IEC_Bus::Reset();
+	iec_bus->Reset();
 	// On a real drive the outputs look like they are being pulled high (when set to inputs) (Taking an input from the front end of an inverter)
 	CIABPortB = CIA.GetPortB();
 	CIABPortB->SetInput(VIAPORTPINS_DATAOUT, true);
@@ -292,6 +350,7 @@ void Pi1581::Reset()
 
 void Pi1581::SetDeviceID(u8 id)
 {
+	deviceID = id;
 	CIA.GetPortA()->SetInput(PORTA_PINS_DEVSEL0, id & 1);
 	CIA.GetPortA()->SetInput(PORTA_PINS_DEVSEL1, id & 2);
 }

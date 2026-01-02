@@ -56,9 +56,11 @@ public:
 	unsigned fastSerialDirection;
 	unsigned int RDYDelayCount;
 
+	IEC_Bus *iec_bus;
 private:
 	DiskImage* diskImage;
 	bool LED;
+	u8 deviceID;
 
 	//u8 Memory[0xc000];
 

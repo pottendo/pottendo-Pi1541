@@ -479,7 +479,10 @@ void IEC_Bus::ReadEmulationMode1581(void)
 {
 	IOPort* portB = 0;
 #if !defined (CIRCLE_GPIO)
-	gplev0 = read32(ARM_GPIO_GPLEV0);
+	if (dual_drive == 0)
+		gplev0 = read32(ARM_GPIO_GPLEV0);
+	else if (get_driveID() == 0) 
+		gplev0 = read32(ARM_GPIO_GPLEV0);
 #else	
 	gplev0 = CGPIOPin::ReadAll();
 #endif	

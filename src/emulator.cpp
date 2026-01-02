@@ -49,6 +49,7 @@ extern void write6502_dr9(u16 address, const u8 value);
 extern void write6502ExtraRAM_dr9(u16 address, const u8 value);
 extern u8 read6502_1581_dr9(u16 address);
 extern void write6502_1581_dr9(u16 address, const u8 value);
+
 extern bool usb_mass_update;
 
 emulator_t *emulator_instance = nullptr;
@@ -203,6 +204,7 @@ EmulatingMode emulator_t::BeginEmulating(FileBrowser* fileBrowser, const char* f
 			{
 				fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
 				fileBrowser->ShowDeviceAndROM( roms.ROMName1581 );
+				DEBUG_LOG("%s: rom name = %s", __FUNCTION__, roms.ROMName1581);
 			}
 			return EMULATING_1581;
 		}
@@ -270,13 +272,12 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 	iec_bus.ReadBrowseMode();
 
 	bool extraRAM = options.GetExtraRAM();
-	if (get_deviceID() == 9)
+	if (get_driveID() == 1)
 	{
 		emulator_instance_dr9 = this;
 		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM_dr9 : read6502_dr9;
 		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM_dr9 : write6502_dr9;
 		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
-		//drive0.Acquire();
 	}
 	else
 	{
@@ -284,7 +285,6 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM : read6502;
 		DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM : write6502;
 		pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
-		//drive1.Acquire();
 	}
 
 	iec_bus.VIA = &pi1541.VIA[0];
@@ -576,6 +576,8 @@ extern int mount_new;
 }
 
 #if defined(PI1581SUPPORT)
+u16 _pc;
+
 EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 {
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
@@ -607,10 +609,21 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 	// Force an update on all the buttons now before we start emulation mode. 
 	iec_bus.ReadBrowseMode();
 
-	DataBusReadFn dataBusRead = read6502_1581;
-	DataBusWriteFn dataBusWrite = write6502_1581;
-	pi1581.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
-
+	if (get_driveID() == 1)
+	{
+		emulator_instance_dr9 = this;
+		DataBusReadFn dataBusRead = read6502_1581_dr9;
+		DataBusWriteFn dataBusWrite = write6502_1581_dr9;
+		pi1581.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+	}
+	else
+	{
+		emulator_instance = this;
+		DataBusReadFn dataBusRead = read6502_1581;
+		DataBusWriteFn dataBusWrite = write6502_1581;
+		pi1581.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+	}
+	pi1581.iec_bus = &iec_bus;
 	iec_bus.CIA = &pi1581.CIA;
 	iec_bus.port = pi1581.CIA.GetPortB();
 	pi1581.Reset();	// will call iec_bus.Reset();
@@ -638,7 +651,7 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 		{
 			if (pi1581.m6502.SYNC())	// About to start a new instruction.
 			{
-				pc = pi1581.m6502.GetPC();
+				_pc = pc = pi1581.m6502.GetPC();
 				// See if the emulated cpu is executing CD:_ (ie back out of emulated image)
 				if (pc == SNOOP_CD_CBM1581 || pc == SNOOP_CD_CBM1581_JIFFY) snoopPC = pc;
 
@@ -839,7 +852,8 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
 	pi1541.Initialise();
-
+	pi1581.Initialise();
+	
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
 	_m_IEC_Commands->Set128BootSectorName(options.Get128BootSectorName());
 	_m_IEC_Commands->SetLowercaseBrowseModeFilenames(options.LowercaseBrowseModeFilenames());
