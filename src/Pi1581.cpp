@@ -98,6 +98,7 @@ extern u16 _pc;
 u8 read6502_1581(u16 address)
 {
 	u8 value = 0;
+	//DEBUG_LOG("%s: address = 0x%04x", __FUNCTION__, address);
 	if (address & 0x8000)
 	{
 		value = roms.Read1581(address);
@@ -105,12 +106,12 @@ u8 read6502_1581(u16 address)
 	else if (address >= 0x6000)
 	{
 		value = emulator_instance->get_pi1581()->wd177x.Read(address);
-		DEBUG_LOG("%s: 177x r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		//DEBUG_LOG("%s: 177x r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 	}
 	else if (address >= 0x4000)
 	{
 		value = emulator_instance->get_pi1581()->CIA.Read(address);
-		DEBUG_LOG("%s: CIA r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		//DEBUG_LOG("%s: CIA r %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 	}
 	else if (address < 0x2000)
 	{
@@ -120,6 +121,7 @@ u8 read6502_1581(u16 address)
 	{
 		value = address >> 8;	// Empty address bus
 	}
+	//DEBUG_LOG("%s: address = 0x%04x, val = 0x%02x", __FUNCTION__, address, value);
 	return value;
 }
 
@@ -132,24 +134,27 @@ u8 peek6502_1581(u16 address)
 
 void write6502_1581(u16 address, const u8 value)
 {
+	//DEBUG_LOG("%s: address = 0x%04x, val = 0x%02x", __FUNCTION__, address, value);
 	if (address & 0x8000)
 	{
 		return;
 	}
 	else if (address >= 0x6000)
 	{
-		DEBUG_LOG("%s: 177x w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		//DEBUG_LOG("%s: before 177x w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 		emulator_instance->get_pi1581()->wd177x.Write(address, value);
+		//DEBUG_LOG("%s: after 177x w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 	}
 	else if (address >= 0x4000)
 	{
-		DEBUG_LOG("%s: CIA w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
+		//DEBUG_LOG("%s: CIA w %04x %02x %04x\r\n", __FUNCTION__, address, value, _pc);
 		emulator_instance->get_pi1581()->CIA.Write(address, value);
 	}
 	else if (address < 0x2000)
 	{
 		s_u8Memory[address & 0x1fff] = value;
 	}
+	//DEBUG_LOG("%s: done", __FUNCTION__);
 }
 
 // drive 9 versions, ugly Fixme
@@ -196,12 +201,12 @@ void write6502_1581_dr9(u16 address, const u8 value)
 	}
 	else if (address >= 0x6000)
 	{
-		DEBUG_LOG("177x w %04x %02x %04x\r\n", address, value, _pc);
+		//DEBUG_LOG("177x w %04x %02x %04x\r\n", address, value, _pc);
 		emulator_instance_dr9->get_pi1581()->wd177x.Write(address, value);
 	}
 	else if (address >= 0x4000)
 	{
-		DEBUG_LOG("CIA w %04x %02x %04x\r\n", address, value, _pc);
+		//DEBUG_LOG("CIA w %04x %02x %04x\r\n", address, value, _pc);
 		emulator_instance_dr9->get_pi1581()->CIA.Write(address, value);
 	}
 	else if (address < 0x2000)
@@ -269,7 +274,7 @@ void Pi1581::Initialise()
 
 	CIA.ConnectIRQ(&m6502.IRQ);
 	// IRQ is not connected on a 1581
-	//wd177x.ConnectIRQ(&m6502.IRQ);
+	wd177x.ConnectIRQ(nullptr);
 	DEBUG_LOG("%s: pi1581, this = %p", __FUNCTION__, this);
 	CIA.GetPortA()->SetPortOut(this, CIAPortA_OnPortOut);
 	CIA.GetPortB()->SetPortOut(this, CIAPortB_OnPortOut);

@@ -807,19 +807,32 @@ public:
 #if defined(PI1581SUPPORT)
 	inline void RefreshOuts1581(void)
 	{
-		unsigned set = 0;
-		unsigned clear = 0;
-		unsigned tmp;
-
 		if (!splitIECLines)
 		{
 			unsigned outputs = 0;
-#if !defined (CIRCLE_GPIO)
+			static unsigned out_dr1 = 0;
+			if (dual_drive > 0)
+			{
+				emuSpinLock.Acquire();
+				// time_fn_arm();
+				if (get_driveID() == 1) /* secondary drive only or'd to main drive 0 cycle */
+				{
+					out_dr1 = 0;
+					if (AtnaDataSetToOut || DataSetToOut)
+						out_dr1 |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
+					if (ClockSetToOut)
+						out_dr1 |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
+					emuSpinLock.Release();
+					return;
+				}
+				emuSpinLock.Release();
+			}
+#if !defined(CIRCLE_GPIO)
 			if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
 			if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
 			//if (SRQSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_SRQ - 10) * 3));			// For Option A hardware we should not support pulling more than 2 lines low at any one time!
 
-			unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs;
+			unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs | out_dr1;
 			write32(ARM_GPIO_GPFSEL1, nValue);
 #else
 			u32 im = 0, om = 0;
@@ -843,34 +856,60 @@ public:
 		}
 		else
 		{
-			if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
-			else clear |= 1 << PIGPIO_OUT_DATA;
+			unsigned set = 0;
+			unsigned clear = 0;
+			static unsigned set_dr1 = 0;
+			static unsigned clear_dr1 = 0;
+			unsigned tmp;
+			if (dual_drive > 0)
+			{
+				emuSpinLock.Acquire();
+				// time_fn_arm();
+				if (get_driveID() == 1) /* secondary drive only or'd to main drive 0 cycle */
+				{
+					set_dr1 = clear_dr1 = 0;
+					if (AtnaDataSetToOut || DataSetToOut)
+						set_dr1 |= (1 << PIGPIO_OUT_DATA);
+					else
+						clear_dr1 |= (1 << PIGPIO_OUT_DATA);
+					if (ClockSetToOut)
+						set_dr1 |= (1 << PIGPIO_OUT_CLOCK);
+					else
+						clear_dr1 |= (1 << PIGPIO_OUT_CLOCK);
+					if (SRQSetToOut)
+						set_dr1 |= (1 << PIGPIO_OUT_SRQ); // fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
+					else
+						clear_dr1 |= (1 << PIGPIO_OUT_SRQ);
+				}
+			}
+			if (AtnaDataSetToOut || DataSetToOut) set |= ((1 << PIGPIO_OUT_DATA) | set_dr1);
+			else clear |= ((1 << PIGPIO_OUT_DATA) | clear_dr1);
 
-			if (ClockSetToOut) set |= 1 << PIGPIO_OUT_CLOCK;
-			else clear |= 1 << PIGPIO_OUT_CLOCK;
+			if (ClockSetToOut) set |= ((1 << PIGPIO_OUT_CLOCK) | set_dr1);
+			else clear |= ((1 << PIGPIO_OUT_CLOCK) | clear_dr1);
 
-			if (SRQSetToOut) set |= 1 << PIGPIO_OUT_SRQ;	// fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
-			else clear |= 1 << PIGPIO_OUT_SRQ;
+			if (SRQSetToOut) set |= ((1 << PIGPIO_OUT_SRQ) | set_dr1);	// fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
+			else clear |= ((1 << PIGPIO_OUT_SRQ) | clear_dr1);
 
 			if (!invertIECOutputs) {
 				tmp = set;
 				set = clear;
 				clear = tmp;
 			}
-		}
-#if !defined (CIRCLE_GPIO)
-		write32(ARM_GPIO_GPSET0, set);
-		write32(ARM_GPIO_GPCLR0, clear);
+#if !defined(CIRCLE_GPIO)
+			write32(ARM_GPIO_GPSET0, set);
+			write32(ARM_GPIO_GPCLR0, clear);
 #else
 #if RASPPI == 5
-		write32 (RIO0_OUT (0, RIO_CLR_OFFSET), clear);
-		write32 (RIO0_OUT (0, RIO_SET_OFFSET), set);
+			write32(RIO0_OUT(0, RIO_CLR_OFFSET), clear);
+			write32(RIO0_OUT(0, RIO_SET_OFFSET), set);
 #else
-		_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
-		CGPIOPin::WriteAll(set, _mask);
+			_mask |= ((1 << PIGPIO_OUT_DATA) | (1 << PIGPIO_OUT_CLOCK) | (1 << PIGPIO_OUT_SRQ));
+			CGPIOPin::WriteAll(set, _mask);
 #endif
 #endif
-	}			
+		}
+	}
 #endif /* PI1581SUPPORT */	
 
 	void WaitMicroSeconds(u32 amount)
