@@ -365,7 +365,7 @@ class IEC_Bus
 #endif	
 public:
 	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
-	~IEC_Bus() = default;
+	~IEC_Bus() { Reset(); };
 
 	inline void Initialise(void)
 	{
@@ -1069,7 +1069,7 @@ public:
 	m8520* CIA;
 	IOPort* port;
 
-	void Reset(void);
+	void Reset(bool nowait = false);
 
 	bool GetInputButtonPressed(int buttonIndex) { return InputButton[buttonIndex] && !InputButtonPrev[buttonIndex]; }
 	bool GetInputButtonReleased(int buttonIndex) { return InputButton[buttonIndex] == false; }

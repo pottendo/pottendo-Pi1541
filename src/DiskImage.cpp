@@ -1464,8 +1464,10 @@ DiskImage::DiskType DiskImage::GetDiskImageTypeViaExtention(const char* diskImag
 			return T64;
 		else if (IsLSTExtention(diskImageName))
 			return LST;
+#if defined(PI1581SUPPORT)			
 		else if (toupper((char)ext[1]) == 'D' && ext[2] == '8' && ext[3] == '1')
 			return D81;
+#endif			
 		else if (toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'R' && toupper((char)ext[3]) == 'G')
 			return PRG;
 	}

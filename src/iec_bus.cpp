@@ -618,9 +618,10 @@ void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
 	//	RefreshOuts1541();
 }
 
-void IEC_Bus::Reset(void)
+void IEC_Bus::Reset(bool nowait)
 {
-	WaitUntilReset();
+	if (!nowait)
+		WaitUntilReset();
 
 	// VIA $1800
 	//	CA2, CB1 and CB2 are not connected (reads as high)
@@ -650,7 +651,7 @@ void IEC_Bus::Reset(void)
 
 	if (AtnaDataSetToOut) PI_Data = true;
 #endif
-
+	RefreshOuts1541();
 #if defined(PI1581SUPPORT)
 	RefreshOuts1581();
 #endif	
