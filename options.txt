@@ -66,7 +66,9 @@ SoundOnGPIOFreq = 150 // Frequency of buzz in Hz
 ////////////////////////// Emulation Section 
 
 // If you would like to change the drive number then specify it here (8 is the default)
-//deviceID = 9
+//deviceID = 8
+Drive0DeviceID = 8  // drive0 deviceID same as deviceID
+Drive1DeviceID = 9  // drive1 deviceID
 
 // By default Pi1541 will search the root of the SD card for a ROM file and use this for ROM1.
 // The first file found with either of the following names will be used; d1541.rom, dos1541, d1541II, Jiffy.bin
@@ -115,6 +117,7 @@ LowercaseBrowseModeFilenames = 1
 //LcdLogoName = 1541ii
 LcdLogoName = 1541classic
 //LcdLogoName = customfile.raw
+logoDisplayDelay = 2  // show logo, wait x seconds
 
 // If you are using the Pi's composite video out then these options allow you to experiment with the display resolution
 //ScreenWidth = 512
@@ -136,9 +139,9 @@ DisplayTrack = 0
 // If you rather it create a G64 then use this option.
 //NewDiskType = g64
 
-//QuickBoot = 0		// faster startup
-//ShowOptions = 0	// display some options on startup screen 
-//IgnoreReset = 0
+QuickBoot = 0		// faster startup
+ShowOptions = 0	    // display some options on startup screen 
+IgnoreReset = 0
 
 // This option will display the temperature of the Pi's CPU.
 // It should be about 52C anything above 75C is bad and there is something wrong with your hardware

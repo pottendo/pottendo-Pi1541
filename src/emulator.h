@@ -45,11 +45,13 @@ public:
 
     EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon);
     void GlobalSetDeviceID(u8 id);
-    EXIT_TYPE Emulate1581(FileBrowser* fileBrowser);
     EXIT_TYPE Emulate1541(FileBrowser* fileBrowser);
+#if defined(PI1581SUPPORT)    
+    EXIT_TYPE Emulate1581(FileBrowser* fileBrowser);
+    inline Pi1581 *get_pi1581() { return &pi1581; }
+#endif    
     void run_emulator(void);
     inline Pi1541 *get_pi1541() { return &pi1541; }
-    inline Pi1581 *get_pi1581() { return &pi1581; }
     inline IEC_Bus *get_iec_bus() { return &iec_bus; }
     inline u8 get_deviceID() const { return deviceID; }
     inline uint32_t get_driveID() const { return driveID; }

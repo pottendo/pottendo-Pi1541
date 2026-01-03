@@ -87,15 +87,19 @@ void xPortB_OnPortOut(void* pUserData, unsigned char status)
 	emu->get_iec_bus()->PortB_OnPortOut(nullptr, status);
 }
 
-emulator_t::emulator_t(u8 driveNumber, const uint32_t core)
+emulator_t::emulator_t(u8 devID, const uint32_t core)
     : selectedViaIECCommands(false), 
-    deviceID(driveNumber),
+    deviceID(devID),
 	driveID(core),
-	diskCaddy(driveNumber),
-	iec_bus(driveNumber, driveID),
+	diskCaddy(devID),
+	pi1541(devID),
+#if defined(PI1581SUPPORT)
+	pi1581(devID),
+#endif
+	iec_bus(devID, driveID),
 	shared_IEC(false)
 {
-    DEBUG_LOG("%s: emulator for drive = %d", __FUNCTION__, driveNumber);
+    DEBUG_LOG("%s: emulator for drive = %d", __FUNCTION__, deviceID);
 	_m_IEC_Commands = new IEC_Commands(&iec_bus);
 
 	_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
@@ -335,6 +339,7 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 	IEC_Bus::dual_drive = dual_drive;
 	//dual_drive = 0;
 	emuSpinLock.Release();
+	DEBUG_LOG("%s: entering 1541 RT emulation for device %d, total running drives = %d", __FUNCTION__, pi1541.get_deviceID(), dual_drive + 1);
 	while (exitReason == EXIT_UNKNOWN)
 	{
 #if defined(RPI2)
@@ -435,7 +440,6 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 		}
 		// We have now output so HERE is where the next phi2 cycle starts.
 		pi1541.Update();
-
 
 		bool reset = iec_bus.IsReset();
 		if (reset)
@@ -643,6 +647,12 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 
 	oldTrack = pi1581.wd177x.GetCurrentTrack();
 
+	emuSpinLock.Acquire();
+	dual_drive++;
+	IEC_Bus::dual_drive = dual_drive;
+	emuSpinLock.Release();
+
+	DEBUG_LOG("%s: entering 1581 RT emulation for device %d, total running drives = %d", __FUNCTION__, pi1581.get_deviceID(), dual_drive + 1);
 	while (exitReason == EXIT_UNKNOWN)
 	{
 		iec_bus.ReadEmulationMode1581();
@@ -835,8 +845,12 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 			}
 #endif
 		}
-
 	}
+	emuSpinLock.Acquire();
+	dual_drive--;
+	IEC_Bus::dual_drive = dual_drive;
+	emuSpinLock.Release();
+
 	return exitReason;
 }
 #endif
@@ -852,8 +866,10 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 	diskCaddy.SetScreen(screen, screenLCD, &roms);
 	fileBrowser = new FileBrowser(inputMappings, &diskCaddy, &roms, &deviceID, options.DisplayPNGIcons(), screen, screenLCD, options.ScrollHighlightRate());
 	pi1541.Initialise();
+#if defined(PI1581SUPPORT)	
 	pi1581.Initialise();
-	
+#endif
+
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
 	_m_IEC_Commands->Set128BootSectorName(options.Get128BootSectorName());
 	_m_IEC_Commands->SetLowercaseBrowseModeFilenames(options.LowercaseBrowseModeFilenames());

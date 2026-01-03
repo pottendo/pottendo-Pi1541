@@ -291,16 +291,17 @@ void write6502ExtraRAM_dr9(u16 address, const u8 value)
 	else if (addressLines11And12 == 0x1800) (*(emulator_instance_dr9->get_pi1541())).VIA[(address & 0x400) != 0].Write(address, value);	// address line 10 indicates what VIA to index
 }
 
-Pi1541::Pi1541()
+Pi1541::Pi1541(u8 d) :
+	device_id(d)
 {
-	VIA[0].ConnectIRQ(&m6502.IRQ);
-	VIA[1].ConnectIRQ(&m6502.IRQ);
+	Initialise();
 }
 
 void Pi1541::Initialise()
 {
 	VIA[0].ConnectIRQ(&m6502.IRQ);
 	VIA[1].ConnectIRQ(&m6502.IRQ);
+	DEBUG_LOG("%s: pi1541 initialized for device %d", __FUNCTION__, device_id);
 }
 
 //void Pi1541::ConfigureOfExtraRAM(bool extraRAM)

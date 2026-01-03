@@ -27,7 +27,7 @@ class Pi1541
 {
 
 public:
-	Pi1541();
+	Pi1541(u8 deviceID = 8);
 
 	void Initialise();
 
@@ -54,7 +54,7 @@ public:
 		VIA[0].GetPortB()->SetInput(VIAPORTPINS_DEVSEL0, id & 1);
 		VIA[0].GetPortB()->SetInput(VIAPORTPINS_DEVSEL1, id & 2);
 	}
-
+	inline u8 get_deviceID(void) { return device_id; }
 private:
 	u8 device_id;
 	//u8 Memory[0xc000];

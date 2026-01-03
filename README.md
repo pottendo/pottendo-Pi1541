@@ -193,6 +193,8 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
+| Drive0DeviceID | 8, 9, 10, 11 | Selects device ID for drive 0, same as deviceID | 8 | no sanity check done |
+| Drive1DeviceID | 8, 9, 10, 11 | Selects device ID for drive 1 | 9 | no sanity check done|
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
 | netWifi     | 0 or 1 | disable/enable Wifi network              |0||

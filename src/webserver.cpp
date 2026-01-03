@@ -838,7 +838,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeaderCB;
 		const u8 *pPartDataCB;
 		unsigned nPartLengthCB;
-		string curr_dir, files;
+		static string curr_dir, files;
+		curr_dir = "";
+		files = "";
 		string curr_path = urlDecode(pParams);
 		string page = "index.html";
 		stringstream ss(pParams);
@@ -1387,10 +1389,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	{
 		string msg = "no status";
 		stringstream ss(pParams);
-		string type, param1, param2;
+		string type, param1, param2, param3;
 		getline(ss, type, '&');
 		getline(ss, param1, '&');
 		getline(ss, param2, '&');
+		getline(ss, param3, '&');
 		type = urlDecode(type);
 		// DEBUG_LOG("%s: drives.html: type = '%s', param1 = '%s', param2 = '%s', emu_lock0 = %d, emu_lock1 = %d,",
 		//	__FUNCTION__, type.c_str(), param1.c_str(), param2.c_str(), emu_lock0, emu_lock1);
@@ -1406,25 +1409,26 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
  		}
 		else if (type == "[switchDrive]")
 		{
-			msg = string("Drive ") + param1 + " switched <i>" + param2 + "</i>";
-			mount_new = stoi(param1) + 8;
+			msg = string("Drive ") + param3 + " switched <i>" + param2 + "</i>";
 			if (param2 == "off")
 			{
 				drive_ctrl = 3;
 				DEBUG_LOG("%s: lock emulator drive %s", __FUNCTION__, param1.c_str());
-				if (param1 == "0")
+				if (param3 == "0")
 					emu_lock0 = 1;
-				else if (param1 == "1")
+				else if (param3 == "1")
 					emu_lock1 = 1;
 			}
 			else if (param2 == "on")
 			{
 				DEBUG_LOG("%s: unlock emulator drive %s", __FUNCTION__, param1.c_str());
-				if (param1 == "0")
+				if (param3 == "0")
 					emu_lock0 = 0;
-				else if (param1 == "1")
+				else if (param3 == "1")
 					emu_lock1 = 0;
 			}
+			if (param1 != "n/a")
+				mount_new = stoi(param1);
 			MsDelay(1000); // let the drive "spin up" to sync the display
 		}
 		const char *st[] = { "off", "on" };
@@ -1454,9 +1458,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			dm1.c_str(), // Drive 1 emulation mode
 			di0.c_str(), // Drive 0 diskimage name
 			di1.c_str(), // Drive 1 diskimage name
-			st[emu_lock0], st[emu_lock0], // on/off button drive 0
+			id0.c_str(), st[emu_lock0], st[emu_lock0], // on/off button drive 0
 			id0.c_str(), // Drive 0 mount button
-			st[emu_lock1], st[emu_lock1], //on/off button drive 1
+			id1.c_str(), st[emu_lock1], st[emu_lock1], // on/off button drive 1
 			id1.c_str(), // Drive 1 mount button
 			Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;

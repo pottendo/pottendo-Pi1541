@@ -30,7 +30,7 @@ class Pi1581
 {
 
 public:
-	Pi1581();
+	Pi1581(u8 deviceID = 8);
 
 	void Initialise();
 
@@ -57,10 +57,11 @@ public:
 	unsigned int RDYDelayCount;
 
 	IEC_Bus *iec_bus;
+	inline u8 get_deviceID(void) { return device_id; }
 private:
 	DiskImage* diskImage;
 	bool LED;
-	u8 deviceID;
+	u8 device_id;
 
 	//u8 Memory[0xc000];
 

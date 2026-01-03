@@ -880,7 +880,10 @@ public:
 						set_dr1 |= (1 << PIGPIO_OUT_SRQ); // fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
 					else
 						clear_dr1 |= (1 << PIGPIO_OUT_SRQ);
+					emuSpinLock.Release();	
+					return;
 				}
+				emuSpinLock.Release();
 			}
 			if (AtnaDataSetToOut || DataSetToOut) set |= ((1 << PIGPIO_OUT_DATA) | set_dr1);
 			else clear |= ((1 << PIGPIO_OUT_DATA) | clear_dr1);

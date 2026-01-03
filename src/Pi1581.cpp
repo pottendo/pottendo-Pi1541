@@ -263,7 +263,8 @@ static void CIAPortB_OnPortOut(void* pUserData, unsigned char status)
 	pi1581->iec_bus->PortB_OnPortOut(0, status);
 }
 
-Pi1581::Pi1581()
+Pi1581::Pi1581(u8 d) :
+	device_id(d)
 {
 	Initialise();
 }
@@ -275,7 +276,7 @@ void Pi1581::Initialise()
 	CIA.ConnectIRQ(&m6502.IRQ);
 	// IRQ is not connected on a 1581
 	wd177x.ConnectIRQ(nullptr);
-	DEBUG_LOG("%s: pi1581, this = %p", __FUNCTION__, this);
+
 	CIA.GetPortA()->SetPortOut(this, CIAPortA_OnPortOut);
 	CIA.GetPortB()->SetPortOut(this, CIAPortB_OnPortOut);
 
@@ -286,6 +287,7 @@ void Pi1581::Initialise()
 	CIA.GetPortA()->SetInput(PORTA_PINS_RDY, true);
 
 	RDYDelayCount = 0;
+	DEBUG_LOG("%s: pi1581 initialized for device %d", __FUNCTION__, device_id);
 }
 
 void Pi1581::Update()
@@ -355,7 +357,7 @@ void Pi1581::Reset()
 
 void Pi1581::SetDeviceID(u8 id)
 {
-	deviceID = id;
+	device_id = id;
 	CIA.GetPortA()->SetInput(PORTA_PINS_DEVSEL0, id & 1);
 	CIA.GetPortA()->SetInput(PORTA_PINS_DEVSEL1, id & 2);
 }
