@@ -838,7 +838,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		const char *pPartHeaderCB;
 		const u8 *pPartDataCB;
 		unsigned nPartLengthCB;
-		static string curr_dir, files;
+		string curr_dir, files;
 		curr_dir = "";
 		files = "";
 		string curr_path = urlDecode(pParams);

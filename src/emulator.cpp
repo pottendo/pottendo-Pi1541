@@ -120,6 +120,10 @@ emulator_t::emulator_t(u8 devID, const uint32_t core)
 emulator_t::~emulator_t()
 {
 	DEBUG_LOG("%s: destructor called for drive = %d", __FUNCTION__, deviceID);
+	emuSpinLock.Acquire();
+	if (emu_selected)
+		emu_selected->get_iec_bus()->ResetIO();
+	emuSpinLock.Release();
     delete _m_IEC_Commands;
 }
 

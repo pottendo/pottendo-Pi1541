@@ -1,4 +1,33 @@
-# Pi1541 - Circle ported, ready for new features
+# Pi1541 - DualDrive branch
+
+This is a work-in-progress branch trying to make a dual drive emulation on a single Pi1541 HW possible.
+Whether this will be maintained or not is not yet clear as it significantly degrades performance/compatibility especially in dual drive mode.
+
+## Current status
+- New UI element to control drives and image mounts for Drive 0 and Drive 1
+- Option A and Option B HW supported
+- Tested on Pi3B+ and Pi4, Smaller models will not be supported
+- Pi1581 works only in single drive mode
+- See below, some new config items are available
+
+In dual drive mode, Drive 0 has priority and I/Os are synchronized with this drive. This leads to frequent cycle losses on drive 1 which may degrade the experience.
+In general dual drive mode is lesser compatible as single drive mode. 
+
+Known issues:
+- Loosing cycles normally has impact on host applications, e.g. GEOS
+- Not all applications/fast loaders are supported on other devices IDs. i.e. different from 8
+
+## Impressions
+
+The new drives menu:
+
+![](docs/drives.png)
+
+GEOS running with 2 drives:
+
+![](docs/GEOS-dualdrive.png)
+
+# Pi1541 - pottendo-Pi1541
 
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 

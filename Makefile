@@ -73,7 +73,7 @@ else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)
 TARGET_CIRCLE ?= kernel8-rpi4.img
 #XFLAGS += -DCIRCLE_GPIO=1
-#XFLAGS += -DHEAP_DEBUG
+XFLAGS += -DHEAP_DEBUG
 else
 TARGET_CIRCLE ?= kernel7l.img
 #XFLAGS += -DCIRCLE_GPIO=1

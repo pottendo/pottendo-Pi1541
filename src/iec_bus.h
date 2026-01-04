@@ -365,7 +365,7 @@ class IEC_Bus
 #endif	
 public:
 	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
-	~IEC_Bus() { Reset(); };
+	~IEC_Bus() { Reset(); DEBUG_LOG("%s: done", __FUNCTION__); };
 
 	inline void Initialise(void)
 	{
@@ -575,6 +575,38 @@ public:
 		emuSpinLock.Release();
 	}
 
+	inline void ResetIO(void)
+	{
+#if defined(__CIRCLE__)		
+#if 0 // probably not needed		
+		IEC_Bus::IO_IN_BUTTON1.SetMode(GPIOModeInputPullUp, true);
+		IEC_Bus::IO_IN_BUTTON2.SetMode(GPIOModeInputPullUp, true);
+		IEC_Bus::IO_IN_BUTTON3.SetMode(GPIOModeInputPullUp, true);
+		IEC_Bus::IO_IN_BUTTON4.SetMode(GPIOModeInputPullUp, true);
+		IEC_Bus::IO_IN_BUTTON5.SetMode(GPIOModeInputPullUp, true);
+#endif
+
+		IEC_Bus::IO_IN_RESET.SetMode(GPIOModeInput);
+		IEC_Bus::IO_IN_SRQ.SetMode(GPIOModeInput);
+		IEC_Bus::IO_IN_ATN.SetMode(GPIOModeInput);
+		IEC_Bus::IO_IN_DATA.SetMode(GPIOModeInput);
+		IEC_Bus::IO_IN_CLOCK.SetMode(GPIOModeInput);
+
+		//IEC_Bus::IO_OUT_RESET.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_SPI0_RS.SetMode(GPIOModeOutput);
+
+		IEC_Bus::IO_OUT_ATN.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_SOUND.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_LED.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_CLOCK.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_DATA.SetMode(GPIOModeOutput);
+		IEC_Bus::IO_OUT_SRQ.SetMode(GPIOModeOutput);
+
+		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
+
+		DEBUG_LOG("%s: reset IO pins using circle GPIO functions", __FUNCTION__);			
+	}
+#endif
 	inline void LetSRQBePulledHigh()
 	{
 		SRQSetToOut = IEC_Bus::invertIECInputs;
