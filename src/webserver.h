@@ -23,12 +23,15 @@
 #include <circle/net/httpdaemon.h>
 #include <circle/actled.h>
 
+#define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
+
 class CWebServer : public CHTTPDaemon
 {
 public:
 	CWebServer (CNetSubSystem *pNetSubSystem,
 		    CActLED	  *pActLED,			// the LED to be controlled
-		    CSocket	  *pSocket = 0);		// is 0 for 1st created instance (listener)
+		    CSocket	  *pSocket = 0,		// is 0 for 1st created instance (listener)
+			unsigned max_content_size = MAX_CONTENT_SIZE, unsigned max_multipart_size = MAX_CONTENT_SIZE);		
 	~CWebServer (void);
 
 	// creates an instance of our derived webserver class

@@ -63,8 +63,6 @@ static string def_prefix = "SD:/1541";
 static char icon_buf[MAX_ICON_SIZE];
 static FileBrowser *webfileBrowser;		// used for previews
 
-#define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
-
 // our content
 static const char s_Index[] =
 #include "webcontent/index.h"
@@ -127,8 +125,9 @@ extern Options options;
 
 static u8 deviceIDdummy = 42;
 
-CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket)
-:	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
+CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket, 
+	unsigned max_content_size, unsigned max_multipart_size)
+:	CHTTPDaemon (pNetSubSystem, pSocket, max_content_size, 80, max_multipart_size),
 	m_pActLED (pActLED)
 {
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
