@@ -1,6 +1,13 @@
-# Pi1541 - Circle ported, ready for new features
+# Pi1541 - pottendo-Pi1541
 
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
+
+# News
+- LST support for D81 images 
+  Limitation: Mix D81 with others in one .LST file won't work, directory not updated (that's bug)
+- Configure web-memory profile (see new options below)
+- Improved rotary support - Credits to hgryska
+- Minor fixes
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
