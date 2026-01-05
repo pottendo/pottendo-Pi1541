@@ -420,7 +420,10 @@ void CKernel::run_webserver(bool isWifi)
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	{
 		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
-		CWebServer CWebServer(m_Net, &m_ActLED);
+		unsigned max_cs = options.GetMaxContentSize() * 1024;
+		unsigned max_mps = options.GetMaxMultipartSize() * 1024;
+		DEBUG_LOG("%s: launching webserver with: maxContentSize = %db, maxMultipartSize = %db", __FUNCTION__, max_cs, max_mps);
+		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs, max_mps);
 		int temp_period = 0;
 		logger.finished_booting("network core");
 		while (1)

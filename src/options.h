@@ -120,6 +120,8 @@ public:
 #if defined(__CIRCLE__)
 	inline unsigned int GetNetWifi() const { return netWifi; }
 	inline unsigned int GetNetEthernet() const { return netEthernet; }
+	inline unsigned GetMaxContentSize() const { return maxContentSize; }
+	inline unsigned GetMaxMultipartSize() const { return maxMultipartSize; }
 	inline void SetHeadLess(unsigned int h) { headLess = h; }
 	inline unsigned int GetHealthMonitor() const { return noHealthMonitor; }
 	inline unsigned int GetDHCP() const { return useDHCP; }
@@ -220,6 +222,10 @@ private:
 	// WiFi & Networking
 	unsigned int netWifi;
 	unsigned int netEthernet;
+	// maximum size of webpage
+	unsigned maxContentSize;
+	//  and multipart elements
+	unsigned maxMultipartSize; 
 
 	// Healthmonitor Console, default is off
 	unsigned int noHealthMonitor;
@@ -229,6 +235,7 @@ private:
 
 	// Timezone, multiplied by 60, defaults to 2.0 (CEST)
 	float TZ;
+
 #endif	
 };
 #endif

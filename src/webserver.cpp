@@ -48,8 +48,6 @@ static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
 
-#define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
-
 // our content
 static const char s_Index[] =
 #include "webcontent/index.h"
@@ -97,8 +95,9 @@ static const u8 s_font[] =
 
 static const char FromWebServer[] = "webserver";
 
-CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket)
-:	CHTTPDaemon (pNetSubSystem, pSocket, MAX_CONTENT_SIZE, 80, MAX_CONTENT_SIZE),
+CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket, 
+	unsigned max_content_size, unsigned max_multipart_size)
+:	CHTTPDaemon (pNetSubSystem, pSocket, max_content_size, 80, max_multipart_size),
 	m_pActLED (pActLED)
 {
 	m_nMaxMultipartSize = MAX_CONTENT_SIZE;

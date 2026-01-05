@@ -196,6 +196,8 @@ The following options control new functions available:
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
 | netWifi     | 0 or 1 | disable/enable Wifi network              |0||
+| maxContentSize | value | max memory in kB for webserver | 20000||
+| maxMultipartSize | value | max memory in kB for multipart uploads | 20000||
 | useDHCP     | 0 or 1 | disable/enable DHCP for optaining IP configuration |1||
 | IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          ||ignored when using DHCP |
 | NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          ||ignored when using DHCP |
@@ -212,6 +214,10 @@ headLess = 1  // no HDMI output
 TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
 netWifi = 0
 netEthernet = 1
+// webserver static memory profile in kB, use smaller value (4000) for Pis < 1GB memory.
+maxContentSize = 20000 // == 20MB
+maxMultipartSize = 20000
+
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
 useDHCP = 1 // get network config automatically, else set to '0' and define static network config below
 //IPAdress = 192.168.1.31
