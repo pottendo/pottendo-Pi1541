@@ -92,16 +92,16 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 	{
 		static char tmp[256];
 #if AARCH == 32		
-		snprintf(tmp, 255, "Memory: %dkB/%dkB (lost %d)", 
-			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024, static_cast<int>(ms->GetHeapFreeSpace(HEAP_ANY) - old));
+		snprintf(tmp, 255, "Memory: %dkB/%dkB)", 
+			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
 #else	
-		snprintf(tmp, 255, "Memory: %ldkB/%ldkB (lost %ld)", 
-			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024, static_cast<int>(ms->GetHeapFreeSpace(HEAP_ANY) - old));
+		snprintf(tmp, 255, "Memory: %ldkB/%ldkB", 
+			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
 #endif	
 		mem = std::string(tmp);
-		old = ms->GetHeapFreeSpace(HEAP_ANY);
 	}
-	//DEBUG_LOG("%s: Memory delta: %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old);
+	DEBUG_LOG("%s: Memory delta: %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old);
+	old = ms->GetHeapFreeSpace(HEAP_ANY);
 }
 
 void logHandler(void)
