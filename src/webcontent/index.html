@@ -107,7 +107,7 @@
 				<input type="hidden" id="xpath" name="xpath" value="%s">
 				<div class="form-group">
 					<table style="width: 100%;">
-						<tr><th>Select Diskimage for upload</th><th>Select Directory for upload (limit <15MB!)</th></tr>
+						<tr><th>Select Diskimage for upload</th><th>Select Directory for upload (limit &lt15MB!)</th></tr>
 						<td valign="top">
 							<div class="custom-file" style="margin: 8px auto;">
 								<input type="file" class="custom-file-input" id="UploadFile" name="diskimage" />
@@ -203,7 +203,7 @@
 		</script>
 		<script>
 			function newD64() {
-				let dname = prompt("Diskimage Name");
+				let dname = prompt("Diskimage Name, choose .d64 (default) or .g64 by extension");
 				if (dname != null) {
 					if (!dname.endsWith(".d64") && !dname.endsWith(".D64") &&
 						!dname.endsWith(".g64") && !dname.endsWith(".G64"))

@@ -98,9 +98,11 @@ static const char FromWebServer[] = "webserver";
 CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket, 
 	unsigned max_content_size, unsigned max_multipart_size)
 :	CHTTPDaemon (pNetSubSystem, pSocket, max_content_size, 80, max_multipart_size),
+	m_nMaxContentSize(max_content_size),
+	m_nMaxMultipartSize(max_multipart_size),
 	m_pActLED (pActLED)
 {
-	m_nMaxMultipartSize = MAX_CONTENT_SIZE;
+	
 }
 
 CWebServer::~CWebServer (void)
@@ -110,7 +112,7 @@ CWebServer::~CWebServer (void)
 
 CHTTPDaemon *CWebServer::CreateWorker (CNetSubSystem *pNetSubSystem, CSocket *pSocket)
 {
-	return new CWebServer (pNetSubSystem, m_pActLED, pSocket);
+	return new CWebServer (pNetSubSystem, m_pActLED, pSocket, m_nMaxContentSize, m_nMaxMultipartSize);
 }
 
 static std::string urlEncode(const std::string& value) {
@@ -771,7 +773,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	assert (pPath != 0);
 	assert (ppContentType != 0);
 	assert (m_pActLED != 0);
-	CString String;
 	const u8 *pContent = 0;
 	unsigned nLength = 0;
 	char filename[255];
@@ -779,9 +780,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	char field[255];
 	filename[0] = '\0';
 	extension[0] = '\0';
+	CString String;
 	string mem;
-	mem_stat(__FUNCTION__, mem, true);
-
+	// enable HEAD_DEBUG in circle
+	mem_stat(pPath, mem, true);
+	
 	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
@@ -1021,6 +1024,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				case MachineModelZero2W:
 				case MachineModel3B:
 				case MachineModel3BPlus:
+				case MachineModel3APlus:
 #if AARCH == 32
 					kernelname = "kernel8-32.img";
 #else
@@ -1298,8 +1302,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				return HTTPNotFound;
 		}
 		static char _t[256];
-		const char *encURL = urlEncode(curr_path).c_str();
-		strcpy(_t, encURL);
+		string encURL = urlEncode(curr_path);
+		strcpy(_t, encURL.c_str());
 		String.Format(s_mount, msg.c_str(), 
 					(def_prefix + curr_path).c_str(), 
 					(is_dir ? "<!--" : ""),
@@ -1394,13 +1398,15 @@ extern int reboot_req;
 		return HTTPNotFound;
 	}
 out:
+	//mem_stat("GETCONTENT:OUT", mem, false);
+	//DEBUG_LOG("%s: page size = %d", __FUNCTION__, nLength);
 	assert (pLength != 0);
 	if (*pLength < nLength)
 	{
-		CLogger::Get ()->Write (FromWebServer, LogError, "Increase MAX_CONTENT_SIZE to at least %u", nLength);
 		Kernel.log("%s: Increase MAX_CONTENT_SIZE to at least %u", __FUNCTION__, nLength);
+		DisplayMessage(0, 0, true, "Page too large", RGBA(0xff, 0xff, 0xff, 0xff), RGBA(0xff, 0, 0, 0xff));
 
-		return HTTPInternalServerError;
+		return HTTPRequestEntityTooLarge;
 	}
 
 	assert (pBuffer != 0);
@@ -1409,6 +1415,5 @@ out:
 	memcpy (pBuffer, pContent, nLength);
 
 	*pLength = nLength;
-
 	return HTTPOK;
 }

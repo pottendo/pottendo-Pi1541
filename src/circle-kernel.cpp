@@ -85,24 +85,23 @@ void setDNS(const char *dns)
 
 void mem_stat(const char *func, std::string &mem, bool verb)
 {
+	static size_t old = 0;
 	CMemorySystem *ms;
 	ms = CMemorySystem::Get();
 	if (verb) 
 	{
-		char tmp[256];
+		static char tmp[256];
 #if AARCH == 32		
-		snprintf(tmp, 255, "Memory: %dkB/%dkB", ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
+		snprintf(tmp, 255, "Memory: %dkB/%dkB (lost %d)", 
+			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024, static_cast<int>(ms->GetHeapFreeSpace(HEAP_ANY) - old));
 #else	
-		snprintf(tmp, 255, "Memory: %ldkB/%ldkB", ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
+		snprintf(tmp, 255, "Memory: %ldkB/%ldkB (lost %ld)", 
+			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024, static_cast<int>(ms->GetHeapFreeSpace(HEAP_ANY) - old));
 #endif	
-		mem = std::string(tmp); 
-		return;
+		mem = std::string(tmp);
+		old = ms->GetHeapFreeSpace(HEAP_ANY);
 	}
-	static size_t old = 0;
-	DEBUG_LOG("memory status: %s...", func);
-	DEBUG_LOG("Memory delta: %d", ms->GetHeapFreeSpace(HEAP_ANY) - old);
-	old = ms->GetHeapFreeSpace(HEAP_ANY);
-	DEBUG_LOG("Heap: %d/%d", old, ms->GetMemSize());
+	//DEBUG_LOG("%s: Memory delta: %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old);
 }
 
 void logHandler(void)
@@ -420,10 +419,26 @@ void CKernel::run_webserver(bool isWifi)
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	{
 		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
-		unsigned max_cs = options.GetMaxContentSize() * 1024;
-		unsigned max_mps = options.GetMaxMultipartSize() * 1024;
-		DEBUG_LOG("%s: launching webserver with: maxContentSize = %db, maxMultipartSize = %db", __FUNCTION__, max_cs, max_mps);
-		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs, max_mps);
+		unsigned max_cs = options.GetMaxContentSize();
+		unsigned max_mps = options.GetMaxMultipartSize();
+		if (max_cs < 256) { 
+			max_cs = 256;
+			DEBUG_LOG("%s: overruled maxContentSize to %d", __FUNCTION__, max_cs);
+		}
+		if (max_cs > 4000) {
+			max_cs = 4000;
+			DEBUG_LOG("%s: overruled maxContentSize to %d", __FUNCTION__, max_cs);
+		}
+		if (max_mps < 1000) { 
+			max_mps = 1000;
+			DEBUG_LOG("%s: overruled maxMultipartSize to %d", __FUNCTION__, max_mps);
+		}
+		if (max_mps > 20000) {
+			max_mps = 20000;
+			DEBUG_LOG("%s: overruled maxMultipartSize to %d", __FUNCTION__, max_mps);
+		}
+		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
+		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
 		int temp_period = 0;
 		logger.finished_booting("network core");
 		while (1)
