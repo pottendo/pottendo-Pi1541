@@ -99,6 +99,7 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 			ms->GetHeapFreeSpace(HEAP_ANY) / 1024, ms->GetMemSize() / 1024);
 #endif	
 		mem = std::string(tmp);
+		return;
 	}
 	DEBUG_LOG("%s: Memory delta: %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old);
 	old = ms->GetHeapFreeSpace(HEAP_ANY);
