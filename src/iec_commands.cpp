@@ -1159,6 +1159,8 @@ void IEC_Commands::FolderCommand()
 			char* in = (char*)channel.buffer;
 			int part;
 
+			in += 2;	// Skip command
+			
 			part = ParsePartition(&in);
 			if (part > 0)
 			{
@@ -1166,7 +1168,6 @@ void IEC_Commands::FolderCommand()
 				//Error(ERROR_74_DRlVE_NOT_READY);
 				return;
 			}
-			in += 2;	// Skip command
 			if (*in == ':')
 				in++;
 			MKDir(part, in);
@@ -1177,6 +1178,8 @@ void IEC_Commands::FolderCommand()
 			char* in = (char*)channel.buffer;
 			int part;
 
+			in += 2;	// Skip command
+			
 			part = ParsePartition(&in);
 			if (part > 0)
 			{
@@ -1184,7 +1187,6 @@ void IEC_Commands::FolderCommand()
 				//Error(ERROR_74_DRlVE_NOT_READY);
 				return;
 			}
-			in += 2;	// Skip command
 			if (*in == ':')
 				in++;
 			CD(part, in);
