@@ -23,15 +23,13 @@
 #include <circle/net/httpdaemon.h>
 #include <circle/actled.h>
 
-#define MAX_CONTENT_SIZE	(4000000 * 5) // 20MB
-
 class CWebServer : public CHTTPDaemon
 {
 public:
 	CWebServer (CNetSubSystem *pNetSubSystem,
 		    CActLED	  *pActLED,			// the LED to be controlled
 		    CSocket	  *pSocket = 0,		// is 0 for 1st created instance (listener)
-			unsigned max_content_size = MAX_CONTENT_SIZE, unsigned max_multipart_size = MAX_CONTENT_SIZE);		
+			unsigned max_content_size = 1000 * 1024, unsigned max_multipart_size = 20000 * 1024);		
 	~CWebServer (void);
 
 	// creates an instance of our derived webserver class
@@ -41,13 +39,14 @@ public:
 	THTTPStatus GetContent (const char  *pPath,		// path of the file to be sent
 				const char  *pParams,		// parameters to GET ("" for none)
 				const char  *pFormData, 	// form data from POST ("" for none)
-			        u8	    *pBuffer,		// copy your content here
-			        unsigned    *pLength,		// in: buffer size, out: content length
-			        const char **ppContentType);	// set this if not "text/html"
+		    	u8	    	*pBuffer,		// copy your content here
+				unsigned    *pLength,		// in: buffer size, out: content length
+				const char **ppContentType);	// set this if not "text/html"
 
 private:
+	const size_t m_nMaxContentSize;
+	const size_t m_nMaxMultipartSize;
 	CActLED *m_pActLED;
-	unsigned m_nMaxMultipartSize;
 };
 
 #endif

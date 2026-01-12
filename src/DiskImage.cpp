@@ -1058,7 +1058,7 @@ bool DiskImage::WriteG64(char* name)
 		}
 
 		f_close(&fp);
-		DEBUG_LOG("nSuccessfully saved G64\r\n");
+		//DEBUG_LOG("Successfully saved G64\r\n");
 
 		return true;
 	}

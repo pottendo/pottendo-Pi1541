@@ -68,6 +68,7 @@ else
 TARGET_CIRCLE ?= kernel8-32.img
 COMMON_OBJS += SpinLock.o
 #XFLAGS += -DCIRCLE_GPIO=1
+#XFLAGS += -DHEAP_DEBUG
 endif
 else ifeq ($(strip $(RASPPI)),4)
 ifeq ($(strip $(AARCH)),64)

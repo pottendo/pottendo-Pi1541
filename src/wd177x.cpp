@@ -535,11 +535,12 @@ void WD177x::UpdateCommandType2()
 								else
 								{
 									CommandComplete();
-
+#if 0
 									for (int i = 0; i < sbo; ++i)
 									{
 										DEBUG_LOG("%d %02x\r\n", i, sb[i]);
 									}
+#endif									
 									sbo = 0;
 								}
 							break;
@@ -1281,7 +1282,7 @@ void WD177x::Write(unsigned int address, unsigned char value)
 
 						CommandComplete();
 
-						DEBUG_LOG("FORCE_INTERRUPT\r\n");
+						DEBUG_LOG("1581::%s: FORCE_INTERRUPT\r\n", __FUNCTION__);
 
 
 						// Don't understand this? Shouldn't it be opposite (D8 enables the IRQ and D0 clears it)?

@@ -33,10 +33,10 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 # News
 - LST support for D81 images 
-  Limitation: Mix D81 with others in one .LST file won't work, directory not updated (that's bug)
+  Limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
 - Configure web-memory profile (see new options below)
 - Improved rotary support - Credits to hgryska
-- Minor fixes
+- Minor fixes: 3A+ kernel name for upload, create image supports .g64, ...
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
@@ -234,14 +234,14 @@ The following options control new functions available:
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
 | netWifi     | 0 or 1 | disable/enable Wifi network              |0||
-| maxContentSize | value | max memory in kB for webserver | 20000||
-| maxMultipartSize | value | max memory in kB for multipart uploads | 20000||
+| maxContentSize | value | max memory in kB for webserver | 1000 | range from 256 to 4000 |
+| maxMultipartSize | value | max memory in kB for multipart uploads | 20000| range from 1000 to 20000 |
 | useDHCP     | 0 or 1 | disable/enable DHCP for optaining IP configuration |1||
 | IPAddress   | a.b.c.d | IP Address, e.g. _192.168.1.31_          ||ignored when using DHCP |
 | NetMask   | a.b.c.d | NetMask, e.g. _192.168.1.0_          ||ignored when using DHCP |
 | DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          ||ignored when using DHCP |
 | DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          ||ignored when using DHCP |
-| (headLess)    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |0||
+| headLess    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |0||
 
 Here a snippet one can add to his `options.txt`:
 ```
@@ -253,8 +253,8 @@ TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US)
 netWifi = 0
 netEthernet = 1
 // webserver static memory profile in kB, use smaller value (4000) for Pis < 1GB memory.
-maxContentSize = 20000 // == 20MB
-maxMultipartSize = 20000
+maxContentSize = 1000     // == 1MB (min 256, max 4000)
+maxMultipartSize = 20000  // == 20MB for directory upload (min 1000, max 20000)
 
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
 useDHCP = 1 // get network config automatically, else set to '0' and define static network config below
@@ -266,6 +266,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 # Know Bugs
 
 - Pluging in a USB stick _after_ booting, won't show files on the USB mounted drive and display remains dark. Unplugging/re-plugging works as expected if USB is plugged in at startup
+- D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
 
 # Checkout & Build
 
