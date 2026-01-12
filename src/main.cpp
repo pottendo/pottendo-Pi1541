@@ -428,7 +428,6 @@ void UpdateLCD(const char* track, unsigned temperature)
 		core0RefreshingScreen.Acquire();
 #endif
 
-		//iec_bus_instance->WaitMicroSeconds(100);
 		usDelay(100);
 
 		if (options.DisplayTemperature())
@@ -439,7 +438,6 @@ void UpdateLCD(const char* track, unsigned temperature)
 		screenLCD->PrintText(false, 0, 0, tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
 		screenLCD->RefreshRows(0, 1);
 
-		//iec_bus_instance->WaitMicroSeconds(100);
 		usDelay(100);
 #if not defined(EXPERIMENTALZERO)
 		core0RefreshingScreen.Release();
