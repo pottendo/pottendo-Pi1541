@@ -782,7 +782,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	extension[0] = '\0';
 	CString String;
 	string mem;
-	// enable HEAD_DEBUG in circle
+	// enable HEAP_DEBUG in circle
+	//CMemorySystem::DumpStatus();
 	mem_stat(pPath, mem, true);
 	
 	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);

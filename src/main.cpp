@@ -1696,6 +1696,9 @@ extern int mount_new;
 #endif
 
 			DEBUG_LOG("Exited emulation %d\r\n", exitReason);
+#ifdef HEAP_DEBUG
+			CMemorySystem::DumpStatus();
+#endif	
 
 			// Clearing the caddy now
 			//	- will write back all changed/dirty/written to disk images now

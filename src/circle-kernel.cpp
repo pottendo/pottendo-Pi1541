@@ -35,6 +35,7 @@
 #include "options.h"
 #include "webserver.h"
 #include "version.h"
+#include <list>
 
 #define _DRIVE		"SD:"
 #define _FIRMWARE_PATH	_DRIVE "/firmware/"		// firmware files must be provided here
@@ -101,9 +102,55 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 		mem = std::string(tmp);
 		return;
 	}
-	DEBUG_LOG("%s: Memory delta: %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old);
+	DEBUG_LOG("%s: Memory delta: %d, heap = %d", func, ms->GetHeapFreeSpace(HEAP_ANY) - old, ms->GetHeapFreeSpace(HEAP_ANY));
 	old = ms->GetHeapFreeSpace(HEAP_ANY);
 }
+
+#ifdef HEAP_DEBUG	
+void mem_heapinit(void)
+{
+	std::list<char *> ptrs;
+	u32 s_nBucketSize[] = { HEAP_BLOCK_BUCKET_SIZES };
+	unsigned nBuckets = sizeof s_nBucketSize / sizeof s_nBucketSize[0];
+	u32 *pre_alloc = new u32[nBuckets];
+	DEBUG_LOG("%s: #buckets = %d", __FUNCTION__, nBuckets);
+	CMemorySystem::DumpStatus();
+	for (unsigned i = 0; i < nBuckets; i++)
+	{
+		if (s_nBucketSize[i] < 100000) {
+			pre_alloc[i] = 2000;
+		} 
+		else if (s_nBucketSize[i] < 1000000) {
+			pre_alloc[i] = 50;
+		}
+		else if (s_nBucketSize[i] < 25000000) {
+			pre_alloc[i] = 20;
+		}
+	}
+	for (unsigned i = 0; i < nBuckets; i++)
+	{
+		DEBUG_LOG("%s: preallocating %d x %d", __FUNCTION__, pre_alloc[i], s_nBucketSize[i]);
+		for (unsigned y = 0; y < pre_alloc[i]; y++)
+		{
+			char *dummy = (char *)malloc(s_nBucketSize[i]);
+			if (!dummy)
+			{
+				DEBUG_LOG("%s: out of mem, adjust buckets: bucket=%d, pre-alloc=%d", __FUNCTION__, s_nBucketSize[i], pre_alloc[i]);
+				goto out;
+			}
+			memset((void*)dummy, i, s_nBucketSize[i]);
+			ptrs.push_back(dummy);
+		}
+	}
+   	out:
+	std::string du;
+	DEBUG_LOG("%s: freeing %d ptrs", __FUNCTION__, ptrs.size());
+	for (auto i: ptrs)
+		free(i);
+	mem_stat(__FUNCTION__, du, false);
+	CMemorySystem::DumpStatus();
+}
+#endif	
 
 void logHandler(void)
 {
@@ -264,6 +311,11 @@ TShutdownMode CKernel::Run(void)
 	if (screenLCD && i2c_scan(options.I2CBusMaster(), options.I2CLcdAddress()))
 		snprintf(dsp, 63, "Display %s (I2C%d@0x%02x)", options.I2CLcdModelName(), options.I2CBusMaster(), options.I2CLcdAddress());
 	append2version(dsp);
+
+#ifdef HEAP_DEBUG
+	// pre-alloc mem to track potential losses more easily
+	mem_heapinit();
+#endif
 
 	// launch everything
 	Kernel.launch_cores();
