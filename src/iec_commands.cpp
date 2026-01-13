@@ -2437,24 +2437,28 @@ int IEC_Commands::CreateNewDisk(char* filenameNew, const char* ID, bool automoun
 {
 	DisplayMessage(240, 280, false, "Creating new disk", RGBA(0xff, 0xff, 0xff, 0xff), RGBA(0xff, 0, 0, 0xff));
 	DisplayMessage(0, 0, true, "Creating new disk", RGBA(0xff, 0xff, 0xff, 0xff), RGBA(0xff, 0, 0, 0xff));
-
+	unsigned length = 0;
 	switch (newDiskType)
 	{
 		case DiskImage::D64:
 			if (!(strstr(filenameNew, ".d64") || strstr(filenameNew, ".D64")))
 				strcat(filenameNew, ".d64");
+			length = DiskImage::CreateNewDiskInRAM(filenameNew, ID);	
 		break;
 		case DiskImage::G64:
 			if (!(strstr(filenameNew, ".g64") || strstr(filenameNew, ".G64")))
 				strcat(filenameNew, ".g64");
+			length = DiskImage::CreateNewDiskInRAM(filenameNew, ID);	
+		break;
+		case DiskImage::D81:
+			if (!(strstr(filenameNew, ".d81") || strstr(filenameNew, ".D81")))
+				strcat(filenameNew, ".d81");
+			length = DiskImage::CreateNewD81DiskInRAM(filenameNew, ID);	
 		break;
 		default:
 			return ERROR_25_WRITE_ERROR;
 		break;
 	}
-
-	unsigned length = DiskImage::CreateNewDiskInRAM(filenameNew, ID);
-
 	return WriteNewDiskInRAM(filenameNew, automount, length);
 }
 
@@ -2468,16 +2472,22 @@ int IEC_Commands::WriteNewDiskInRAM(char* filenameNew, bool automount, unsigned 
 	if (res == FR_NO_FILE)
 	{
 		DiskImage diskImage;
-		diskImage.OpenD64((const FILINFO*)0, (unsigned char*)DiskImage::readBuffer, length);
 
 		switch (newDiskType)
 		{
 			case DiskImage::D64:
+				diskImage.OpenD64((const FILINFO*)0, (unsigned char*)DiskImage::readBuffer, length);
 				if (!diskImage.WriteD64(filenameNew))
 					return ERROR_25_WRITE_ERROR;
 			break;
 			case DiskImage::G64:
+				diskImage.OpenD64((const FILINFO*)0, (unsigned char*)DiskImage::readBuffer, length);
 				if (!diskImage.WriteG64(filenameNew))
+					return ERROR_25_WRITE_ERROR;
+			break;
+			case DiskImage::D81:
+				diskImage.OpenD81((const FILINFO*)0, (unsigned char*)DiskImage::readBuffer, length);
+				if (!diskImage.WriteD81(filenameNew))
 					return ERROR_25_WRITE_ERROR;
 			break;
 			default:

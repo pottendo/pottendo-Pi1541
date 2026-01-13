@@ -845,26 +845,32 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			extern IEC_Commands *_m_IEC_Commands;
 			int ret;
-			char dt;
+			const char *dt;
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: create new disk '%s'", __FUNCTION__, ndir.c_str());
 			if (endsWith(fullndir, ".g64") || endsWith(fullndir, ".G64"))
 			{
-				dt = 'g';
+				dt = "g64";
 				_m_IEC_Commands->SetNewDiskType(DiskImage::G64);
+				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
+			}
+			else if (endsWith(fullndir, ".d81") || endsWith(fullndir, ".D81"))
+			{
+				dt = "d81";
+				_m_IEC_Commands->SetNewDiskType(DiskImage::D81);
 				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
 			}
 			else 
 			{
-				dt = 'd';
+				dt = "d64";
 				_m_IEC_Commands->SetNewDiskType(DiskImage::D64);
 				ret = _m_IEC_Commands->CreateNewDisk((char *)fullndir.c_str(), "42", true);
 			}
 			if (ret)
-				snprintf(msg_str, 1023,"Failed to create new %c64 image <i>%s</i>", dt, fullndir.c_str());
+				snprintf(msg_str, 1023,"Failed to create new %s image <i>%s</i>", dt, fullndir.c_str());
 			else
-				snprintf(msg_str, 1023,"Successfully created new %c64 image <i>%s</i>", dt, fullndir.c_str());
+				snprintf(msg_str, 1023,"Successfully created new %s image <i>%s</i>", dt, fullndir.c_str());
 			msg = msg_str;
 		}
 		if (fops == "[NEWLST]")
