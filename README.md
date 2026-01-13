@@ -37,6 +37,7 @@ GEOS running with 2 drives:
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 # News
+- Create d81 images
 - LST support for D81 images 
   Limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
 - Configure web-memory profile (see new options below)

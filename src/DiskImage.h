@@ -76,6 +76,7 @@ public:
 	~DiskImage();
 
 	static unsigned CreateNewDiskInRAM(const char* filenameNew, const char* ID, unsigned char* destBuffer = 0);
+	static unsigned CreateNewD81DiskInRAM(const char* filenameNew, const char* ID, unsigned char* destBuffer = 0);
 
 	bool OpenD64(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size);
 	bool OpenG64(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size);
@@ -222,6 +223,7 @@ public:
 
 	bool WriteD64(char* name = 0);
 	bool WriteG64(char* name = 0);
+	bool WriteD81(char *name = 0);
 
 	unsigned GetHash() const { return hash; }
 
@@ -244,7 +246,6 @@ private:
 	bool WriteNIB();
 	bool WriteNBZ();
 	bool WriteD71();
-	bool WriteD81();
 	bool WriteT64(char* name = 0);
 
 	inline void TestDirty(u32 track, bool isDirty)

@@ -205,10 +205,11 @@
 		</script>
 		<script>
 			function newD64() {
-				let dname = prompt("Diskimage Name, choose .d64 (default) or .g64 by extension");
+				let dname = prompt("Diskimage Name, choose format by extension\\n.d64 (default), .g64 or d81");
 				if (dname != null) {
 					if (!dname.endsWith(".d64") && !dname.endsWith(".D64") &&
-						!dname.endsWith(".g64") && !dname.endsWith(".G64"))
+						!dname.endsWith(".g64") && !dname.endsWith(".G64") &&
+						!dname.endsWith(".d81") && !dname.endsWith(".D81"))
 						ext = ".d64";
 					else
 						ext = "";
