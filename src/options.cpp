@@ -395,8 +395,6 @@ void Options::Process(char* buffer)
 		// If using non split lines then only the 1st bus master can be used (as ATN is using the 2nd)
 		i2cBusMaster = 0;
 	}
-	// Backward compatibility for old config files
-	drive0DeviceID = deviceID;
 }
 
 int Options::GetDecimal(char* pString)
