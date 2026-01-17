@@ -306,7 +306,11 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 	//printf("%s: - gplev0 = %08x\n", __FUNCTION__, gplev0);
 #else
 #if !defined (CIRCLE_GPIO)
-	gplev0 = read32(ARM_GPIO_GPLEV0);
+	if (dual_drive == 0)
+		gplev0 = read32(ARM_GPIO_GPLEV0);
+	else if (get_driveID() == 0) 
+		gplev0 = read32(ARM_GPIO_GPLEV0);
+	//DEBUG_LOG("%s: gplev0 = %08x, device = %d", __FUNCTION__, gplev0, device_id);
 #else
 	gplev0 = CGPIOPin::ReadAll();
 #endif	

@@ -47,9 +47,9 @@ public:
 
 	void Process(char* buffer);
 
-	inline unsigned int GetDeviceID() const { return deviceID; }
-	inline unsigned int GetDrive0DeviceID() const { return drive0DeviceID; }
-	inline unsigned int GetDrive1DeviceID() const { return drive1DeviceID; }
+	inline int GetDeviceID() const { return deviceID; }
+	inline int GetDrive0DeviceID() const { return drive0DeviceID; }
+	inline int GetDrive1DeviceID() const { return drive1DeviceID; }
 	inline unsigned int GetOnResetChangeToStartingFolder() const { return onResetChangeToStartingFolder; }
 	inline const char* GetAutoMountImageName() const { return autoMountImageName; }
 	inline const char* GetRomFontName() const { return ROMFontName; }
@@ -142,9 +142,9 @@ public:
 	static float GetFloat(char* pString);
 
 private:
-	unsigned int deviceID;
-	unsigned int drive0DeviceID;
-	unsigned int drive1DeviceID;
+	int deviceID;
+	int drive0DeviceID;
+	int drive1DeviceID;
 	unsigned int onResetChangeToStartingFolder;
 	unsigned int extraRAM;
 	unsigned int RAMBOard;

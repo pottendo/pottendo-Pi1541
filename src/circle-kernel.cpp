@@ -325,10 +325,8 @@ TShutdownMode CKernel::Run(void)
 	// pre-alloc mem to track potential losses more easily
 	mem_heapinit();
 #endif
-
-	{
-		IEC_Bus iec(0);	// initialize IEC bus
-	}
+	emu_lock0 = (options.GetDrive0DeviceID() < 0) ? 1 : 0;
+	emu_lock1 = (options.GetDrive1DeviceID() < 0) ? 1 : 0;
 	// launch everything
 	Kernel.launch_cores();
 	logger.finished_booting("display core");
@@ -674,11 +672,12 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
 			}
-			emulator_t *em = new emulator_t(options.GetDrive0DeviceID(), 0);
+			u8 di = (options.GetDrive0DeviceID() < 0) ? (options.GetDrive0DeviceID() * -1) : options.GetDrive0DeviceID();
+			emulator_t *em = new emulator_t(di, 0);
 			emuSpinLock.Acquire();
 			emu_drive0 = em;
 			emuSpinLock.Release();
-			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 0, options.GetDrive0DeviceID(), core);
+			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 0, di, core);
 			em->run_emulator();
 			emuSpinLock.Acquire();
 			emu_drive0 = nullptr;
@@ -707,11 +706,12 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 				//DEBUG_LOG("%s: core %d waiting for emu_lock0 to be released... emu_lock0 = %d", __FUNCTION__, core, emu_lock0);
 				MsDelay(1000);
 			}
-			emulator_t *em = new emulator_t(options.GetDrive1DeviceID(), 1);
+			u8 di = (options.GetDrive1DeviceID() < 0) ? (options.GetDrive1DeviceID() * -1) : options.GetDrive1DeviceID();
+			emulator_t *em = new emulator_t(di, 1);
 			emuSpinLock.Acquire();
 			emu_drive1 = em;
 			emuSpinLock.Release();
-			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 1, options.GetDrive0DeviceID(), core);
+			Kernel.log("%s: emulator for drive %d, device %d started on core %d", __FUNCTION__, 1, di, core);
 			em->run_emulator();
 			emuSpinLock.Acquire();
 			emu_drive1 = nullptr;

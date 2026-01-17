@@ -99,7 +99,7 @@ emulator_t::emulator_t(u8 devID, const uint32_t core)
 	iec_bus(devID, driveID),
 	shared_IEC(false)
 {
-    DEBUG_LOG("%s: emulator for drive = %d", __FUNCTION__, deviceID);
+    DEBUG_LOG("%s: emulator for drive %d, device = %d", __FUNCTION__, driveID, deviceID);
 	_m_IEC_Commands = new IEC_Commands(&iec_bus);
 
 	_m_IEC_Commands->SetStarFileName(options.GetStarFileName());
