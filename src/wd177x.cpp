@@ -1021,7 +1021,7 @@ void WD177x::Write(unsigned int address, unsigned char value)
 
 			if ((statusRegister & BUSY) && (command != FORCE_INTERRUPT))
 			{
-				DEBUG_LOG("Command rejected BUSY\n");
+				//DEBUG_LOG("Command rejected BUSY\n");
 			}
 			else
 			{
