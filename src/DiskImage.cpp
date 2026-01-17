@@ -1755,10 +1755,14 @@ unsigned DiskImage::CreateNewDiskInRAM(const char* filenameNew, const char* ID, 
 		}
 	}
 	ptr = (unsigned char*)&blankD64DIRBAM[DISKNAME_OFFSET_IN_DIR_BLOCK];
-	int len = strlen(filenameNew);
+	if (!filenameNew) filenameNew = "POTTENDO";
+	const char *fn = strrchr((char*)filenameNew, '/');
+	if (!fn) fn = filenameNew;
+	else fn++;
+	int len = strlen(fn)-4;
 	for (i = 0; i < len; ++i)
 	{
-		*ptr++ = ascii2petscii(filenameNew[i]);
+		*ptr++ = ascii2petscii(fn[i]);
 	}
 	for (; i < 18; ++i)
 	{

@@ -1164,7 +1164,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		char *from_edit = "-1";
 		string dfn = def_prefix + curr_path;
 		string textfile = "";
-		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
 			//DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
