@@ -7,6 +7,7 @@ Whether this will be maintained or not is not yet clear as it significantly degr
 - New UI element to select drive and image mounts for Drive 0 and Drive 1
 - "Back" butten selected between Drive 0 and 1, buttons/rotary apply to current selected drive
 - Option A and Option B HW supported
+- Tested Pi1541 as 2'nd and 3'rd drive 'after' a real 1541 - seems to work
 - Tested on Pi3B+ and Pi4, Smaller models will not be supported
 - Pi1581 works only in single drive mode
 - See below, some new config items are available
