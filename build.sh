@@ -91,7 +91,7 @@ if [ x${tag} != "xnone" ] ; then
     fi
     RELEASE=${base}/../${tag}
     mkdir -p ${RELEASE}/debug-syms 2>/dev/null
-    build_legacy="yes"
+    build_legacy="no"
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart

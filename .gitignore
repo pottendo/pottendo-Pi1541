@@ -31,3 +31,5 @@ src/webcontent/C64_Pro_Mono-STYLE.h
 1541.txt
 pico1541/pi1541
 kernel8.img.zip
+CBM-FileBrowser_v1.6/sources/CBM-FileBrowser.d64
+src/webcontent/drives.h
