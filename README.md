@@ -21,6 +21,7 @@ Known issues:
 - "Back" button for selecting drives (for the LCD UI) only works if both drives are in the same emulation mode.
   i.e. both in 1541 emulation or both in IEC emulation
 - LCD display is sometimes messed up
+- IEC Simulation not working reliably with 2 drives
 
 ## Impressions
 

@@ -409,7 +409,7 @@ void IEC_Commands::SimulateIECBegin(void)
 	iec_bus_instance->WaitWhileAtnAsserted();
 	iec_bus_instance->ReleaseClock();
 	iec_bus_instance->ReleaseData();
-	DEBUG_LOG("%s: Begin\r\n", __FUNCTION__);
+	DEBUG_LOG("%s: Drive %d(%d)\r\n", __FUNCTION__, iec_bus_instance->get_driveID(), iec_bus_instance->get_deviceID());
 }
 
 // Paraphrasing Jim Butterfield

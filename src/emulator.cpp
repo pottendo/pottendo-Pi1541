@@ -340,11 +340,6 @@ EXIT_TYPE __not_in_flash_func(emulator_t::Emulate1541) (FileBrowser* fileBrowser
 	//DEBUG_LOG("%s: Fast booted 1541 in %d cycles", __FUNCTION__, cycleCount);
 
 	// Self test code done. Begin realtime emulation.
-	emuSpinLock.Acquire();
-	dual_drive++;
-	IEC_Bus::dual_drive = dual_drive;
-	//dual_drive = 0;
-	emuSpinLock.Release();
 	DEBUG_LOG("%s: entering 1541 RT emulation for device %d, total running drives = %d", __FUNCTION__, pi1541.get_deviceID(), dual_drive + 1);
 	while (exitReason == EXIT_UNKNOWN)
 	{
@@ -578,10 +573,6 @@ extern int mount_new;
 #endif
 		}
 	}
-	emuSpinLock.Acquire();
-	dual_drive--;
-	IEC_Bus::dual_drive = dual_drive;
-	emuSpinLock.Release();
 	return exitReason;
 }
 
@@ -652,11 +643,6 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 	selectedViaIECCommands = false;
 
 	oldTrack = pi1581.wd177x.GetCurrentTrack();
-
-	emuSpinLock.Acquire();
-	dual_drive++;
-	IEC_Bus::dual_drive = dual_drive;
-	emuSpinLock.Release();
 
 	DEBUG_LOG("%s: entering 1581 RT emulation for device %d, total running drives = %d", __FUNCTION__, pi1581.get_deviceID(), dual_drive + 1);
 	while (exitReason == EXIT_UNKNOWN)
@@ -852,11 +838,6 @@ EXIT_TYPE emulator_t::Emulate1581(FileBrowser* fileBrowser)
 #endif
 		}
 	}
-	emuSpinLock.Acquire();
-	dual_drive--;
-	IEC_Bus::dual_drive = dual_drive;
-	emuSpinLock.Release();
-
 	return exitReason;
 }
 #endif
@@ -875,6 +856,12 @@ void __not_in_flash_func(emulator_t::run_emulator)(void)
 #if defined(PI1581SUPPORT)	
 	pi1581.Initialise();
 #endif
+
+	emuSpinLock.Acquire();
+	dual_drive++;
+	IEC_Bus::dual_drive = dual_drive;
+	//dual_drive = 0;
+	emuSpinLock.Release();
 
 	_m_IEC_Commands->SetAutoBootFB128(options.AutoBootFB128());
 	_m_IEC_Commands->Set128BootSectorName(options.Get128BootSectorName());
@@ -1146,6 +1133,13 @@ extern int drive_ctrl;
 #endif
 		}
 	}
+
+	emuSpinLock.Acquire();
+	dual_drive--;
+	IEC_Bus::dual_drive = dual_drive;
+	emuSpinLock.Release();
+
+
 	delete fileBrowser;
 }
 
