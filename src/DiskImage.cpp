@@ -1533,6 +1533,11 @@ bool DiskImage::IsTextFileExtention(const char *name)
 	return false;
 }
 
+bool DiskImage::IsEditableExtention(const char *name)
+{
+	return IsTextFileExtention(name) || IsLSTExtention(name);
+}
+
 bool DiskImage::IsPicFileExtention(const char *name)
 {
 	char* ext = strrchr((char*)name, '.');

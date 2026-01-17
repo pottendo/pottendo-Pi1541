@@ -3,7 +3,10 @@
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 # News
+V2.1Beta2:
+- Support to edit text, .lst files
 - Create d81 images
+V2.1Beta1:
 - LST support for D81 images 
   Limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
 - Configure web-memory profile (see new options below)

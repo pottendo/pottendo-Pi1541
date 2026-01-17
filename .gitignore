@@ -22,6 +22,7 @@ src/webcontent/update.h
 src/webcontent/logger.h
 src/webcontent/mount-imgs.h
 src/webcontent/edit-config.h
+src/webcontent/edit-file.h
 pi3-sample
 src/webcontent/edit-config.h
 make-*.log

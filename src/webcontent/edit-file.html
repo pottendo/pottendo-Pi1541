@@ -59,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541 WebUI</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Mount Images</h3>
+					<h3 style="text-align:left">Edit file</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -78,7 +78,7 @@
 						<div style="display: flex; justify-content: space-between; width: 100%;">
 							<a href="index.html"><input type="submit" class="btn btn-success"
 									value="Upload/Manage SDCard" /></a>
-							<a href="mount-imgs.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
+							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
 									value="Mount Images" /></a>
 							<a href="edit-config.html"><input type="submit" class="btn btn-success"
 									value="Change Config" /></a>
@@ -103,44 +103,14 @@
 			</table>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<form action="mount-imgs.html" method="post" name="manage_form" accept-charset="UTF-8" enctype="multipart/form-data">
+			<form action="/edit-file.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
 				<div class="form-group">
-					<table class="dirs">
-						<tr valign="center">
-							<td>%s</td>
-							%s
-							<td style="text-align:right;">
-								<a href="mount-imgs.html?[MOUNT]&%s">
-									<button type="button" class="btn btn-success">Mount</button>
-								</a>
-								<a href="edit-file.html?[EDIT]&%s">
-									<button type="button" class="btn btn-success">Edit</button>
-								</a>
-								<a href="mount-imgs.html?[DEL]&%s">
-									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Delete</button>
-								</a>
-								<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
-									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
-								</a>
-							</td>
-							%s
-						</tr>
-					</table>
-					<br /><br />
-					<table class="dirs">
-						<tr>
-							<th>Directories</th>
-							<th>Files</th>
-							<th>Image content</th>
-						</tr>
-						<tr valign="top">
-							<td>%s</td>
-							<td>%s</td>
-							<td
-								style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">
-								%s</td>
-						</tr>
-					</table>
+					<h4 style="text-align:left">Edit <i>%s</i></h2>
+		    		<textarea class="form-control" name="%s" id="textarea_options" rows="10" 
+							  style="background-color: #4d4d4d; font-family: monospace; color: #ECFFDC;">%s</textarea>
+					<br/>
+					<input type="submit" class="btn btn-success" value="%s" %s />
+					<input type="button" class="btn btn-success" value="Back" onclick="window.history.go(%s); return false;">
 				</div>
 			</form>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
@@ -148,8 +118,8 @@
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
 				target="_blank">Pi1541 firebase</a>.</p>
-		<p class="small">Find the pottendo-Pi1541 project resources here
-			<a href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
+		<p class="small">Find the pottendo-Pi1541 project resources here <a
+				href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
 		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
 			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
 			crossorigin="anonymous"></script>
@@ -182,14 +152,6 @@
 				document.getElementById('externalText').textContent = "Failed to load content.";
 				console.error(err);
 			  });
-		</script>
-		<script>
-			window.addEventListener("pageshow", function (event) {
-  				if (event.persisted) {
-    				// Page was restored from bfcache
-    				window.location.reload();
-  				}
-			});
 		</script>
 	</div>
 </body>

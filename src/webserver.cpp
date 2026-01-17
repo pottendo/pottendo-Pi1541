@@ -60,6 +60,11 @@ static const char s_update[] =
 static const char s_edit_config[] =
 #include "webcontent/edit-config.h"
 ;
+
+static const char s_edit_file[] =
+#include "webcontent/edit-file.h"
+;
+
 static const char s_mount[] =
 #include "webcontent/mount-imgs.h"
 ;
@@ -1137,6 +1142,67 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
+	else if (strcmp(pPath, "/edit-file.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+		string msg = "", msg2 = "";
+		string curr_path = urlDecode(pParams);
+		string curr_dir;
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
+		stringstream ss(pParams);
+		string type;
+		getline(ss, type, '&');
+		getline(ss, curr_path, '&');
+		curr_path = urlDecode(curr_path);
+		type = urlDecode(type);
+		char *from_edit = "-1";
+		string dfn = def_prefix + curr_path;
+		string textfile = "";
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+		{
+			//DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
+			extract_field("name=\"", pPartHeader, filename, extension);
+			dfn = filename;			
+
+			f_unlink((dfn + ".BAK").c_str());	// unconditionally remove backup
+			f_rename(dfn.c_str(), (dfn + ".BAK").c_str());
+			if (write_file(dfn.c_str(), pPartData, nPartLength))
+				msg = string("Successfully wrote <i>") + dfn + "</i><br />";
+			else
+				msg = string("Failed to write <i>") + dfn + "</i><br />";
+			from_edit = "-2";
+		}
+		if (DiskImage::IsEditableExtention(dfn.c_str()) == false)
+		{
+			msg += "File not editable!";
+			String.Format(s_edit_file, msg.c_str(), 
+				dfn.c_str(),
+				"",
+				"",
+				"Back", "onclick=\"history.back(); return false;\"",
+				"-1",
+				Kernel.get_version(), mem.c_str());
+				goto editout;
+		}
+		read_file(dfn, msg2, textfile);
+		msg += msg2 + "<br />";
+		String.Format(s_edit_file, msg.c_str(),
+					  dfn.c_str(),
+					  dfn.c_str(),
+					  textfile.c_str(),
+					  ("Save " + dfn).c_str(), "",
+					  from_edit,
+					  Kernel.get_version(), mem.c_str());
+
+	editout:
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
 	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
 		const char *pPartHeader;
@@ -1315,6 +1381,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					(def_prefix + curr_path).c_str(), 
 					(is_dir ? "<!--" : ""),
 					_t, // Mount
+					_t, // Edit
 					_t, // Delete
 					_t, img.c_str(), // Download
 					(is_dir ? "-->" : ""),

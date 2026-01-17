@@ -191,6 +191,7 @@ public:
 	static bool IsDiskImageD71Extention(const char* diskImageName);
 	static bool IsLSTExtention(const char* diskImageName);
 	static bool IsTextFileExtention(const char* diskImageName);
+	static bool IsEditableExtention(const char* name);
 	static bool IsPicFileExtention(const char* diskImageName);
 
 	bool GetReadOnly() const { return readOnly; }
