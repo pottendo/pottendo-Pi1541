@@ -990,7 +990,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			Kernel.get_version(), mem.c_str(), 
 			curr_path.c_str(), // mkdir script
 			curr_path.c_str(), // newD64 script
-			curr_path.c_str()); // newLST script
+			curr_path.c_str(), // newLST script
+			curr_path.c_str()); // newTXT script
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -1153,9 +1154,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
-		string type;
+		string type, fops, fname;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
+		getline(ss, fops, '&');
+		getline(ss, fname, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
 		char *from_edit = "-1";
@@ -1174,31 +1177,40 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				msg = string("Successfully wrote <i>") + dfn + "</i><br />";
 			else
 				msg = string("Failed to write <i>") + dfn + "</i><br />";
-			from_edit = "-2";
+			from_edit = "-2"; // need to go two levels back
+		}
+		if (fops == "[NEWTXT]")
+		{
+			fname = urlDecode(fname);
+			dfn = def_prefix + curr_path + "/" + fname;
+			if (write_file(dfn.c_str(), (const u8 *)"", 0))
+				msg += string("Successfully created new file <i>") + dfn + "</i><br />";
+			else
+				msg += string("Failed to create new file <i>") + dfn + "</i><br />";
 		}
 		if (DiskImage::IsEditableExtention(dfn.c_str()) == false)
 		{
 			msg += "File not editable!";
 			String.Format(s_edit_file, msg.c_str(), 
 				dfn.c_str(),
-				"",
-				"",
-				"Back", "onclick=\"history.back(); return false;\"",
-				"-1",
+				"", // form name
+				"", // textfile content
+				"Back", "onclick=\"history.back(); return false;\"",	// just back button
+				"-1", // need to go 1 level back
 				Kernel.get_version(), mem.c_str());
-				goto editout;
 		}
-		read_file(dfn, msg2, textfile);
-		msg += msg2 + "<br />";
-		String.Format(s_edit_file, msg.c_str(),
-					  dfn.c_str(),
-					  dfn.c_str(),
-					  textfile.c_str(),
-					  ("Save " + dfn).c_str(), "",
-					  from_edit,
-					  Kernel.get_version(), mem.c_str());
-
-	editout:
+		else 
+		{
+			read_file(dfn, msg2, textfile);
+			msg += msg2 + "<br />";
+			String.Format(s_edit_file, msg.c_str(),
+						  dfn.c_str(),
+						  dfn.c_str(),
+						  textfile.c_str(),
+						  ("Save " + dfn).c_str(), "",
+						  from_edit,
+						  Kernel.get_version(), mem.c_str());
+		}
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

@@ -4,7 +4,7 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 # News
 V2.1Beta2:
-- Support to edit text, .lst files
+- Support to create/edit .txt, .nfo or .lst files
 - Create d81 images
 V2.1Beta1:
 - LST support for D81 images 
