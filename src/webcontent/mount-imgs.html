@@ -110,10 +110,13 @@
 					<table class="dirs">
 						<tr valign="center">
 							<td>%s</td>
-							%s
 							<td style="text-align:right;">
+							%s
 								<a href="mount-imgs.html?[MOUNT]&%s">
 									<button type="button" class="btn btn-success">Mount</button>
+								</a>
+								<a href="edit-file.html?[EDIT]&%s">
+									<button type="button" class="btn btn-success">Edit</button>
 								</a>
 								<a href="mount-imgs.html?[DEL]&%s">
 									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Delete</button>
@@ -121,8 +124,9 @@
 								<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
 									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
 								</a>
-							</td>
 							%s
+                            	<button type="button" class="btn btn-success" id="rename" name="rename" onclick="prompt_rename()">Rename</button>
+							</td>
 						</tr>
 					</table>
 					<br />
@@ -175,6 +179,15 @@
 			};
 		</script>
 		<script>
+			function prompt_rename() {
+				let dname = prompt("Rename %s", "%s");
+				if (dname != null) {
+					let nurl = "mount-imgs.html?[RENAME]&" + "%s" + "&[NEWNAME]&" + encodeURIComponent(dname.trim());
+					window.location.href = nurl;
+				}
+			};
+		</script>
+		<script>
 			fetch('/pistats.html')
 			  .then(response => {
 				if (!response.ok) throw new Error("Network error");
@@ -187,6 +200,14 @@
 				document.getElementById('externalText').textContent = "Failed to load content.";
 				console.error(err);
 			  });
+		</script>
+		<script>
+			window.addEventListener("pageshow", function (event) {
+  				if (event.persisted) {
+    				// Page was restored from bfcache
+    				window.location.reload();
+  				}
+			});
 		</script>
 	</div>
 </body>

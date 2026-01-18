@@ -59,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541 WebUI</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Drives</h3>
+					<h3 style="text-align:left">Edit file</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -76,12 +76,10 @@
 				<tr>
 					<td>
 						<div style="display: flex; justify-content: space-between; width: 100%;">
-							<a href="index.html"><input type="submit" class="btn btn-success" 
+							<a href="index.html"><input type="submit" class="btn btn-success"
 									value="Upload/Manage SDCard" /></a>
 							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
 									value="Mount Images" /></a>
-							<a href="drives.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
-									value="Drives" /></a>
 							<a href="edit-config.html"><input type="submit" class="btn btn-success"
 									value="Change Config" /></a>
 							<a href="update.html"><input type="submit" class="btn btn-success"
@@ -95,83 +93,33 @@
 				</tr>
 			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-            <table style="width: 100%;">
-                <tr>
-                    <td>
-                        <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <h4 style="text-align: left">Status</h4>
-                            <div style="text-align: right" id="externalText">Loading...</div>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <div style="text-align:right;">
-                            <a href="drives.html?[toggleDrive]&">
-                                <button type="button" class="btn btn-success">Toggle Drive</button>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-            </table>
+			<table style="width: 100%;">
+				<tr><td>
+					<div style="display: flex; justify-content: space-between; width: 100%;">
+						<h4 style="text-align: left">Status</h4>
+						<div style="text-align: right" id="externalText">Loading...</div>
+					</div>
+				</td></tr>
+			</table>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-            <h3 style="text-align: left;">Drive Controls</h3>
-
-            <table style="width: 100%;">
-                <tr>
-                    <th>Drive 0</th>
-                    <th>Drive 1</th>
-                </tr>
-                <tr>
-                    <td>Drive ID: <i>%s</i></td>
-                    <td>Drive ID: <i>%s</i></td>
-                </tr>
-                <tr>
-                    <td>Emulation: <i>%s</i></td>
-                    <td>Emulation: <i>%s</i></td>
-                </tr>
-                <tr>
-                    <td>Image: <i>%s</i></td>
-                    <td>Image: <i>%s</i></td>
-                </tr>
-                <tr>
-                    <td>
-                        <table style="width: 100%;">
-                            <tr>
-                                <td>
-                                    <a href="drives.html?[switchDrive]&%s&%s&0&">
-                                        <button type="button" class="btn btn-success">Switch %s</button>
-                                    </a>
-                                    <a href="mount-imgs.html?&&&&%s&">
-                                        <button type="button" class="btn btn-success">Mount</button>
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td>
-                        <table style="width: 100%;">
-                            <tr>
-                                <td>
-                                    <a href="drives.html?[switchDrive]&%s&%s&1&">
-                                        <button type="button" class="btn btn-success">Switch %s</button>
-                                    </a>
-                                    <a href="mount-imgs.html?&&&&%s&">
-                                        <button type="button" class="btn btn-success">Mount</button>
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
+			<form action="/edit-file.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
+				<div class="form-group">
+					<h4 style="text-align:left">Edit <i>%s</i></h2>
+		    		<textarea class="form-control" name="%s" id="textarea_options" rows="10" 
+							  style="background-color: #4d4d4d; font-family: monospace; color: #ECFFDC;">%s</textarea>
+					<br/>
+					<input type="submit" class="btn btn-success" value="%s" %s />
+					<input type="button" class="btn btn-success" value="Back" onclick="window.history.go(%s); return false;">
+				</div>
+			</form>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
 				target="_blank">Pi1541 firebase</a>.</p>
-		<p class="small">Find the pottendo-Pi1541 project resources here
-			<a href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
+		<p class="small">Find the pottendo-Pi1541 project resources here <a
+				href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
 		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
 			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
 			crossorigin="anonymous"></script>
@@ -183,12 +131,11 @@
 			crossorigin="anonymous"></script>
 		<script>
 			function delConfirm(envent) {
-			  	if (confirm("Are you sure?"))
-				  	return true;
-				else 
-				{
+				if (confirm("Are you sure?"))
+					return true;
+				else {
 					event.preventDefault();
-				  	return false;
+					return false;
 				}
 			};
 		</script>
@@ -208,5 +155,5 @@
 		</script>
 	</div>
 </body>
-		
-</html>            
+
+</html>

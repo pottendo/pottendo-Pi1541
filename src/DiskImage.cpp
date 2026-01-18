@@ -1418,12 +1418,15 @@ bool DiskImage::OpenPRG(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 
 		if (length)
 		{
-			bool addFileSuccess = AddFileToRAMD64(newDiskImage, fileInfo->fname, diskImage, size);
+			char *t = strrchr((char*)fileInfo->fname, '/');
+			if (!t)	t = (char*)fileInfo->fname;
+			else t++;
+			bool addFileSuccess = AddFileToRAMD64(newDiskImage, t, diskImage, size);
 
 			if (addFileSuccess && OpenD64(fileInfo, newDiskImage, length))
 			{
 				success = true;
-				DEBUG_LOG("Success\r\n");
+				//DEBUG_LOG("Success\r\n");
 				diskType = PRG;
 			}
 		}
@@ -1533,6 +1536,11 @@ bool DiskImage::IsTextFileExtention(const char *name)
 		)
 		return true;
 	return false;
+}
+
+bool DiskImage::IsEditableExtention(const char *name)
+{
+	return IsTextFileExtention(name) || IsLSTExtention(name);
 }
 
 bool DiskImage::IsPicFileExtention(const char *name)
@@ -1731,7 +1739,7 @@ unsigned DiskImage::CreateNewDiskInRAM(const char* filenameNew, const char* ID, 
 	unsigned char* ptr;
 	int i;
 
-	DEBUG_LOG("CreateNewDiskInRAM %s\r\n", filenameNew);
+	//DEBUG_LOG("CreateNewDiskInRAM %s\r\n", filenameNew);
 
 	unsigned char buffer[256];
 	u32 bytes;
@@ -1752,10 +1760,14 @@ unsigned DiskImage::CreateNewDiskInRAM(const char* filenameNew, const char* ID, 
 		}
 	}
 	ptr = (unsigned char*)&blankD64DIRBAM[DISKNAME_OFFSET_IN_DIR_BLOCK];
-	int len = strlen(filenameNew);
+	if (!filenameNew) filenameNew = "POTTENDO";
+	const char *fn = strrchr((char*)filenameNew, '/');
+	if (!fn) fn = filenameNew;
+	else fn++;
+	int len = strlen(fn)-4;
 	for (i = 0; i < len; ++i)
 	{
-		*ptr++ = ascii2petscii(filenameNew[i]);
+		*ptr++ = ascii2petscii(fn[i]);
 	}
 	for (; i < 18; ++i)
 	{
@@ -1888,7 +1900,7 @@ unsigned char* DiskImage::RAMD64AddDirectoryEntry(unsigned char* ramD64, const c
 
 		sectorOffset = RAMD64GetSectorOffset(track, directorySector);
 
-		DEBUG_LOG("directory sector offset = %d\r\n", sectorOffset);
+		//DEBUG_LOG("directory sector offset = %d\r\n", sectorOffset);
 		ptr = ramD64 + sectorOffset * 256;
 
 		entryIndex = 0;
@@ -1969,7 +1981,7 @@ int DiskImage::RAMD64FreeSectors(unsigned char* ramD64)
 	unsigned char* ptr;
 	int sectorOffset = RAMD64GetSectorOffset(18, 0);
 
-	DEBUG_LOG("sectorOffset bam = %d\r\n", sectorOffset);
+	//DEBUG_LOG("sectorOffset bam = %d\r\n", sectorOffset);
 
 	ptr = ramD64 + sectorOffset * 256;
 

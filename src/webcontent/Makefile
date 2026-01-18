@@ -2,7 +2,7 @@
 # Makefile
 #
 
-CONTENT	= index.h status.h pi1541-logo.h style.h update.h edit-config.h mount-imgs.h C64_Pro_Mono-STYLE.h logger.h drives.h #tuning.h ledoff.h ledon.h favicon.h
+CONTENT	= index.h status.h pi1541-logo.h style.h update.h edit-config.h mount-imgs.h C64_Pro_Mono-STYLE.h logger.h edit-file.h drives.h #tuning.h ledoff.h ledon.h favicon.h
 
 EXTRACLEAN = $(CONTENT) converttool
 

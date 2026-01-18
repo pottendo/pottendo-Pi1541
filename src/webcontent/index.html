@@ -140,10 +140,12 @@
 					<td>
 						<input type="submit" class="btn btn-success" onclick="mkDir()" id="mdir" name="mdir"
 							value="Make Directory" />
-							<input type="submit" class="btn btn-success" onclick="newD64()" id="newD64" name="newD64"
+						<input type="submit" class="btn btn-success" onclick="newD64()" id="newD64" name="newD64"
 							value="Create Diskimage" />
-							<input type="submit" class="btn btn-success" onclick="newLST()" id="newLST" name="newLST"
+						<input type="submit" class="btn btn-success" onclick="newLST()" id="newLST" name="newLST"
 							value="Create LST" />
+						<input type="submit" class="btn btn-success" onclick="newTXT()" id="newTXT" name="newTXT"
+							value="Create Textfile" />
 					</td>
 				</tr>
 			</table>
@@ -232,6 +234,21 @@
 			};
 		</script>
 		<script>
+			function newTXT() {
+				let dname = prompt("Filename\\n.txt (default), .nfo or .lst");
+				if (dname != null) {
+					if (!dname.endsWith(".lst") && !dname.endsWith(".LST")
+						&& !dname.endsWith(".nfo") && !dname.endsWith(".NFO") &&
+						!dname.endsWith(".txt") && !dname.endsWith(".TXT"))
+						ext = ".txt";
+					else
+						ext = "";
+					let nurl = "edit-file.html?[DIR]&" + "%s" + "&[NEWTXT]&" + encodeURIComponent(dname.trim() + ext);
+					window.location.href = nurl;
+				}
+			};
+		</script>
+		<script>
 			function delConfirm(envent) {
 			  	if (confirm("Are you sure?"))
 				  	return true;
@@ -255,6 +272,14 @@
 				document.getElementById('externalText').textContent = "Failed to load content.";
 				console.error(err);
 			  });
+		</script>
+		<script>
+			window.addEventListener("pageshow", function (event) {
+  				if (event.persisted) {
+    				// Page was restored from bfcache
+    				window.location.reload();
+  				}
+			});
 		</script>
 	</div>
 </body>

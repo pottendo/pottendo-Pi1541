@@ -75,6 +75,11 @@ static const char s_update[] =
 static const char s_edit_config[] =
 #include "webcontent/edit-config.h"
 ;
+
+static const char s_edit_file[] =
+#include "webcontent/edit-file.h"
+;
+
 static const char s_mount[] =
 #include "webcontent/mount-imgs.h"
 ;
@@ -256,7 +261,7 @@ static int direntry_table(const string header, string &res, string &path, string
 		size_t pos = path.find_last_of('/');
 		if (pos == string::npos) pos = 0;
 		res += "<tr><td>" + 
-						string("<a href=") + page + "?" + file_type + "&" + path.substr(0, pos) + "&>..</a>" +
+						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path.substr(0, pos)) + "&>..</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td><td></td>" +
 				"</tr>";
@@ -1028,7 +1033,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			Kernel.get_version(), mem.c_str(), 
 			curr_path.c_str(), // mkdir script
 			curr_path.c_str(), // newD64 script
-			curr_path.c_str()); // newLST script
+			curr_path.c_str(), // newLST script
+			curr_path.c_str()); // newTXT script
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
@@ -1182,28 +1188,105 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
 	}
+	else if (strcmp(pPath, "/edit-file.html") == 0)
+	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
+		string msg = "", msg2 = "";
+		string curr_path = urlDecode(pParams);
+		string curr_dir;
+		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
+		stringstream ss(pParams);
+		string type, fops, fname;
+		getline(ss, type, '&');
+		getline(ss, curr_path, '&');
+		getline(ss, fops, '&');
+		getline(ss, fname, '&');
+		curr_path = urlDecode(curr_path);
+		type = urlDecode(type);
+		char *from_edit = "-1";
+		string dfn = def_prefix + curr_path;
+		string textfile = "";
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+		{
+			//DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
+			extract_field("name=\"", pPartHeader, filename, extension);
+			dfn = filename;			
+
+			f_unlink((dfn + ".BAK").c_str());	// unconditionally remove backup
+			f_rename(dfn.c_str(), (dfn + ".BAK").c_str());
+			if (write_file(dfn.c_str(), pPartData, nPartLength))
+				msg = string("Successfully wrote <i>") + dfn + "</i><br />";
+			else
+				msg = string("Failed to write <i>") + dfn + "</i><br />";
+			from_edit = "-2"; // need to go two levels back
+		}
+		if (fops == "[NEWTXT]")
+		{
+			fname = urlDecode(fname);
+			dfn = def_prefix + curr_path + "/" + fname;
+			if (write_file(dfn.c_str(), (const u8 *)"", 0))
+				msg += string("Successfully created new file <i>") + dfn + "</i><br />";
+			else
+				msg += string("Failed to create new file <i>") + dfn + "</i><br />";
+		}
+		if (DiskImage::IsEditableExtention(dfn.c_str()) == false)
+		{
+			msg += "File not editable!";
+			String.Format(s_edit_file, msg.c_str(), 
+				dfn.c_str(),
+				"", // form name
+				"", // textfile content
+				"Back", "onclick=\"history.back(); return false;\"",	// just back button
+				"-1", // need to go 1 level back
+				Kernel.get_version(), mem.c_str());
+		}
+		else 
+		{
+			read_file(dfn, msg2, textfile);
+			msg += msg2 + "<br />";
+			String.Format(s_edit_file, msg.c_str(),
+						  dfn.c_str(),
+						  dfn.c_str(),
+						  textfile.c_str(),
+						  ("Save " + dfn).c_str(), "",
+						  from_edit,
+						  Kernel.get_version(), mem.c_str());
+		}
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=iso-8859-1";
+	}
 	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
+		const char *pPartHeader;
+		const u8 *pPartData;
+		unsigned nPartLength;
 		string msg = "";
 		string content = "No image selected";
 		list<string> dir;
 		string curr_path = urlDecode(pParams);
 		string curr_dir, files;
 		string page = "mount-imgs.html";
-		string cwd, img, td;
-		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
-		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
+		string cwd, img;
+		DEBUG_LOG("curr_path = %s", curr_path.c_str());
+		DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
-		string type;
+		string type, fops, newname, td;
 		bool mount_it = false;
 		bool is_dir = false;
 		FILINFO fi;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
+		getline(ss, fops, '&');
+		getline(ss, newname, '&');
 		getline(ss, td, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		DEBUG_LOG("type = %s / curr_path = %s, td = %s", type.c_str(), curr_path.c_str(), td.c_str());
+		DEBUG_LOG("type = %s / curr_path = %s, newname = %s, td = %s", type.c_str(), curr_path.c_str(), newname.c_str(), td.c_str());
 		if ((td.length() > 0) && (td != "n/a"))
 		{
 			int tmp = stoi(td);
@@ -1254,6 +1337,29 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				{
 					msg = "No Image selected, nothing mounted";
 					curr_path += '/';
+				}
+			}
+			if (type == "[RENAME]" && fops == "[NEWNAME]")
+			{
+				if (curr_path.length() == 0)
+					msg = "Refusing to rename root directory <i>" + def_prefix + "</i>";
+				else 
+				{
+					newname = def_prefix + urlDecode(newname);
+					string oldname = def_prefix + curr_path;
+					FRESULT ret;
+					//DEBUG_LOG("%s: rename '%s' to '%s'", __FUNCTION__, oldname.c_str(), newname.c_str());
+					if ((ret = f_rename(oldname.c_str(), newname.c_str())) != FR_OK)
+					{
+						msg = "Failed to rename <i>" + oldname + "</i> to <i>" + newname + "</i> (" + to_string(ret) + ")";
+						DEBUG_LOG("%s: rename of '%s' to '%s' failed %d", __FUNCTION__, oldname.c_str(), newname.c_str(), ret);
+					}
+					else
+					{
+						msg = "Successfully renamed <i>" + oldname + "</i> to <i>" + newname + "</i>";
+						DEBUG_LOG("%s: successfully renamed '%s' to '%s'", __FUNCTION__, oldname.c_str(), newname.c_str());
+						curr_path = newname;
+					}
 				}
 			}
 			if (curr_path.find(def_prefix) != string::npos)
@@ -1383,6 +1489,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					(def_prefix + curr_path).c_str(), 
 					(is_dir ? "<!--" : ""),
 					_t, // Mount
+					_t, // Edit
 					_t, // Delete
 					_t, img.c_str(), // Download
 					(is_dir ? "-->" : ""),
@@ -1390,7 +1497,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					to_string(target_drive).c_str(),
 					//("<I>" + def_prefix + curr_path + "</i>").c_str(),
 					curr_dir.c_str(), files.c_str(), content.c_str(),
-					Kernel.get_version(), mem.c_str());
+					Kernel.get_version(), mem.c_str(),
+					curr_path.c_str(), curr_path.c_str(), _t // rename script
+					);
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
