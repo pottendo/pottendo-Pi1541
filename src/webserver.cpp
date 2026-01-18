@@ -226,7 +226,7 @@ static int direntry_table(const string header, string &res, string &path, string
 		size_t pos = path.find_last_of('/');
 		if (pos == string::npos) pos = 0;
 		res += "<tr><td>" + 
-						string("<a href=") + page + "?" + file_type + "&" + path.substr(0, pos) + "&>..</a>" +
+						string("<a href=") + page + "?" + file_type + "&" + urlEncode(path.substr(0, pos)) + "&>..</a>" +
 					"</td>" +
 					"<td>" + file_type + "</td><td></td>" +
 				"</tr>";
@@ -1230,12 +1230,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
-		string type;
+		string type, fops;
 		bool mount_it = false;
 		bool is_dir = false;
 		FILINFO fi;
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
+		getline(ss, fops, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
 		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
@@ -1266,6 +1267,31 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				{
 					msg = "No Image selected, nothing mounted";
 					curr_path += '/';
+				}
+			}
+			if (type == "[RENAME]" && fops == "[NEWNAME]")
+			{
+				if (curr_path.length() == 0)
+					msg = "Refusing to rename root directory <i>" + def_prefix + "</i>";
+				else 
+				{
+					string newname;
+					getline(ss, newname, '&');
+					newname = def_prefix + urlDecode(newname);
+					string oldname = def_prefix + curr_path;
+					FRESULT ret;
+					//DEBUG_LOG("%s: rename '%s' to '%s'", __FUNCTION__, oldname.c_str(), newname.c_str());
+					if ((ret = f_rename(oldname.c_str(), newname.c_str())) != FR_OK)
+					{
+						msg = "Failed to rename <i>" + oldname + "</i> to <i>" + newname + "</i> (" + to_string(ret) + ")";
+						DEBUG_LOG("%s: rename of '%s' to '%s' failed %d", __FUNCTION__, oldname.c_str(), newname.c_str(), ret);
+					}
+					else
+					{
+						msg = "Successfully renamed <i>" + oldname + "</i> to <i>" + newname + "</i>";
+						DEBUG_LOG("%s: successfully renamed '%s' to '%s'", __FUNCTION__, oldname.c_str(), newname.c_str());
+						curr_path = newname;
+					}
 				}
 			}
 			if (curr_path.find(def_prefix) != string::npos)
@@ -1397,9 +1423,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					_t, // Delete
 					_t, img.c_str(), // Download
 					(is_dir ? "-->" : ""),
-
 					curr_dir.c_str(), files.c_str(), content.c_str(),
-					Kernel.get_version(), mem.c_str());
+					Kernel.get_version(), mem.c_str(),
+					curr_path.c_str(), curr_path.c_str(), _t // rename script
+					);
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";

@@ -1623,7 +1623,7 @@ void IEC_Commands::Extended(void)
 // http://www.n2dvm.com/UIEC.pdf
 void IEC_Commands::ProcessCommand(void)
 {
-	DEBUG_LOG("PC\r\n");
+	//DEBUG_LOG("PC\r\n");
 
 	Channel& channel = channels[15];
 
@@ -2108,7 +2108,7 @@ void IEC_Commands::LoadDirectory()
 	memcpy(channel.buffer, DirectoryHeader, sizeof(DirectoryHeader));
 	channel.cursor = sizeof(DirectoryHeader);
 
-	DEBUG_LOG("%s: $\r\n", __FUNCTION__);
+	//DEBUG_LOG("%s: $\r\n", __FUNCTION__);
 
 	FileBrowser::BrowsableList::Entry entry;
 	std::vector<FileBrowser::BrowsableList::Entry> entries;

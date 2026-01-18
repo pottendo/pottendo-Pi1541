@@ -108,8 +108,8 @@
 					<table class="dirs">
 						<tr valign="center">
 							<td>%s</td>
-							%s
 							<td style="text-align:right;">
+							%s
 								<a href="mount-imgs.html?[MOUNT]&%s">
 									<button type="button" class="btn btn-success">Mount</button>
 								</a>
@@ -122,8 +122,9 @@
 								<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
 									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
 								</a>
-							</td>
 							%s
+                            	<button type="button" class="btn btn-success" id="rename" name="rename" onclick="prompt_rename()">Rename</button>
+							</td>
 						</tr>
 					</table>
 					<br /><br />
@@ -166,6 +167,15 @@
 				else {
 					event.preventDefault();
 					return false;
+				}
+			};
+		</script>
+		<script>
+			function prompt_rename() {
+				let dname = prompt("Rename %s", "%s");
+				if (dname != null) {
+					let nurl = "mount-imgs.html?[RENAME]&" + "%s" + "&[NEWNAME]&" + encodeURIComponent(dname.trim());
+					window.location.href = nurl;
 				}
 			};
 		</script>

@@ -4,8 +4,12 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 # News
 V2.1Beta2:
+- Support to rename of files/dirs on SDCard via WebUI
 - Support to create/edit .txt, .nfo or .lst files
-- Create d81 images
+- Support creating empty d81 images
+- IEC command fix for partition parsing, credits to RetroNynjah
+- Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
+- Minor changes: remove debuglogs
 V2.1Beta1:
 - LST support for D81 images 
   Limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.

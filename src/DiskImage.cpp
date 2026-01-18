@@ -1418,12 +1418,15 @@ bool DiskImage::OpenPRG(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 
 		if (length)
 		{
-			bool addFileSuccess = AddFileToRAMD64(newDiskImage, fileInfo->fname, diskImage, size);
+			char *t = strrchr((char*)fileInfo->fname, '/');
+			if (!t)	t = (char*)fileInfo->fname;
+			else t++;
+			bool addFileSuccess = AddFileToRAMD64(newDiskImage, t, diskImage, size);
 
 			if (addFileSuccess && OpenD64(fileInfo, newDiskImage, length))
 			{
 				success = true;
-				DEBUG_LOG("Success\r\n");
+				//DEBUG_LOG("Success\r\n");
 				diskType = PRG;
 			}
 		}
@@ -1734,7 +1737,7 @@ unsigned DiskImage::CreateNewDiskInRAM(const char* filenameNew, const char* ID, 
 	unsigned char* ptr;
 	int i;
 
-	DEBUG_LOG("CreateNewDiskInRAM %s\r\n", filenameNew);
+	//DEBUG_LOG("CreateNewDiskInRAM %s\r\n", filenameNew);
 
 	unsigned char buffer[256];
 	u32 bytes;
@@ -1895,7 +1898,7 @@ unsigned char* DiskImage::RAMD64AddDirectoryEntry(unsigned char* ramD64, const c
 
 		sectorOffset = RAMD64GetSectorOffset(track, directorySector);
 
-		DEBUG_LOG("directory sector offset = %d\r\n", sectorOffset);
+		//DEBUG_LOG("directory sector offset = %d\r\n", sectorOffset);
 		ptr = ramD64 + sectorOffset * 256;
 
 		entryIndex = 0;
@@ -1976,7 +1979,7 @@ int DiskImage::RAMD64FreeSectors(unsigned char* ramD64)
 	unsigned char* ptr;
 	int sectorOffset = RAMD64GetSectorOffset(18, 0);
 
-	DEBUG_LOG("sectorOffset bam = %d\r\n", sectorOffset);
+	//DEBUG_LOG("sectorOffset bam = %d\r\n", sectorOffset);
 
 	ptr = ramD64 + sectorOffset * 256;
 

@@ -958,7 +958,7 @@ void FileBrowser::PopFolder()
 	if (f_getcwd(buffer, 1024) == FR_OK)
 	{
 		int deviceRoot = IsAtRootOfDevice();
-		DEBUG_LOG("deviceRoot = %d\r\n", deviceRoot);
+		//DEBUG_LOG("deviceRoot = %d\r\n", deviceRoot);
 		if (deviceRoot >= 0)
 		{
 			displayingDevices = true;
@@ -1816,7 +1816,7 @@ void FileBrowser::DisplayDiskInfo(DiskImage* diskImage, const char* filenameForI
 									name[charIndex] = '"';
 								}
 
-								//DEBUG_LOG("%d name = %s %x\r\n", blocks, name, fileType);
+								//DEBUG_LOG("%s: %dblocks, name = %s %x\r\n", blocks, name, fileType);
 								snprintf(bufferOut, 128, "%-4d ", blocks);
 #if defined(__CIRCLE__)		
 								if (image_dir)
