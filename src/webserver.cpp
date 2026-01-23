@@ -768,6 +768,41 @@ out:
 	return ret;
 }
 
+void drives_html(string &drives)
+{
+	extern const char* VolumeStr[];
+	string res, check, mp;
+	FILINFO fi;
+	char scwd[256];
+	const char *sdr = VolumeStr[0];
+	f_getcwd(scwd, 255);
+
+	for (int i = 0; i < FF_VOLUMES; i++)
+	{
+		if (f_chdrive(VolumeStr[i]) == FR_OK)
+		{
+			mp = string(VolumeStr[i]) + ":/1541";
+			if (mp == def_prefix)
+				sdr = VolumeStr[i];
+			if (f_stat(mp.c_str(), &fi) != FR_OK)
+			{
+				DEBUG_LOG("%s: stat of mountpoint '%s' failed", __FUNCTION__, mp.c_str());
+				continue;
+			}
+			if (def_prefix.find(VolumeStr[i]) == 0)
+				check = " checked";
+			else
+				check = "";
+			res = "<label><input type=\"radio\" name=\"choice\" value=\"" + string(VolumeStr[i]) + "\"" +check + ">" + string(VolumeStr[i]) + "</label>";
+			DEBUG_LOG("%s: found volume '%s' - %s", __FUNCTION__, VolumeStr[i], res.c_str());
+			drives += res;
+		}
+	}
+	f_chdrive(sdr);
+	f_chdir(scwd);
+	DEBUG_LOG("%s: drives html = '%s'", __FUNCTION__, drives.c_str());
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -810,6 +845,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string page = "index.html";
 		stringstream ss(pParams);
 		string type, fops, ndir;
+		string drives = "";
+		drives_html(drives);
 		getline(ss, type, '&');
 		getline(ss, curr_path, '&');
 		getline(ss, fops, '&');
@@ -818,7 +855,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		curr_path = urlDecode(curr_path);
 		fops = urlDecode(fops);
 		bool noFormParts = true;
-		//DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
+		DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
 		//DEBUG_LOG("type = '%s'", type.c_str());
 		//DEBUG_LOG("fops = '%s'", fops.c_str());
 		if (fops == "[MKDIR]")
@@ -899,6 +936,22 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			download_file(fullndir, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
 			goto out;
+		}
+		if (type == "[CHMEDIUM]")
+		{
+			int ret;
+			DEBUG_LOG("%s: request to change medium to '%s'", __FUNCTION__, curr_path.c_str());
+			if ((ret = f_chdrive(curr_path.c_str())) == FR_OK)
+			{
+				def_prefix = curr_path + ":/1541";
+				snprintf(msg_str, 1023,"Successfully changed medium to <i>%s</i>", def_prefix.c_str());
+				drives = "";
+				drives_html(drives);
+			}
+			else
+				snprintf(msg_str, 1023,"Failed to change medium to <i>%s</i> (%d)", curr_path.c_str(), ret);
+			msg = msg_str;
+			curr_path = "";
 		}
 		if (GetMultipartFormPart (&pPartHeaderCB, &pPartDataCB, &nPartLengthCB))
 		{
@@ -985,7 +1038,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR, true);
 		direntry_table(header_NTD, files, curr_path, page, ~AM_DIR, true);
-		String.Format(s_Index, msg.c_str(), curr_path.c_str(), (
+		String.Format(s_Index, drives.c_str(), msg.c_str(), curr_path.c_str(), (
 			"<I>" + def_prefix + curr_path + "</i>").c_str(), curr_dir.c_str(), files.c_str(),
 			Kernel.get_version(), mem.c_str(), 
 			curr_path.c_str(), // mkdir script

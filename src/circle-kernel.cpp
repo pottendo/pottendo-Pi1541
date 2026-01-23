@@ -588,13 +588,19 @@ int CKernel::usb_keyboard_available(void)
 
 int CKernel::usb_massstorage_available(void)
 {
-	pUMSD1 = m_DeviceNameService.GetDevice ("umsd1", TRUE);
-	if (pUMSD1 == 0)
+	int num = 0;
+	std::string usbd="umsd";
+
+	for (int i=1; i<=4; i++)
 	{
-		log("USB mass storage device not found");
-		return 0;
+		pUMSD1 = m_DeviceNameService.GetDevice ((usbd + std::to_string(i)).c_str(), TRUE);
+		if (pUMSD1)
+		{
+			DEBUG_LOG("%s: found USB mass storage device '%s'", __FUNCTION__, (usbd + std::to_string(i)).c_str());
+			num++;
+		}
 	}
-	return 1;
+	return num;
 }
 
 void CKernel::run_tempmonitor(bool run)

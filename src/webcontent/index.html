@@ -41,6 +41,13 @@
   			background-color: transparent;
   			text-decoration: none;
 		}
+		.radio-group.horizontal {
+			display: flex;
+			flex-direction: row;
+			justify-content: flex-end; /* align to right */
+			gap: 16px;
+			align-items: center;
+		}
 	</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -94,12 +101,22 @@
 			</table>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<table style="width: 100%;">
-				<tr><td>
-					<div style="display: flex; justify-content: space-between; width: 100%;">
-						<h4 style="text-align: left">Status</h4>
-						<div style="text-align: right" id="externalText">Loading...</div>
-					</div>
-				</td></tr>
+				<tr>
+					<td>
+						<div style="display: flex; justify-content: space-between; width: 100%;">
+							<h4 style="text-align: left">Status</h4>
+							<div style="text-align: right" id="externalText">Loading...</div>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<div class="radio-group horizontal">
+						<h4 style="text-align: right">Storage Medium</h4>
+						%s
+						</div>
+					</td>
+				</tr>
 			</table>
 			<p>%s</p>
 			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
@@ -279,6 +296,16 @@
   				}
 			});
 		</script>
+		<script>
+			document.querySelectorAll('input[name="choice"]').forEach(radio => {
+				radio.addEventListener('change', function () {
+					console.log("Selected:", this.value);
+					let nurl = "index.html?[CHMEDIUM]&" + this.value;
+					window.location.href = nurl;
+				});
+			});
+		</script>
+
 	</div>
 </body>
 		

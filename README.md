@@ -3,6 +3,8 @@
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
 
 # News
+V2.1Beta3:
+- Support USB drives in WebUI
 V2.1Beta2:
 - Support to rename of files/dirs on SDCard via WebUI
 - Support to create/edit .txt, .nfo or .lst files
