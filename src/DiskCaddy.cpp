@@ -211,7 +211,7 @@ bool DiskCaddy::Insert(const FILINFO* fileInfo, bool readOnly)
 	}
 	else
 	{
-		DEBUG_LOG("Failed to open %s\r\n", fileInfo->fname);
+		DEBUG_LOG("%s: Failed to open '%s' (%d)\r\n", __FUNCTION__, fileInfo->fname, res);
 		success = false;
 	}
 
