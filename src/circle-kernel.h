@@ -42,6 +42,7 @@
 #include <circle/net/netsubsystem.h>
 #include <stdio.h>
 #include <cstring>
+#include <string>
 #if RASPPI <= 3 && AARCH == 32
 #include "SpinLock.h"
 #else
@@ -109,6 +110,7 @@ public:
 	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
 	char *get_version(void);
 	void append2version(const char *a) { char tmp[512]; snprintf(tmp, 511, "%s/%s", version_extra, a); strcpy(version_extra, tmp); }
+	static CMachineInfo *get_machine_info(std::string &kernelname);
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;

@@ -21,7 +21,7 @@ index 2cfdd262..06258e9e 100644
  /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
  /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
 diff --git a/include/circle/sysconfig.h b/include/circle/sysconfig.h
-index 566e6eb7..1e8600ec 100644
+index 566e6eb7..ee692de0 100644
 --- a/include/circle/sysconfig.h
 +++ b/include/circle/sysconfig.h
 @@ -35,14 +35,14 @@
@@ -75,3 +75,18 @@ index 566e6eb7..1e8600ec 100644
  #endif
  
  // NO_BUSY_WAIT deactivates busy waiting in the EMMC, SDHOST and USB
+diff --git a/lib/usb/usbstring.cpp b/lib/usb/usbstring.cpp
+index 54e9bd47..61416a76 100644
+--- a/lib/usb/usbstring.cpp
++++ b/lib/usb/usbstring.cpp
+@@ -113,6 +113,10 @@ boolean CUSBString::GetFromDescriptor (u8 ucID, u16 usLanguageID)
+ 		}
+ 	}
+ 
++	// accept broken USB sticks
++	if (m_pUSBString->bLength <= 2)
++	    return FALSE;
++
+ 	// convert into ASCII string
+ 	assert (m_pUSBString->bLength > 2);
+ 	assert ((m_pUSBString->bLength & 1) == 0);

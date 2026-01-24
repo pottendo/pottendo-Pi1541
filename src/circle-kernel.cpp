@@ -37,6 +37,7 @@
 #include "version.h"
 #include "emulator.h"
 #include <list>
+#include <string>
 
 #define _DRIVE		"SD:"
 #define _FIRMWARE_PATH	_DRIVE "/firmware/"		// firmware files must be provided here
@@ -598,13 +599,19 @@ int CKernel::usb_keyboard_available(void)
 
 int CKernel::usb_massstorage_available(void)
 {
-	pUMSD1 = m_DeviceNameService.GetDevice ("umsd1", TRUE);
-	if (pUMSD1 == 0)
+	int num = 0;
+	std::string usbd="umsd";
+
+	for (int i=1; i<=4; i++)
 	{
-		log("USB mass storage device not found");
-		return 0;
+		pUMSD1 = m_DeviceNameService.GetDevice ((usbd + std::to_string(i)).c_str(), TRUE);
+		if (pUMSD1)
+		{
+			DEBUG_LOG("%s: found USB mass storage device '%s'", __FUNCTION__, (usbd + std::to_string(i)).c_str());
+			num++;
+		}
 	}
-	return 1;
+	return num;
 }
 
 void CKernel::run_tempmonitor(bool run)
@@ -787,3 +794,36 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	halt();	// whenever a core function returns, we halt the core.
 }
 
+CMachineInfo *CKernel::get_machine_info(std::string &kernelname)
+{
+	CMachineInfo *mi = CMachineInfo::Get();
+	if (mi)
+	{
+		TMachineModel model = mi->GetMachineModel();
+		switch (model)
+		{
+		case MachineModelZero2W:
+		case MachineModel3B:
+		case MachineModel3BPlus:
+		case MachineModel3APlus:
+#if AARCH == 32
+			kernelname = "kernel8-32.img";
+#else
+			kernelname = "kernel8.img";
+#endif
+			break;
+		case MachineModel4B:
+#if AARCH == 32
+			kernelname = "kernel7l.img";
+#else
+			kernelname = "kernel8-rpi4.img";
+#endif
+			break;
+		case MachineModel5:
+			kernelname = "kernel_2712.img";
+		default:
+			break;
+		}
+	}
+	return mi;
+}
