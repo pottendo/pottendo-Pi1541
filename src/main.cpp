@@ -1622,7 +1622,22 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' img '%s'", __FUNCTION__, mount_path, mount_img);
+						char *t = strchr(mount_path, ':');
+						if (t)
+						{
+							int r;
+							char tt;
+							t++;
+							tt = *t;
+							if ((r = f_chdrive(mount_path)) != FR_OK)
+								DEBUG_LOG("%s: f_chdrive to '%s' failed with %d", __FUNCTION__, mount_path, r);
+							*t = tt;
+						}
+						else
+						{
+							DEBUG_LOG("%s: mount_path '%s' has no drive specifier!", __FUNCTION__, mount_path);
+						}	
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
@@ -1630,11 +1645,13 @@ extern int mount_new;
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
-							diskCaddy.Insert(&fi, false);
-							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, mount_img);
+							if (diskCaddy.Insert(&fi, false)) 
+							{
+								fileBrowser->Update();
+								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
 						}
-						if (mount_new == 2)/* .LST */
+						else if (mount_new == 2)/* .LST */
 						{
 							fileBrowser->FolderChanged();
 							if (fileBrowser->SelectLST(mount_img))
@@ -1657,7 +1674,22 @@ extern int mount_new;
 					FILINFO fi;
 					if (mount_new)
 					{
-						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						DEBUG_LOG("%s: webserver requests to mount in dir '%s' img '%s'", __FUNCTION__, mount_path, mount_img);
+						char *t = strchr(mount_path, ':');
+						if (t)
+						{
+							int r;
+							char tt;
+							t++;
+							tt = *t;
+							if ((r = f_chdrive(mount_path)) != FR_OK)
+								DEBUG_LOG("%s: f_chdrive to '%s' failed with %d", __FUNCTION__, mount_path, r);
+							*t = tt;
+						}
+						else
+						{
+							DEBUG_LOG("%s: mount_path '%s' has no drive specifier!", __FUNCTION__, mount_path);
+						}	
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
@@ -1665,11 +1697,13 @@ extern int mount_new;
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
-							diskCaddy.Insert(&fi, false);
-							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, mount_img);
+							if (diskCaddy.Insert(&fi, false))
+							{
+								fileBrowser->Update();
+								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
 						}
-						if (mount_new == 2)/* .LST */
+						else if (mount_new == 2)/* .LST */
 						{
 							fileBrowser->FolderChanged();
 							fileBrowser->SelectLST(mount_img);
