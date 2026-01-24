@@ -452,6 +452,12 @@ kernel=kernel.img
 ```
 For other Pi models, you may need to add appropriate sections and the needed options to your _config.txt_.
 
+## Internals
+
+I needed to patch a few compile-time parameters and code workarounds in circle - see src/Circle/patch-XXX.diff:
+- Kernel parameters for memory and tasks
+- FatFS subsystem parameters
+- Workarounds in wpa_supplicant (mesh network support) and USB (don't assert, on cheap USB sticks)
 
 # Disclaimer
 

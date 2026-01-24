@@ -1273,7 +1273,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, fops, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
 		if (type == "[CHMEDIUM]")
 		{
 			int ret;
