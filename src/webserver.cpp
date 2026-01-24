@@ -774,19 +774,21 @@ void drives_html(string &drives)
 	string res, check, mp;
 	FILINFO fi;
 	char scwd[256];
-	const char *sdr = VolumeStr[0];
+	const char *sdr = def_prefix.substr(0, def_prefix.find_first_of(':')).c_str();
 	f_getcwd(scwd, 255);
+	//DEBUG_LOG("%s: current working drive/dir = '%s %s'", __FUNCTION__, sdr, scwd);
 
 	for (int i = 0; i < FF_VOLUMES; i++)
-	{
-		if (f_chdrive(VolumeStr[i]) == FR_OK)
+	{	
+		int r;
+		if ((r = f_chdrive(VolumeStr[i])) == FR_OK)
 		{
 			mp = string(VolumeStr[i]) + ":/1541";
 			if (mp == def_prefix)
 				sdr = VolumeStr[i];
-			if (f_stat(mp.c_str(), &fi) != FR_OK)
+			if ((r = f_stat(mp.c_str(), &fi)) != FR_OK)
 			{
-				DEBUG_LOG("%s: stat of mountpoint '%s' failed", __FUNCTION__, mp.c_str());
+				if (r != FR_NOT_ENABLED) DEBUG_LOG("%s: f_stat of mountpoint '%s' failed (%d)", __FUNCTION__, mp.c_str(), r);
 				continue;
 			}
 			if (def_prefix.find(VolumeStr[i]) == 0)
@@ -794,13 +796,16 @@ void drives_html(string &drives)
 			else
 				check = "";
 			res = "<label><input type=\"radio\" name=\"choice\" value=\"" + string(VolumeStr[i]) + "\"" +check + ">" + string(VolumeStr[i]) + "</label>";
-			DEBUG_LOG("%s: found volume '%s' - %s", __FUNCTION__, VolumeStr[i], res.c_str());
+			//DEBUG_LOG("%s: found volume '%s' - %s", __FUNCTION__, VolumeStr[i], res.c_str());
 			drives += res;
+		}
+		else
+		{
+			DEBUG_LOG("%s: chdrive to '%s' failed (%d)", __FUNCTION__, VolumeStr[i], r);
 		}
 	}
 	f_chdrive(sdr);
 	f_chdir(scwd);
-	DEBUG_LOG("%s: drives html = '%s'", __FUNCTION__, drives.c_str());
 }
 
 THTTPStatus CWebServer::GetContent (const char  *pPath,
@@ -855,7 +860,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		curr_path = urlDecode(curr_path);
 		fops = urlDecode(fops);
 		bool noFormParts = true;
-		DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
+		//DEBUG_LOG("curr_path = '%s'", curr_path.c_str());
 		//DEBUG_LOG("type = '%s'", type.c_str());
 		//DEBUG_LOG("fops = '%s'", fops.c_str());
 		if (fops == "[MKDIR]")
@@ -1083,33 +1088,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string msg = "unknown error";
 
 		CMachineInfo *mi = CMachineInfo::Get();
-		if (mi)
-		{
-			TMachineModel model = mi->GetMachineModel();
-			switch (model) {
-				case MachineModelZero2W:
-				case MachineModel3B:
-				case MachineModel3BPlus:
-				case MachineModel3APlus:
-#if AARCH == 32
-					kernelname = "kernel8-32.img";
-#else
-					kernelname = "kernel8.img";
-#endif	
-					break;
-				case MachineModel4B:
-#if AARCH == 32
-					kernelname = "kernel7l.img";
-#else
-					kernelname = "kernel8-rpi4.img";
-#endif	
-					break;
-				case MachineModel5:
-					kernelname = "kernel_2712.img";
-				default:
-					break;
-			}
-		}
+		CKernel::get_machine_info(kernelname);
 		modelstr = string("Version & Model: <i>") + Kernel.get_version() + "</i>";
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
@@ -1280,6 +1259,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string curr_dir, files;
 		string page = "mount-imgs.html";
 		string cwd, img;
+		string drives = "";
+		drives_html(drives);
 		//DEBUG_LOG("curr_path = %s", curr_path.c_str());
 		//DEBUG_LOG("pParams = %s", pParams);		// attention if activated. 'ccgms 2021.d64' will fail due to %20 subsitution in encoding
 		stringstream ss(pParams);
@@ -1292,7 +1273,25 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		getline(ss, fops, '&');
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
-		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (type == "[CHMEDIUM]")
+		{
+			int ret;
+			char msg_str[1024];
+			DEBUG_LOG("%s: request to change medium to '%s'", __FUNCTION__, curr_path.c_str());
+			if ((ret = f_chdrive(curr_path.c_str())) == FR_OK)
+			{
+				def_prefix = curr_path + ":/1541";
+				snprintf(msg_str, 1023, "Successfully changed medium to <i>%s</i>", def_prefix.c_str());
+				drives = "";
+				drives_html(drives);
+			}
+			else
+				snprintf(msg_str, 1023, "Failed to change medium to <i>%s</i> (%d)", curr_path.c_str(), ret);
+			msg = string(msg_str);
+			curr_path = "";
+			type = "[DIR]";
+		}
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
@@ -1322,7 +1321,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					curr_path += '/';
 				}
 			}
-			if (type == "[RENAME]" && fops == "[NEWNAME]")
+			else if (type == "[RENAME]" && fops == "[NEWNAME]")
 			{
 				if (curr_path.length() == 0)
 					msg = "Refusing to rename root directory <i>" + def_prefix + "</i>";
@@ -1468,7 +1467,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		static char _t[256];
 		string encURL = urlEncode(curr_path);
 		strcpy(_t, encURL.c_str());
-		String.Format(s_mount, msg.c_str(), 
+		String.Format(s_mount, drives.c_str(), msg.c_str(), 
 					(def_prefix + curr_path).c_str(), 
 					(is_dir ? "<!--" : ""),
 					_t, // Mount

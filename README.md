@@ -4,7 +4,8 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 # News
 V2.1Beta3:
-- Support USB drives in WebUI
+- Support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
+- Support firmware update from USB (untested!)
 V2.1Beta2:
 - Support to rename of files/dirs on SDCard via WebUI
 - Support to create/edit .txt, .nfo or .lst files
@@ -41,7 +42,6 @@ A web-server has been added which features the WebUI:
 - Reboot of Pi1541
 
 Some further ideas:
-- Enhance webserver to support image administration (copy, move, rename, etc.)
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - ...
 
@@ -67,7 +67,7 @@ The following is supposed to work on the circle based _V1.25c_, as I've tested t
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
 
-*) Credits to @znarF and @ILAH on F64, who kindly tested Option B HW.
+*) Credits to @znarF who kindly donated and tested on Option B HW and @ILAH on F64, who tested Option B HW.
 
 **) The display may have some pull-up resistors installed on its I2C data/clock lines (SDA/SCL lines). These won't work on I2C-1 of Raspberry PIs, as I2C-1 there already features 1.8kOhm pull-ups, which probably conflict with other pull-ups on this I2C-1 bus. Pi1541 HW hats often default to I2C-1. If your display isn't working, try to move it to I2C-0. Your Pi1541-hat may support this with solder bridges.
 
@@ -244,7 +244,8 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 ```
 # Know Bugs
 
-- Pluging in a USB stick _after_ booting, won't show files on the USB mounted drive and display remains dark. Unplugging/re-plugging works as expected if USB is plugged in at startup
+- Plugging/Unplugging USB stick is in general not recommended and unstable.
+- Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
 
 # Checkout & Build

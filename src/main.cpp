@@ -2021,7 +2021,7 @@ bool SwitchDrive(const char* drive)
 	FRESULT res;
 
 	res = f_chdrive(drive);
-	DEBUG_LOG("chdrive %s res %d\r\n", drive, res);
+	//DEBUG_LOG("%s: %s res %d\r\n", __FUNCTION__, drive, res);
 	return res == FR_OK;
 }
 
@@ -2036,9 +2036,14 @@ void UpdateFirmwareToSD()
 	u32 widthScreen = screen->Width();
 	u32 heightScreen = screen->Height();
 	u32 xpos, ypos;
-
+#if defined(__CIRCLE__)
+	std::string kn;
+	CKernel::get_machine_info(kn);
+	firmwareName = kn.c_str();
+#endif
 	if (SwitchDrive("USB01:"))
 	{
+		DEBUG_LOG("%s: found USB01, checking for firmware update; expected kernel: %s\r\n", __FUNCTION__, firmwareName);
 		char cwd[1024];
 		if (f_getcwd(cwd, 1024) == FR_OK)
 		{
@@ -2113,7 +2118,7 @@ void UpdateFirmwareToSD()
 					}
 					else
 					{
-						DEBUG_LOG("failed to open file %s %d\r\n", firmwareName, (int)res);
+						DEBUG_LOG("%s: Aborted update, missing kernel '%s' (%d)\r\n", __FUNCTION__, firmwareName, (int)res);
 					}
 					free(mem);
 				}

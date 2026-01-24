@@ -36,6 +36,7 @@
 #include "webserver.h"
 #include "version.h"
 #include <list>
+#include <string>
 
 #define _DRIVE		"SD:"
 #define _FIRMWARE_PATH	_DRIVE "/firmware/"		// firmware files must be provided here
@@ -734,3 +735,36 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	halt();	// whenever a core function returns, we halt the core.
 }
 
+CMachineInfo *CKernel::get_machine_info(std::string &kernelname)
+{
+	CMachineInfo *mi = CMachineInfo::Get();
+	if (mi)
+	{
+		TMachineModel model = mi->GetMachineModel();
+		switch (model)
+		{
+		case MachineModelZero2W:
+		case MachineModel3B:
+		case MachineModel3BPlus:
+		case MachineModel3APlus:
+#if AARCH == 32
+			kernelname = "kernel8-32.img";
+#else
+			kernelname = "kernel8.img";
+#endif
+			break;
+		case MachineModel4B:
+#if AARCH == 32
+			kernelname = "kernel7l.img";
+#else
+			kernelname = "kernel8-rpi4.img";
+#endif
+			break;
+		case MachineModel5:
+			kernelname = "kernel_2712.img";
+		default:
+			break;
+		}
+	}
+	return mi;
+}
