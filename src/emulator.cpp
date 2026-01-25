@@ -1019,17 +1019,33 @@ extern int drive_ctrl;
 					FILINFO fi;
 					if (mount_new == deviceID)
 					{
-						if (f_chdir(mount_path) != FR_OK)
-							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
+						char *t = strchr(mount_path, ':');
+						if (t)
+						{
+							int r;
+							char tt;
+							t++;
+							tt = *t;
+							if ((r = f_chdrive(mount_path)) != FR_OK)
+								DEBUG_LOG("%s: f_chdrive to '%s' failed with %d", __FUNCTION__, mount_path, r);
+							*t = tt;
+						}
+						else
+						{
+							DEBUG_LOG("%s: mount_path '%s' has no drive specifier!", __FUNCTION__, mount_path);
+						}							if (f_chdir(mount_path) != FR_OK)
+						DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (drive_ctrl == 1)
 						{
 							DEBUG_LOG("%s: webserver requests Drive %d(%d) to mount '%s/%s'", __FUNCTION__, get_driveID(), deviceID, mount_path, mount_img);
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
-							diskCaddy.Insert(&fi, false);
-							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, mount_img);
+							if (diskCaddy.Insert(&fi, false))
+							{
+								fileBrowser->Update();
+								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
 						} 
 						else if (drive_ctrl == 2)/* .LST - XXX FIXME not yet clean for dual drive */
 						{
@@ -1063,6 +1079,21 @@ extern int drive_ctrl;
 					if (mount_new == deviceID)
 					{
 						DEBUG_LOG("%s: webserver requests to mount in dir '%s' the img '%s'", __FUNCTION__, mount_path, mount_img);
+						char *t = strchr(mount_path, ':');
+						if (t)
+						{
+							int r;
+							char tt;
+							t++;
+							tt = *t;
+							if ((r = f_chdrive(mount_path)) != FR_OK)
+								DEBUG_LOG("%s: f_chdrive to '%s' failed with %d", __FUNCTION__, mount_path, r);
+							*t = tt;
+						}
+						else
+						{
+							DEBUG_LOG("%s: mount_path '%s' has no drive specifier!", __FUNCTION__, mount_path);
+						}	
 						if (f_chdir(mount_path) != FR_OK)
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (drive_ctrl == 1)
@@ -1070,9 +1101,11 @@ extern int drive_ctrl;
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
-							diskCaddy.Insert(&fi, false);
-							fileBrowser->Update();
-							emulating = BeginEmulating(fileBrowser, mount_img);
+							if (diskCaddy.Insert(&fi, false)) 
+							{
+								fileBrowser->Update();
+								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
 						}
 						else if (drive_ctrl == 2)/* .LST */
 						{
