@@ -227,9 +227,9 @@ static int direntry_table(const string header, string &res, string &path, string
    	FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
     DIR dir;                 // Directory object
-	vector<FILINFO> list;
+	static vector<FILINFO> list;
+	list.clear();
     // Open the directory
-	
 	string x = (def_prefix + "/" + path);
     fr = f_opendir(&dir, x.c_str());
     if (fr != FR_OK) {
