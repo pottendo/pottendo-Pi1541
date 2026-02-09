@@ -44,6 +44,7 @@ bool webserver_upload = false;
 char mount_img[256] = { 0 };
 char mount_path[256] = { 0 };
 int mount_new = 0;
+extern IEC_Commands *_m_IEC_Commands;
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
@@ -1060,7 +1061,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		unsigned int temp;
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+				 _m_IEC_Commands->GetDeviceId(),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());

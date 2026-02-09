@@ -1509,7 +1509,7 @@ void IEC_Commands::User(void)
 {
 	Channel& channel = channels[15];
 
-	//DEBUG_LOG("User channel.buffer[1] = %c\r\n", channel.buffer[1]);
+	//DEBUG_LOG("%s: User channel.buffer[1] = %c\r\n", __FUNCTION__, channel.buffer[1]);
 
 	switch (toupper(channel.buffer[1]))
 	{
@@ -1641,7 +1641,7 @@ void IEC_Commands::ProcessCommand(void)
 			FolderCommand();
 			return;
 		}
-		//DEBUG_LOG("ProcessCommand %s %c%c\r\n", channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
+		//DEBUG_LOG("%s: ProcessCommand %s %c%c\r\n", __FUNCTION__, channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
 
 		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
 		{
