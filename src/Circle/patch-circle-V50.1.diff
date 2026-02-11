@@ -16,7 +16,7 @@ index bd65f4c2..5e55d232 100644
  /---------------------------------------------------------------------------*/
  
 -#define FF_VOLUMES		6
-+#define FF_VOLUMES		4
++#define FF_VOLUMES		5
  /* Number of volumes (logical drives) to be used. (1-10) */
  
  

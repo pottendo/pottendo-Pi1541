@@ -1,6 +1,6 @@
-# pottendo-Pi1541 V2.2
+# pottendo-Pi1541 V2.1
 
-This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
+This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of February 2026, Step 50.1).
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
@@ -33,6 +33,7 @@ A web-server has been added which features the WebUI:
 - Improved rotary support - Credits to hgryska
 - Configure web-memory profile (see new options below)
 - Minor changes: remove debuglogs
+- Update circle-stdlib/circle to recent step 50.1
 - Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
             3A+ kernel name for upload, create image supports .g64, ...
 
@@ -40,7 +41,7 @@ Some further ideas:
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - ...
 
-Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
+Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://codeberg.org/larchcone/circle-stdlib.git) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
 
 Some discussions, announcements one can find in the Forum64 thread, [here](https://www.forum64.de/index.php?thread/155126-new-release-pottendo-pi1541-webserver-for-upload-images-updates/&postID=2276999#post2276999).
 
