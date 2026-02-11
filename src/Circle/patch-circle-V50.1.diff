@@ -1,5 +1,5 @@
 diff --git a/addon/fatfs/ffconf.h b/addon/fatfs/ffconf.h
-index bd65f4c2..5e55d232 100644
+index bd65f4c2..be8806d5 100644
 --- a/addon/fatfs/ffconf.h
 +++ b/addon/fatfs/ffconf.h
 @@ -47,7 +47,7 @@
@@ -11,13 +11,7 @@ index bd65f4c2..5e55d232 100644
  /* This option switches volume label API functions, f_getlabel() and f_setlabel().
  /  (0:Disable or 1:Enable) */
  
-@@ -178,12 +178,12 @@
- / Drive/Volume Configurations
- /---------------------------------------------------------------------------*/
- 
--#define FF_VOLUMES		6
-+#define FF_VOLUMES		5
- /* Number of volumes (logical drives) to be used. (1-10) */
+@@ -183,7 +183,7 @@
  
  
  #define FF_STR_VOLUME_ID	1
