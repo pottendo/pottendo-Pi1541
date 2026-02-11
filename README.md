@@ -1,4 +1,4 @@
-# Pi1541 - DualDrive branch
+# pottendo-Pi1541 - DualDrive branch
 
 This is a work-in-progress branch trying to make a dual drive emulation on a single Pi1541 HW possible.
 Whether this will be maintained or not is not yet clear as it significantly degrades performance/compatibility especially in dual drive mode.
@@ -34,37 +34,24 @@ GEOS running with 2 drives:
 
 ![](docs/GEOS-dualdrive.png)
 
-# Pi1541 - pottendo-Pi1541
+# pottendo-Pi1541 V2.1
 
-This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of November 2025, Step 50.0.1).
-
-# News
-V2.1Beta3:
-- Support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
-- Support firmware update from USB (untested!)
-V2.1Beta2:
-- Support to rename of files/dirs on SDCard via WebUI
-- Support to create/edit .txt, .nfo or .lst files
-- Support creating empty d81 images
-- IEC command fix for partition parsing, credits to RetroNynjah
-- Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
-- Minor changes: remove debuglogs
-V2.1Beta1:
-- LST support for D81 images 
-  Limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
-- Configure web-memory profile (see new options below)
-- Improved rotary support - Credits to hgryska
-- Minor fixes: 3A+ kernel name for upload, create image supports .g64, ...
+This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of February 2026, Step 50.1).
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
 - Manage Upload and SDCard
-  - upload of images and directory trees to the SDCard
+  - support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
+  - support to rename of files/dirs on SDCard/USB via WebUI
+  - upload of images and directory trees to the SDCard/USB
   - delete of files & directories
   - download files
   - create directory
   - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
   - create LST files from current directory
+  - LST support for D81 images, limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
+  - Support to create/edit .txt, .nfo or .lst files
+  - Support creating empty d81 images
   - show icons (.png) if exists for images
   - script to upload files or directories via commandline
   - script to mount from an index via commandline, index can be generated
@@ -75,13 +62,22 @@ A web-server has been added which features the WebUI:
 - Edit of _options.txt_ and _config.txt_
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - View & Download log-messages
+- Show DeviceID in stats
 - Reboot of Pi1541
+- Support firmware update from USB (untested!)
+- IEC command fix for partition parsing, credits to RetroNynjah
+- Improved rotary support - Credits to hgryska
+- Configure web-memory profile (see new options below)
+- Minor changes: remove debuglogs
+- Update circle-stdlib/circle to recent step 50.1
+- Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
+            3A+ kernel name for upload, create image supports .g64, ...
 
 Some further ideas:
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - ...
 
-Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://github.com/smuehlst/circle-stdlib) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
+Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://codeberg.org/larchcone/circle-stdlib.git) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
 
 Some discussions, announcements one can find in the Forum64 thread, [here](https://www.forum64.de/index.php?thread/155126-new-release-pottendo-pi1541-webserver-for-upload-images-updates/&postID=2276999#post2276999).
 
@@ -183,6 +179,12 @@ A simple text-entry form based configuration editor is provided. Once uploaded p
 Updates of Pi1541 kernel images require the correct filename, which must match the Pi model and the line `kernel=...` in `config.txt`. Once the filename is correct, files are overridden on the SDCard, no backup is made!
 <br />
 
+![](docs/logging.png)
+
+Log outputs of boot and recent debug messages. Controlled via `cmdline.txt` -> `loglevel = 4`
+<br />
+
+
 The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + patched to 1.25 (as of July 2025) with some improvements:
 
 - LED/Buzzer work again as in 1.23
@@ -263,7 +265,7 @@ The following options control new functions available:
 Here a snippet one can add to his `options.txt`:
 ```
 // this turns on/off HDMI output
-headLess = 1  // no HDMI output
+DisableHDMI = 1 // equal to headLess = 1  // no HDMI output
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
 TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
@@ -467,7 +469,7 @@ network={
 ```
 ## Building the original version
 
-One can build the Version 1.24 (+some minor fixes: LED & Buzzer work, build/works with gcc > 10.x).
+One can build the Version 1.25
 
 ```
 # for Legacy build:

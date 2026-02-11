@@ -29,7 +29,7 @@
 #include "Petscii.h"
 #include "emulator.h"
 #if defined(__CIRCLE__)
-const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03","USB04"};
+const char* VolumeStr[FF_VOLUMES] = {"SD","USB01","USB02","USB03","USB04", "USB05"};
 #elif defined(__PICO2__)
 #include "pico/stdlib.h"
 const char* VolumeStr[FF_VOLUMES] = {"SD"};
