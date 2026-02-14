@@ -169,6 +169,12 @@ When uploading directories, the browser may ask if you're sure. You still need t
 Select image for preview and mount it.
 <br />
 
+![](docs/drives.png)
+<br />
+
+Drives controls.
+<br />
+
 ![](docs/edit-config.png)
 <br />
 
