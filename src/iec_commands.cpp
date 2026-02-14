@@ -2486,11 +2486,13 @@ int IEC_Commands::WriteNewDiskInRAM(char* filenameNew, bool automount, unsigned 
 				if (!diskImage.WriteG64(filenameNew))
 					return ERROR_25_WRITE_ERROR;
 			break;
+#if !defined(ESP32) && !defined(__PICO2__)	// D81 not supported on ESP32/Pico2 builds due to memory constraints
 			case DiskImage::D81:
 				diskImage.OpenD81((const FILINFO*)0, (unsigned char*)DiskImage::readBuffer, length);
 				if (!diskImage.WriteD81(filenameNew))
 					return ERROR_25_WRITE_ERROR;
 			break;
+#endif			
 			default:
 				return ERROR_25_WRITE_ERROR;
 			break;
