@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<style>
+		table.dirs {
+			border-collapse: collapse;
+			width: 100%;
+		}
+		table.dirs th, table.dirs td {
+			text-align: left;
+			padding: 4px;
+			border-bottom: 1px solid #DDD;
+		}
+		table.dirs tr:nth-child(even) {background-color: #525c5c;}
+		table.dirs tr:nth-child(odd) {background-color: #657272;}
+		table.dirs tr:hover {background-color: #6a7575;}
+		@font-face {
+      		font-family: 'C64 Pro Mono';
+      		src: url('web/C64_Pro_Mono.ttf') format('truetype');
+      		font-weight: normal;
+      		font-style: normal;
+    	}
+		a:link {
+ 			color: rgb(255, 255, 255);
+  			background-color: transparent;
+  			text-decoration: none;
+		}		
+		a:visited {
+ 			color: rgb(247, 239, 239);
+  			background-color: transparent;
+  			text-decoration: none;
+		}
+		a:active {
+ 			color: rgb(238, 255, 0);
+  			background-color: transparent;
+  			text-decoration: none;
+		}
+		a:hover {
+ 			color: rgb(238, 255, 0);
+  			background-color: transparent;
+  			text-decoration: none;
+		}
+	</style>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.5.2/darkly/bootstrap.min.css"
+		integrity="sha512-8lE+UgnY2CgbE+WDsGwSwAiMOswuRYm11jXYV5KWH6XfSDAzrdRMbPQDpCwzVjJbe9quHrNNPV6N/llRKnw5Hg=="
+		crossorigin="anonymous" />
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
+	<title>Pi1541 Web-Interface</title>
+</head>
+
+<body>
+	<br />
+	<div class="container">
+		<div class="container" style="background-color: #000000; text-align: center; padding-bottom: 8px; padding-top: 8px;">
+			<table>
+				<td>
+					<h1 style="text-align:left">Pi1541 WebUI</h1>
+					<p style="text-align:left">by pottendo</p>
+					<h3 style="text-align:left">Status</h3>
+				</td>
+				<td>
+					<a href="index.html">
+						<img src="/web/pi1541-logo.png" style="height: 160px; width: 720px; cursor:pointer;" />
+					</a>
+				</td>
+			</table>
+		</div>
+		<div class="container bg-dark">
+			<br />
+			<!--	<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;"> 
+					<h3 style="text-align: left">Menu</h3>	-->
+			<table style="width: 100%;">
+				<tr>
+					<td>
+						<div style="display: flex; justify-content: space-between; width: 100%;">
+							<a href="index.html"><input type="submit" class="btn btn-success"
+									value="Upload/Manage SDCard" /></a>
+							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
+									value="Mount Images" /></a>
+							<a href="edit-config.html"><input type="submit" class="btn btn-success"
+									value="Change Config" /></a>
+							<a href="update.html"><input type="submit" class="btn btn-success"
+									value="Update Pi1541" /></a>
+							<a href="logger.html"><input type="submit" class="btn btn-success"
+									value="Logging" /></a>
+							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)" style="font-weight: bold; color: black;"
+									value="Reset Pi1541" /></a>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<table style="width: 100%;">
+				<tr><td>
+					<div style="display: flex; justify-content: space-between; width: 100%;">
+						<h4 style="text-align: left">Status</h4>
+						<div style="text-align: right" id="externalText">Loading...</div>
+					</div>
+				</td></tr>
+			</table>
+			<p>some content</p>
+		</div>
+		<p class="small" style="text-align: left" id="VersionText">Loading...</p>
+		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
+				target="_blank">Pi1541 firebase</a>.</p>
+		<p class="small">Find the pottendo-Pi1541 project resources here <a
+				href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
+		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+			crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+			integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+			crossorigin="anonymous"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+			crossorigin="anonymous"></script>
+		<script>
+			function delConfirm(envent) {
+				if (confirm("Are you sure?"))
+					return true;
+				else {
+					event.preventDefault();
+					return false;
+				}
+			};
+		</script>
+		<script>
+			fetch('/pistats.html')
+			  .then(response => {
+				if (!response.ok) throw new Error("Network error");
+				return response.text();
+			  })
+			  .then(html => {
+				document.getElementById('externalText').innerHTML = html;
+			  })
+			  .catch(err => {
+				document.getElementById('externalText').textContent = "Failed to load stats content.";
+				console.error(err);
+			  });
+			fetch('/pi1541Version.html')
+			  .then(response => {
+				if (!response.ok) throw new Error("Network error");
+				return response.text();
+			  })
+			  .then(html => {
+				document.getElementById('VersionText').innerHTML = html;
+			  })
+			  .catch(err => {
+				document.getElementById('VersionText').textContent = "Failed to load version content.";
+				console.error(err);
+			  });
+		</script>
+	</div>
+</body>
+
+</html>

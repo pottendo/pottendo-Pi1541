@@ -393,18 +393,20 @@ static bool write_image(string fn, char *extension, const u8 *pPartData, unsigne
 	return ret;
 }
 
-static bool read_file(string &dfn, string &msg, string &fcontent)
+static bool read_file(string &dfn, string &msg, string &fcontent, UINT *nLength = nullptr)
 {
 	FIL fp;
 	FILINFO fi;
 	if (f_stat(dfn.c_str(), &fi) != FR_OK) 
 	{
+		DEBUG_LOG("%s: can't stat '%s'", __FUNCTION__, dfn.c_str());
 		msg = "Can't stat <i>" + dfn + "</i>";
 		return false;
 
 	}
 	if (f_open(&fp, dfn.c_str(), FA_READ) != FR_OK)
 	{
+		DEBUG_LOG("%s: can't open '%s'", __FUNCTION__, dfn.c_str());
 		msg = "Can't open <i>" + dfn + "</i>";
 		return false;
 	}
@@ -429,6 +431,8 @@ static bool read_file(string &dfn, string &msg, string &fcontent)
 		msg = "Successfully read <i>" + dfn + "</i>";
 		ret = true;
 	}
+	if (nLength)
+		*nLength = fl;
 	f_close(&fp);
 	return ret;
 }
@@ -650,6 +654,7 @@ static FRESULT f_unlink_full(string path, string &msg)
 
 static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
+extern DiskCaddy diskCaddy;
 
 FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
 {
@@ -832,6 +837,42 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	//CMemorySystem::DumpStatus();
 	mem_stat(pPath, mem, true);
 	
+	// serve content of /web
+	if (strncmp(pPath, "/web", 4) == 0)
+	{
+		string index;
+		string fn = string("SD:") + pPath;
+		DEBUG_LOG("%s: serving '%s'", __FUNCTION__, fn.c_str());
+		FIL fp;
+		UINT br;
+
+		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
+		{
+			f_read(&fp, (void *)pBuffer, *pLength, &br);
+
+			if (*pLength < br)
+			{
+				DEBUG_LOG("%s: buffer too small for '%s' (%d < %d)", __FUNCTION__, fn.c_str(), *pLength, nLength);
+				return HTTPInternalServerError;
+			}
+			DEBUG_LOG("%s: successfully read '%s', %db", __FUNCTION__, fn.c_str(), br);
+			*pLength = br;
+			f_close(&fp);
+			if (endsWith(fn, ".html"))
+				*ppContentType = "text/html; charset=UTF-8";
+			else if (endsWith(fn, ".css"))
+				*ppContentType = "text/css; charset=UTF-8";
+			else if (endsWith(fn, ".js"))
+				*ppContentType = "text/javascript; charset=UTF-8";	
+			else if (endsWith(fn, ".png"))
+				*ppContentType = "image/x-icon";
+			else 
+				*ppContentType = "text/plain; charset=UTF-8";
+			return HTTPOK;
+		}
+		else
+			return HTTPNotFound;
+	}
 	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
@@ -1059,10 +1100,16 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	else if (strcmp(pPath, "/pistats.html") == 0)
 	{
 		unsigned int temp;
+		DiskImage *di;
+		char din[256], cwd[256];
+		di = diskCaddy.GetCurrentDisk();
+		f_getcwd(cwd, sizeof(cwd));
+		snprintf(din, 256, "%s/%s", cwd, (di ? di->GetName() : "None"));
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
+				 din,
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -1419,6 +1466,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 2; /* indicate .lst mount */
+						MsDelay(100);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
@@ -1450,6 +1498,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 1;	/* indicate image mount */
+						MsDelay(100);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
@@ -1559,6 +1608,14 @@ extern int reboot_req;
 		pContent = s_font;
 		nLength = sizeof s_font;
 		*ppContentType = "font/ttf";
+	}
+	else if (strcmp(pPath, "/pi1541Version.html") == 0)
+	{
+		char buf[256];
+		sprintf(buf, "%s, %s", Kernel.get_version(), mem.c_str());
+		nLength = strlen(buf);
+		pContent = (const u8 *)buf;
+		*ppContentType = "text/html; charset=UTF-8";
 	}
 	else
 	{
