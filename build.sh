@@ -187,6 +187,7 @@ EOF
     # finally populate options.txt and config.txt
     cd ${base}
     cp options.txt config.txt ${RELEASE}
+    cp -r src/webcontent/web ${RELEASE}
     mkdir ${RELEASE}/1541
     wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/1541/fb.d64
     cd CBM-FileBrowser_v1.6/sources
