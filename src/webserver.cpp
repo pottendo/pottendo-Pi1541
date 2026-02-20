@@ -836,6 +836,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	// enable HEAP_DEBUG in circle
 	//CMemorySystem::DumpStatus();
 	mem_stat(pPath, mem, true);
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	
 	// serve content of /web
 	if (strncmp(pPath, "/web", 4) == 0)
@@ -845,6 +847,31 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		DEBUG_LOG("%s: serving '%s'", __FUNCTION__, fn.c_str());
 		FIL fp;
 		UINT br;
+		if (strcmp(pPath, "/web/update-web.html") == 0)
+		{
+			const char *pPartHeader;
+			const u8 *pPartData;
+			unsigned nPartLength;
+			string msg = "unknown error!";
+			if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
+			{
+				if (!extract_field("filename=\"", pPartHeader, filename, extension))
+				{
+					DEBUG_LOG("%s: can't find filename in header '%s'", __FUNCTION__, pPartHeader);
+					msg = string("internal error filename in header not found");
+				}
+				else
+				{
+					string dfn = string("SD:/web/") + filename;
+					if (write_file(dfn.c_str(), pPartData, nPartLength))
+						msg = string("Successfully wrote <i>") + dfn + "</i>";
+					else
+						msg = string("Failed to write <i>") + dfn + "</i>";
+				}
+			}
+			DEBUG_LOG("%s: %s", __FUNCTION__, msg.c_str());
+			fn = "SD:/web/index.html";
+		}
 
 		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
 		{
@@ -873,8 +900,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		else
 			return HTTPNotFound;
 	}
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
-	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	if (strcmp (pPath, "/") == 0 ||
 		strcmp (pPath, "/index.html") == 0)
 	{
@@ -1191,7 +1216,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
-	}
+	}	
 	else if (strcmp(pPath, "/edit-config.html") == 0)
 	{
 		const char *pPartHeader;

@@ -59,7 +59,7 @@
 				<td>
 					<h1 style="text-align:left">Pi1541 WebUI</h1>
 					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Status</h3>
+					<h3 style="text-align:left">Alternative Server</h3>
 				</td>
 				<td>
 					<a href="index.html">
@@ -101,7 +101,18 @@
 					</div>
 				</td></tr>
 			</table>
-			<p>some content</p>
+			<h4 style="text-align:left">Pi1541 webserver files upload into /web</h4>
+			<form action="update-web.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
+				<div class="form-group">
+					<div class="custom-file">
+						<input type="file" class="custom-file-input1" id="UploadWeb" name="webfile">
+						<label class="custom-file-label" for="UploadWeb">Choose file</label>
+					</div>
+					<br /> <br />
+					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload file to SD:/web" />
+				</div>
+			</form>
+			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 		</div>
 		<p class="small" style="text-align: left" id="VersionText">Loading...</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
@@ -117,6 +128,16 @@
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
 			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
 			crossorigin="anonymous"></script>
+		<script>
+			$(document).ready(function () {
+				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
+					var fileName = document.getElementById("UploadWeb").files[0].name;
+					var nextSibling = e.target.nextElementSibling;
+					nextSibling.innerText = fileName;
+				});
+			});
+		</script>
+
 		<script>
 			function delConfirm(envent) {
 				if (confirm("Are you sure?"))
