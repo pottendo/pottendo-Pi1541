@@ -64,6 +64,10 @@ while [ ! x"${opts}" = x"break" ] ; do
         build_legacy="only"
         shift
         ;;
+    -nl)
+        nls="yes"
+        shift
+        ;;
 	-h)
 	    echo "Usage: $0 [-t <release-tag>] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
 	    shift
@@ -91,7 +95,11 @@ if [ x${tag} != "xnone" ] ; then
     fi
     RELEASE=${base}/../${tag}
     mkdir -p ${RELEASE}/debug-syms 2>/dev/null
-    build_legacy="yes"
+    if [ x${nls} = "xyes" ] ; then
+        echo "No legacy build requested, building only for circle-stdlib codebase"
+    else
+        build_legacy="yes"
+    fi
 else
     # install in builddir, where the checkouts have been done
     RELEASE=${base}/../Pi-Bootpart
@@ -187,7 +195,6 @@ EOF
     # finally populate options.txt and config.txt
     cd ${base}
     cp options.txt config.txt ${RELEASE}
-    cp -r src/webcontent/web ${RELEASE}
     mkdir ${RELEASE}/1541
     wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/1541/fb.d64
     cd CBM-FileBrowser_v1.6/sources
@@ -255,5 +262,6 @@ for a in ${archs} ; do
     cp src/kernel*.map ${RELEASE}/debug-syms
 done
 cp README.md ${RELEASE}
+cp -r src/webcontent/web ${RELEASE}
 ls -l ${RELEASE}
 echo "successfully built for ${archs}"
