@@ -1628,7 +1628,7 @@ extern int reboot_req;
 		nLength = sizeof s_Favicon;
 		*ppContentType = "image/x-icon";
 	}
-	else if (strcmp (pPath, "/web/C64_Pro_Mono.ttf") == 0)
+	else if (strcmp (pPath, "/C64_Pro_Mono.ttf") == 0)
 	{
 		pContent = s_font;
 		nLength = sizeof s_font;

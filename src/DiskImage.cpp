@@ -432,7 +432,6 @@ bool DiskImage::OpenD71(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 	unsigned speedZoneIndex;
 	unsigned sectorSize;
 	unsigned char error;
-
 	Close();
 
 	this->fileInfo = fileInfo;
@@ -443,9 +442,7 @@ bool DiskImage::OpenD71(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 		size = MAX_D71_SIZE;
 
 	attachedImageSize = size;
-
 	memset(errorinfo, SECTOR_OK, sizeof(errorinfo));
-
 	switch (size)
 	{
 		case (BLOCKSONDISK * 2 * 257):		// 70 track image with errorinfo
@@ -468,15 +465,15 @@ bool DiskImage::OpenD71(const FILINFO* fileInfo, unsigned char* diskImage, unsig
 	}
 
 	sector_ref = 0;
-	for (unsigned halfTrackIndex = 0; halfTrackIndex < last_track * 2; ++halfTrackIndex)
+	for (unsigned halfTrackIndex = 0; halfTrackIndex < (last_track * 2); ++halfTrackIndex)
 	{
+		//DEBUG_LOG("%s: halfTrackIndex %d, last_track = %d", __FUNCTION__, halfTrackIndex, last_track);
 		unsigned char track = (halfTrackIndex >> 1);
 #if defined(EXPERIMENTALZERO)
 		unsigned char* dest = &tracks[halfTrackIndex << 13];
 #else
 		unsigned char* dest = tracks[halfTrackIndex];
 #endif
-
 		trackLengths[halfTrackIndex] = trackSize[GetSpeedZoneIndexD64(track)];
 
 		if ((halfTrackIndex & 1) == 0)
@@ -1468,8 +1465,10 @@ DiskImage::DiskType DiskImage::GetDiskImageTypeViaExtention(const char* diskImag
 			return T64;
 		else if (IsLSTExtention(diskImageName))
 			return LST;
-		else if (toupper((char)ext[1]) == 'D' && ext[2] == '8' && ext[3] == '1')
+		else if (IsDiskImageD81Extention(diskImageName))
 			return D81;
+		else if (IsDiskImageD71Extention(diskImageName))
+			return D71;
 		else if (toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'R' && toupper((char)ext[3]) == 'G')
 			return PRG;
 	}

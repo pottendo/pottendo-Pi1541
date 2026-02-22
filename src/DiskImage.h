@@ -280,7 +280,7 @@ private:
 	const FILINFO* fileInfo;
 	unsigned hash;
 
-	unsigned short trackLengths[HALF_TRACK_COUNT];
+	unsigned short trackLengths[HALF_TRACK_COUNT * 2];
 	union
 	{
 		unsigned char trackDensity[HALF_TRACK_COUNT];
@@ -288,8 +288,8 @@ private:
 		unsigned char trackD81SyncBits[HALF_TRACK_COUNT][2][MAX_TRACK_LENGTH >> 3];
 #endif		
 	};
-	bool trackDirty[HALF_TRACK_COUNT];
-	bool trackUsed[HALF_TRACK_COUNT];
+	bool trackDirty[HALF_TRACK_COUNT * 2];
+	bool trackUsed[HALF_TRACK_COUNT * 2];
 
 	unsigned short crc;
 	static const unsigned short CRC1021[256];
