@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 ## News vs 2.1
 V2.2Beta1
+- Enable D71 image support
 - webserver now hands out files from /web
 - stats show current mounted image
 

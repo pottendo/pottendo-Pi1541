@@ -362,6 +362,7 @@ static bool write_image(string fn, char *extension, const u8 *pPartData, unsigne
 	bool ret = false;
 	if ((strcmp(extension, "d64") == 0) ||
 		(strcmp(extension, "g64") == 0) ||
+		(strcmp(extension, "d71") == 0) ||
 		(strcmp(extension, "d81") == 0) ||
 		(strcmp(extension, "nib") == 0) ||
 		(strcmp(extension, "nbz") == 0) ||
