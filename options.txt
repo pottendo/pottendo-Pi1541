@@ -5,7 +5,7 @@
 splitIECLines = 1
 // If you are using some type of hardware that requires the lines to be inverted then specify these options here
 //invertIECInputs = 1
-// If you are using a 7407
+// If you are using a 7407, set following option to 0
 //invertIECOutputs = 0
 
 // If you are using a LCD screen then specify it here
@@ -145,8 +145,8 @@ DisplayTrack = 0
 DisplayTemperature = 0  // may impact compatibility / timing of emulation
 DisableHDMI = 0         // same as headLess, compatibility with recent Pi1541 (>V1.24)
 // This option displays the IEC bus activity on the bottom of the Pi's screen
-HDMIGraphIEC = 0        // only if HDMI is enabled
-HDMIDisplayIECActivity = 0    // only if HDMI is enabled
+HDMIGraphIEC = 1        // only if HDMI is enabled, don't use on on PiZero2
+HDMIDisplayIECActivity = 1    // only if HDMI is enabled
 
 /////////////////////////////// pottendo Pi1541 Options
 // this turns on/off HDMI output
