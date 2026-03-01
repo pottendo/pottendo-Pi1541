@@ -1,0 +1,33 @@
+<div class="box py-2 px-3 mb-3" x-init="$store.proxy.processStats()">
+    <div class="columns is-mobile is-gapless mb-1">
+        <div class="column">
+            <div class="mb-1" style="display: flex; align-items: center;">
+                <span class="icon is-small" style="color: var(--1541-brown)"><i class="fas fa-compact-disc"></i></span>
+                <strong class="is-size-7 ml-3" style="color: var(--1541-brown)" x-text="$store.proxy.stats.currentDiskimage ?? '—'"></strong>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <span class="icon is-small" style="color: var(--1541-brown)"><i class="fas fa-hdd"></i></span>
+                <strong class="is-size-7 ml-3" style="color: var(--1541-brown)" x-text="$store.proxy.stats.deviceId ?? '—'"></strong>
+            </div>
+        </div>
+        <div class="column is-narrow">
+            <div class="mb-1" style="display: flex; align-items: center;">
+                <span class="icon is-small" style="color: var(--1541-brown)"><i class="fas fa-thermometer-half"></i></span>
+                <strong class="is-size-7 ml-3" style="color: var(--1541-brown)" x-text="$store.proxy.stats.piTemp ?? '—'"></strong>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <span class="icon is-small" style="color: var(--1541-brown)"><i class="fas fa-microchip"></i></span>
+                <strong class="is-size-7 ml-3" style="color: var(--1541-brown)" x-text="$store.proxy.stats.piFreq ?? '—'"></strong>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+        <button class="button is-small py-0 px-2" style="height: 1.25rem; font-size: 0.65rem;"
+                @click="$store.proxy.processStats()"
+                :class="{ 'is-loading': $store.proxy.statsLoading }"
+                title="Refresh stats">
+            <span class="icon" style="width: 0.75rem; height: 0.75rem;"><i class="fas fa-sync-alt"></i></span>
+        </button>
+        <span class="is-size-7 has-text-grey" x-text="$store.proxy.stats.time ?? ''"></span>
+    </div>
+</div>

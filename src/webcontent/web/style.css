@@ -1,0 +1,542 @@
+@font-face {
+    font-family: 'C64 Pro Mono';
+    src: url(var(--pi-font-url)) format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+:root {
+    --pi-font-url: http://localhost:8000/proxy/C64_Pro_Mono.ttf;
+}
+
+:root {
+    --1541-brown: #ff8c00; /* changed from brown to orange */
+    --1541-beige: #f5f5dc;
+    --1541-red: #dc143c;
+}
+
+.dir-name {
+    color: #ADD8E6; /* lightblue */
+}
+
+.disc-icon {
+    color: var(--1541-brown);
+}
+
+body {
+    background-color: var(--1541-beige);
+    font-family: "Courier New", monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+body > .section {
+    flex: 1;
+}
+
+.navbar,
+.footer {
+    background-color: var(--1541-brown);
+}
+
+.footer {
+    padding: 0.75rem 1.5rem;
+}
+
+.footer-sep {
+    color: black;
+}
+
+body.dark .footer-sep {
+    color: #888;
+}
+
+.navbar {
+    flex-wrap: nowrap;
+}
+
+.navbar-brand {
+    flex: 1;
+}
+
+.button.is-1541 {
+    background-color: var(--1541-brown);
+    color: white;
+}
+
+.button.is-1541:hover {
+    background-color: #e07a00; /* darker orange hover */
+}
+
+.title {
+    color: var(--1541-brown);
+}
+
+.drive-status {
+    border: 2px solid var(--1541-brown);
+    background-color: white;
+    padding: 1rem;
+    border-radius: 5px;
+}
+
+/* Tree view styling */
+.tree {
+    list-style-type: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.tree li {
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.tree li:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.2rem;
+    width: 1rem;
+    height: 0;
+    border-top: 1px dashed #ccc;
+}
+
+.tree li:last-child:before {
+    display: none;
+}
+
+.tree li:after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.2rem;
+    width: 1rem;
+    height: 1rem;
+    border-left: 1px dashed #ccc;
+    border-bottom: 1px dashed #ccc;
+}
+
+/* Breadcrumb styling */
+.breadcrumb li + li:before {
+    content: "/";
+    color: #4a4a4a;
+    padding: 0 0.5rem;
+}
+
+.breadcrumb a.is-active {
+    color: var(--1541-brown);
+    font-weight: bold;
+}
+
+/* Prevent FA SVG icons from swallowing clicks */
+.icon, .icon * {
+    pointer-events: none;
+}
+
+.mount-icon {
+    pointer-events: auto;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+}
+
+.mount-icon i {
+    pointer-events: auto;
+    color: var(--1541-brown);
+    cursor: pointer;
+}
+
+/* Favourite star toggle */
+.fav-star {
+    cursor: pointer;
+    font-size: 1rem;
+    margin-right: 0.3rem;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+
+/* Detail line star inside the PETSCII panel */
+.detail-line {
+    display: flex;
+    align-items: center;
+}
+
+.detail-fav-star {
+    font-size: 12px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.detail-star-dim {
+    color: rgba(159, 173, 233, 0.3);
+}
+
+.detail-star-dim:hover {
+    color: rgba(159, 173, 233, 0.7);
+}
+
+/* Detail bookmark line in favourites panel */
+code.detail-bookmark-line {
+    background-color: #2844c4;
+    color: #9fade9;
+    padding: 1px 4px;
+    margin-left: 0.5rem;
+    font-family: 'C64 Pro Mono', monospace;
+    font-size: 0.8em;
+}
+
+body.dark code.detail-bookmark-line {
+    background-color: #2844c4;
+    color: #9fade9;
+}
+
+
+/* Folder icons */
+.fa-folder {
+    color: var(--1541-brown);
+}
+
+.fa-folder.has-text-info {
+    color: #3273dc;
+}
+
+/* Tag styling */
+.tag.is-info {
+    background-color: #3273dc;
+    color: white;
+}
+
+.tag.is-success {
+    background-color: #23d160;
+    color: white;
+}
+
+/* Table improvements */
+.table th {
+    background-color: var(--1541-brown);
+    color: white;
+}
+
+.table td,
+.table th {
+    vertical-align: middle;
+}
+
+/* Code styling for filenames */
+code {
+    background-color: #f5f5f5;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Tabs */
+.tabs.is-boxed li.is-active a {
+    border-bottom-color: var(--1541-brown) !important;
+    border-color: var(--1541-brown) var(--1541-brown) transparent !important;
+    color: var(--1541-brown) !important;
+}
+
+.tab-content {
+    border: 1px solid #dbdbdb;
+    border-top: none;
+    /*padding: 1rem;*/
+}
+
+body.dark .tabs.is-boxed li.is-active a {
+    background-color: #242424 !important;
+}
+
+body.dark .tabs a {
+    color: #ccc;
+    border-bottom-color: #555;
+}
+
+body.dark .tabs.is-boxed ul {
+    border-bottom-color: #555;
+}
+
+.tabs.is-boxed li:not(.is-active) a:hover {
+    background-color: rgba(255, 140, 0, 0.12) !important;
+    border-color: var(--1541-brown) !important;
+    color: var(--1541-brown) !important;
+}
+
+body.dark .tabs.is-boxed li:not(.is-active) a:hover {
+    background-color: rgba(255, 140, 0, 0.15) !important;
+    border-color: var(--1541-brown) !important;
+    color: var(--1541-brown) !important;
+}
+
+body.dark .tab-content {
+    border-color: #555;
+    background-color: #1a1a1a;
+}
+
+/* x-cloak: hide elements until Alpine initializes */
+[x-cloak] { display: none !important; }
+
+/* Mounted file status bar */
+.mounted-status {
+    background-color: #1a1a2e;
+    color: #e0e0e0;
+    padding: 0.35rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    border-bottom: 2px solid var(--1541-brown);
+}
+
+.mounted-status .icon {
+    color: var(--1541-brown);
+}
+
+.mounted-status strong {
+    color: #fff;
+    font-family: "Courier New", monospace;
+}
+
+.mounted-status-path {
+    color: #888;
+    font-size: 0.78rem;
+    font-family: "Courier New", monospace;
+}
+
+body.dark .mounted-status {
+    background-color: #0d0d1a;
+    border-bottom-color: var(--1541-brown);
+}
+
+/* File details panel */
+.file-details-panel {
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 0.75rem;
+}
+
+body.dark .file-details-panel {
+    border-color: #555;
+}
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+    background-color: transparent !important;
+    border: 1px solid black !important;
+    color: black !important;
+}
+
+body.dark .dark-mode-toggle {
+    background-color: transparent !important;
+    border: 1px solid black !important;
+    color: black !important;
+}
+
+.dark-mode-toggle:hover,
+body.dark .dark-mode-toggle:hover {
+    background-color: transparent !important;
+    border-color: white !important;
+    color: white !important;
+}
+
+/* Dark mode overrides */
+html:has(body.dark) {
+    background-color: #1a1a1a;
+}
+
+body.dark {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+body.dark .footer {
+    background-color: var(--1541-brown);
+}
+
+body.dark .section {
+    background-color: #1a1a1a;
+}
+
+body.dark .card,
+body.dark .box,
+body.dark .panel {
+    background-color: #242424;
+    color: #e0e0e0;
+    border-color: #444;
+}
+
+body.dark .panel-heading {
+    background-color: #333;
+    color: #e0e0e0;
+}
+
+body.dark .panel-block {
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark .panel-block:hover {
+    background-color: #2e2e2e;
+}
+
+body.dark .table {
+    background-color: #242424;
+    color: #e0e0e0;
+}
+
+body.dark .table th {
+    background-color: #5a3a00;
+    color: #f0e0c0;
+}
+
+body.dark .table td,
+body.dark .table tr {
+    background-color: #242424;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark .table tbody tr:hover {
+    background-color: #2e2e2e;
+}
+
+body.dark .button {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+body.dark .button.is-light {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+body.dark .button:hover {
+    background-color: #444;
+    color: #fff;
+}
+
+body.dark .button.is-1541 {
+    background-color: var(--1541-brown);
+    color: white;
+}
+
+body.dark .button.is-success {
+    background-color: #1a7a38;
+    color: #fff;
+    border-color: #1a7a38;
+}
+
+body.dark .button.is-info {
+    background-color: #2257b0;
+    color: #fff;
+    border-color: #2257b0;
+}
+
+body.dark .button.is-warning {
+    background-color: #947200;
+    color: #fff;
+    border-color: #947200;
+}
+
+body.dark .button.is-danger {
+    background-color: #a02040;
+    color: #fff;
+    border-color: #a02040;
+}
+
+body.dark .button.is-link {
+    background-color: #2257b0;
+    color: #fff;
+    border-color: #2257b0;
+}
+
+body.dark .button.is-primary {
+    background-color: #006b5c;
+    color: #fff;
+    border-color: #006b5c;
+}
+
+body.dark .input,
+body.dark .select select,
+body.dark .textarea {
+    background-color: #2e2e2e;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+body.dark code {
+    background-color: #2e2e2e;
+    color: #e0e0e0;
+}
+
+body.dark .breadcrumb a {
+    color: #aaa;
+}
+
+body.dark .breadcrumb a:hover,
+body.dark .breadcrumb a.is-active {
+    color: var(--1541-brown);
+}
+
+body.dark .drive-status {
+    background-color: #242424;
+    border-color: var(--1541-brown);
+}
+
+body.dark .title {
+    color: var(--1541-brown);
+}
+
+body.dark .subtitle {
+    color: #ccc;
+}
+
+body.dark .notification {
+    background-color: #2e2e2e;
+    color: #e0e0e0;
+}
+
+body.dark .tree li:before,
+body.dark .tree li:after {
+    border-color: #555;
+}
+
+body.dark .file-info-row {
+    color: #aaa !important;
+}
+
+body.dark .loading-overlay {
+    background: rgba(26, 26, 26, 0.85);
+}
+
+body.dark .table tr.has-background-light,
+body.dark .table tr.has-background-light td {
+    background-color: #1e2a35 !important;
+}
+
+body.dark .table tr.is-selected-file,
+body.dark .table tr.is-selected-file td {
+    background-color: #1a3a5c !important;
+}
+
+
+
+body.dark .csdb-downloads-list {
+    border-color: #444;
+}
+
+body.dark .csdb-download-item {
+    border-bottom-color: #333;
+}
+
+body.dark .table tr.has-background-light td a {
+    color: #89c4e1;
+}
+
+body.dark .table tr.has-background-light td a:hover {
+    color: #b8dff0;
+}

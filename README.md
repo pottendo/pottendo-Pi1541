@@ -2,6 +2,10 @@
 
 This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of February 2026, Step 50.1).
 
+## New HTML/JS UI
+- one can browse to an alternative WebUI, offering more potential to be extended (direct CSDB access, etc.), Credits to @skyie on F64
+- Added /web/web-upload.html to support upload of the new UI components.
+
 ## News vs 2.1
 V2.2Beta1
 - Enable D71 image support

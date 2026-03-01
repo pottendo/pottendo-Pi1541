@@ -1,0 +1,443 @@
+<div
+    class="box"
+    x-init="$watch('searchQuery', () => { selectedFile = null; selectedFilePath = null; })"
+    @favourite-navigate.window="navigateTo($event.detail.path)"
+    @favourite-show-details.window="showDetails({ path: $event.detail.path, type: 'file' })"
+    @favourite-mount.window="mountFile($event.detail.path)"
+    x-data="{
+    currentPath: '/',
+    searchQuery: '',
+    searchContents: true,
+
+    get items() {
+        const disc = Alpine.store('disc');
+        if (this.searchQuery) {
+            return disc.searchAll(this.searchQuery, this.searchContents);
+        }
+        return disc.getAllItems(this.currentPath);
+    },
+
+    // Navigation methods
+    async navigateTo(path) {
+        if (path !== '/' && !$store.disc.isDirectoryLoaded(path)) {
+            try {
+                await $store.disc.loadDirectoryContents(path);
+            } catch (error) {
+                console.error(`[file-browser] Error loading directory ${path}:`, error);
+            }
+        }
+
+        this.currentPath = path;
+        this.searchQuery = '';
+        this.selectedDiscs = [];
+        this.selectedFile = null;
+        this.selectedFilePath = null;
+    },
+
+    async navigateUp() {
+        const parentPath = $store.disc.goToParent(this.currentPath);
+        await this.navigateTo(parentPath);
+    },
+
+    // Selected file for details
+    selectedFile: null,
+    selectedFilePath: null,
+    loadingFile: false,
+    mountingFile: false,
+    async mountFile(path) {
+        this.mountingFile = true;
+        try {
+            await $store.proxy.mountFile(path);
+        } finally {
+            this.mountingFile = false;
+        }
+    },
+    async showDetails(file) {
+        const disc = $store.disc.findDiscImageByPath(file.path);
+        if (!disc) return;
+        this.selectedFile = disc;
+        this.selectedFilePath = file.path;
+
+        if (disc.disc_content) return;
+
+        this.loadingFile = true;
+        try {
+            const details = await $store.proxy.processFileDetails(file.path);
+            if (details && details.disc_content) {
+                this.selectedFile.disc_content = details.disc_content;
+                this.selectedFile.disc_ascii = $store.disc.computeDiscAscii(details.disc_content);
+                $store.cache.saveDiscContent(this.selectedFilePath, details.disc_content);
+            }
+        } catch (error) {
+            console.error('[file-browser] Error loading file details:', error);
+        } finally {
+            this.loadingFile = false;
+        }
+    },
+
+    get fileItems() {
+        return this.items.filter(item => item.type === 'file');
+    },
+
+    get selectedFileIndex() {
+        if (!this.selectedFilePath) return -1;
+        return this.fileItems.findIndex(item => item.path === this.selectedFilePath);
+    },
+
+    async selectPrevFile() {
+        const idx = this.selectedFileIndex;
+        if (idx > 0) await this.showDetails(this.fileItems[idx - 1]);
+    },
+
+    async selectNextFile() {
+        const idx = this.selectedFileIndex;
+        if (idx !== -1 && idx < this.fileItems.length - 1) await this.showDetails(this.fileItems[idx + 1]);
+    }
+}"
+>
+
+    <style>
+        .is-selected-file {
+            background-color: #d4e6f9 !important;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+        }
+        .file-item .icon {
+            margin-right: 0.5rem;
+        }
+        .fa-spinner {
+            font-size: 0.8em;
+        }
+        .content-matches {
+            margin-top: 0.25rem;
+            padding-left: 1.4rem;
+        }
+        .content-match-line {
+            display: block;
+            font-size: 0.8em;
+            font-family: monospace;
+            background-color: #2844c4 !important;
+            color: #9fade9 !important;
+            padding: 1px 4px;
+            margin-top: 2px;
+        }
+        .ml-1 {
+            margin-left: 0.25rem;
+        }
+        .table-container {
+            position: relative;
+        }
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 4px;
+        }
+        .loading-overlay .tag {
+            font-size: 0.9rem;
+        }
+        .error-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .path-breadcrumb {
+            font-weight: 600;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 8px;
+            width: 100%;
+            box-sizing: border-box;
+            color: #ff8c00;
+        }
+        .path-breadcrumb a {
+            color: #ff8c00;
+            text-decoration: none;
+        }
+.dir-details {
+            font-size: 0.85rem;
+            color: #888;
+        }
+    </style>
+
+    <!-- Info + Fetch row -->
+    <div class="is-flex is-justify-content-space-between is-align-items-start mb-3">
+        <div class="file-info-row" style="font-size: 0.85rem; color: #666; display: flex; flex-direction: column; gap: 0.2rem;">
+            <span>
+                <span class="icon is-small"><i class="fas fa-folder"></i></span>
+                <span x-text="$store.disc.computeSubdirCountRecursive($store.disc.root) + ' directories'"></span>
+            </span>
+            <span>
+                <span class="icon is-small"><i class="fas fa-compact-disc"></i></span>
+                <span x-text="$store.disc.computeDiscCountRecursive($store.disc.root) + ' files'"></span>
+            </span>
+            <span>
+                <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
+                <span x-text="$store.disc.countLoadedDetailsRecursive($store.disc.root) + ' details loaded'"></span>
+            </span>
+        </div>
+        <div class="dropdown is-right" :class="{ 'is-active': fetchDropdownOpen }" x-data="{ fetchDropdownOpen: false, confirmClearCache: false }" @click.outside="fetchDropdownOpen = false">
+            <div class="dropdown-trigger">
+                <button class="button is-info is-small" @click="fetchDropdownOpen = !fetchDropdownOpen" :disabled="$store.proxy.connecting">
+                    <span class="icon is-small"><i class="fas fa-sync" :class="{ 'fa-spin': $store.proxy.connecting }"></i></span>
+                    <span class="icon is-small"><i class="fas fa-caret-down"></i></span>
+                </button>
+            </div>
+            <div class="dropdown-menu">
+                <div class="dropdown-content">
+                    <a class="dropdown-item" @click="$store.proxy.initIndexRecursive(currentPath); fetchDropdownOpen = false">
+                        <span class="icon is-small"><i class="fas fa-sync"></i></span>
+                        <span>Directories</span>
+                    </a>
+                    <a class="dropdown-item" @click="$store.proxy.initFileDetailsRecursive(currentPath); fetchDropdownOpen = false">
+                        <span class="icon is-small"><i class="fas fa-sync"></i></span>
+                        <span>Details</span>
+                    </a>
+                    <hr class="dropdown-divider">
+                    <a class="dropdown-item has-text-danger" @click="confirmClearCache = true; fetchDropdownOpen = false">
+                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                        <span>Clear cache</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Confirm Clear Cache Modal -->
+            <div class="modal" :class="{ 'is-active': confirmClearCache }" @keydown.escape.window="confirmClearCache = false">
+                <div class="modal-background" @click="confirmClearCache = false"></div>
+                <div class="modal-card">
+                    <header class="modal-card-head py-3">
+                        <p class="modal-card-title is-size-6 mb-0">Clear cache?</p>
+                        <button class="delete" @click="confirmClearCache = false"></button>
+                    </header>
+                    <section class="modal-card-body is-size-7">
+                        <p>All cached directory and disc content data will be removed.</p>
+                    </section>
+                    <footer class="modal-card-foot py-3" style="gap: 0.5rem; justify-content: flex-end; background-color: #222;">
+                        <button class="button is-small" @click="confirmClearCache = false">Cancel</button>
+                        <button class="button is-small is-danger" @click="$store.cache.clearAll(); confirmClearCache = false">
+                            <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                            <span>Clear cache</span>
+                        </button>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Controls -->
+    <div class="field has-addons mb-1">
+        <div class="control is-expanded">
+            <input
+                class="input"
+                type="text"
+                placeholder="Search discs..."
+                x-model="searchQuery"
+            />
+        </div>
+        <div class="control">
+            <button class="button is-1541">Search</button>
+        </div>
+    </div>
+    <div class="is-flex is-justify-content-flex-end mb-4">
+        <label class="checkbox is-size-7">
+            <input type="checkbox" x-model="searchContents">
+            Search details
+        </label>
+    </div>
+
+    <!-- Breadcrumbs / Search results header -->
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+        <div x-show="!searchQuery" class="path-breadcrumb"><a @click="navigateTo('/')" style="cursor: pointer;">/</a><template x-for="(part, index) in currentPath.split('/').filter(p => p !== '')" :key="index"><span><span x-show="index > 0" class="path-sep">/</span><a @click="navigateTo('/' + currentPath.split('/').slice(1, index + 2).join('/'))" style="cursor: pointer;" x-text="part"></a></span></template></div>
+        <span x-show="searchQuery" class="has-text-weight-semibold has-text-grey">
+            <span class="icon is-small"><i class="fas fa-search"></i></span>
+            <span x-text="(() => {
+                const dirs = items.filter(i => i.type === 'directory').length;
+                const files = items.filter(i => i.type === 'file').length;
+                const details = items.filter(i => i.type === 'file' && i.disc_content).length;
+                const parts = [];
+                if (dirs > 0) parts.push(dirs + ' dirs');
+                if (files > 0) parts.push(files + ' files');
+                if (details > 0) parts.push(details + ' details');
+                return 'Search results' + (parts.length ? ' (' + parts.join(', ') + ')' : '');
+            })()"></span>
+        </span>
+    </div>
+
+    <!-- Unified Items Table -->
+    <div class="table-container">
+        <div x-show="$store.proxy.connecting || $store.proxy.connectionError" class="loading-overlay">
+            <div x-show="$store.proxy.connectionError && !$store.proxy.connecting" class="error-content">
+                <span class="tag is-warning is-light is-medium">
+                    <span class="icon is-small mr-1">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </span>
+                    <span x-text="$store.proxy.connectionError"></span>
+                </span>
+                <button class="button is-small is-warning" @click="$store.proxy.processIndex()">
+                    <span class="icon is-small"><i class="fas fa-redo"></i></span>
+                    <span>Retry</span>
+                </button>
+            </div>
+            <span x-show="$store.proxy.connecting" class="tag is-info is-light is-medium">
+                <span class="icon is-small mr-1">
+                    <i class="fas fa-spinner fa-pulse"></i>
+                </span>
+                Loading&hellip;
+            </span>
+        </div>
+    <table class="table is-fullwidth is-striped">
+        <tbody>
+            <template
+                x-for="item in items"
+                :key="item.path + '-' + item.type"
+            >
+                <tr :class="{ 'has-background-light': item.isDirectory, 'is-selected-file': selectedFile && item.type === 'file' && item.path === selectedFilePath }">
+                    <td style="cursor: pointer" @click.stop="(item.type === 'parent') ? navigateUp() : (item.type === 'directory' ? navigateTo(item.path) : showDetails(item))">
+                        <span x-show="item.type === 'parent'"><span class="icon is-small"><i class="fas fa-arrow-up"></i></span> <span x-text="item.name"></span></span>
+                        <span x-show="item.type === 'directory'" class="dir-name"><span class="icon is-small"><i class="fas fa-folder"></i></span> <span x-text="item.name"></span></span>
+                        <div x-show="item.type === 'file'" class="file-item"><span class="icon is-small"><i class="fas fa-compact-disc disc-icon"></i></span> <code x-text="item.name"></code></div>
+                        <template x-if="item.matchingLines">
+                            <div class="content-matches">
+                                <template x-for="(line, i) in item.matchingLines" :key="i">
+                                    <code class="content-match-line" x-text="line"></code>
+                                </template>
+                            </div>
+                        </template>
+                    </td>
+                    <td>
+                        <span x-show="item.type === 'file'" class="icon is-small mount-icon" role="button" tabindex="0" @click.stop="mountFile(item.path)" @keydown.enter.stop="mountFile(item.path)" title="Mount this image">
+                            <i class="far fa-play-circle" @click.stop="mountFile(item.path)" @keydown.enter.stop="mountFile(item.path)"></i>
+                        </span>
+                        <span class="dir-details" x-show="item.isDirectory && item.type === 'directory' && (item.subdirCount > 0 || item.discCount > 0)">
+                            <span x-show="item.subdirCount > 0" x-text="item.subdirCount + ' subdirectories' + (item.discCount > 0 ? ',' : '')"></span>
+                            <span x-show="item.discCount > 0" x-text="(item.subdirCount > 0 ? ' ' : '') + item.discCount + ' files'"></span>
+                        </span>
+                        <a x-show="!item.isDirectory && searchQuery" class="has-text-grey is-size-7" style="cursor: pointer"
+                            @click="navigateTo(item.path.split('/').slice(0, -1).join('/') || '/')">
+                            <span class="icon is-small"><i class="fas fa-folder"></i></span>
+                            <span x-text="item.path.split('/').slice(0, -1).join('/') || '/'"></span>
+                        </a>
+                    </td>
+                    <td class="is-narrow">
+                        <span x-show="item.type === 'directory' || item.type === 'file'" class="fav-star" @click.stop.prevent="$store.favourites.toggle(item.path, item.type)" title="Toggle favourite"
+                              x-text="$store.favourites.isFavourite(item.path) ? '\u2605' : '\u2606'"
+                              :class="$store.favourites.isFavourite(item.path) ? 'has-text-warning' : 'has-text-grey'"></span>
+                    </td>
+                </tr>
+            </template>
+
+            <!-- Empty State -->
+            <tr x-show="items.length === 0 && (searchQuery || currentPath !== '/')">
+                <td colspan="3" class="has-text-centered">
+                    <p class="has-text-grey" x-text="searchQuery ? 'No results for \'' + searchQuery + '\'' : 'No items in this directory'"></p>
+                    <button
+                        class="button is-small is-primary mt-2"
+                        @click="navigateTo('/')"
+                    >
+                        <span class="icon is-small">
+                            <i class="fas fa-home"></i>
+                        </span>
+                        <span>Back to Root</span>
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+    <!--div class="field is-grouped is-grouped-right mt-4 mb-4">
+        <p class="control">
+            <button
+                class="button is-small is-link"
+                @click="$store.proxy.downloadIndex()"
+            >
+                <span class="icon">
+                    <i class="fas fa-download"></i>
+                </span>
+                <span>Download Index</span>
+            </button>
+        </p>
+        <p class="control">
+            <button
+                class="button is-small is-primary"
+                @click="$store.proxy.processIndex()"
+            >
+                <span class="icon">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+                <span>Process Index</span>
+            </button>
+        </p>
+        <p class="control">
+            <button
+                class="button is-small is-primary"
+                @click="$store.disc.initExample()"
+            >
+                <span class="icon">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+                <span>example</span>
+            </button>
+        </p>
+        <p class="control">
+            <button
+                class="button is-small is-primary"
+                @click="$store.disc.logRoot()"
+            >
+                <span class="icon">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+                <span>log</span>
+            </button>
+        </p>
+    </div-->
+
+    <!-- Details box shown when a file is selected -->
+    <div x-show="selectedFile" class="mt-4 file-details-panel">
+        <div class="is-flex is-align-items-center" style="gap: 0.5rem;">
+            <button class="button is-small is-warning"
+                    @click="mountFile(selectedFilePath)"
+                    :disabled="mountingFile || loadingFile">
+                <span class="icon is-small">
+                    <i :class="mountingFile ? 'fas fa-spinner fa-pulse' : 'far fa-play-circle'"></i>
+                </span>
+                <span x-text="mountingFile ? 'Mounting...' : 'Mount'"></span>
+            </button>
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
+                <code x-text="selectedFile ? selectedFile.path.split('/').pop() : ''"></code>
+                <span class="has-text-grey is-size-7 ml-2" x-text="selectedFilePath ? (selectedFilePath.split('/').slice(0, -1).join('/') || '/') : ''"></span>
+                <span x-show="loadingFile" class="icon is-small ml-1">
+                    <i class="fas fa-spinner fa-pulse"></i>
+                </span>
+            </div>
+            <button class="button is-small" @click="selectPrevFile()" :disabled="selectedFileIndex <= 0 || loadingFile" title="Previous file">
+                <span class="icon is-small"><i class="fas fa-chevron-up"></i></span>
+            </button>
+            <button class="button is-small" @click="selectNextFile()" :disabled="selectedFileIndex === -1 || selectedFileIndex >= fileItems.length - 1 || loadingFile" title="Next file">
+                <span class="icon is-small"><i class="fas fa-chevron-down"></i></span>
+            </button>
+            <button class="button is-small" @click="selectedFile = null; selectedFilePath = null">
+                Close
+            </button>
+        </div>
+        <div x-show="selectedFile && selectedFile.disc_content"
+             style="font-size: 16px; font-family: 'C64 Pro Mono', monospace; padding: 8px; background-color: #2844c4; color: #9fade9; line-height: 16px; margin-top: 0.5rem;">
+            <template x-for="(dl, dlIdx) in (selectedFile && selectedFile.disc_content ? $store.disc.petsciiToLines(selectedFile.disc_content) : [])" :key="dlIdx">
+                <div class="detail-line">
+                    <span class="fav-star detail-fav-star"
+                          @click="$store.favourites.toggleDetail(selectedFilePath, dl.ascii)"
+                          x-text="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? '\u2605' : '\u2606'"
+                          :class="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? 'has-text-warning' : 'detail-star-dim'"></span>
+                    <span x-html="dl.html"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>

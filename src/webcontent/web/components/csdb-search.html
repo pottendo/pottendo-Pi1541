@@ -1,0 +1,603 @@
+<div
+    class="box"
+    x-data="{
+    activeTab: 'quick',
+    query: '',
+    groupQuery: '',
+
+    // Group type filter
+    releaseTypeFilter: '',
+
+    // Toplist
+    toplistSubtype: '1',
+
+    // Lazy loading
+    visibleCount: 50,
+    batchSize: 50,
+    _observer: null,
+
+    // Detail modal
+    detail: null,
+    detailLoading: false,
+
+    get filteredResults() {
+        const all = $store.csdb.results[this.activeTab] || [];
+        if (this.activeTab === 'group' && this.releaseTypeFilter) {
+            return all.filter(r => r.type === this.releaseTypeFilter);
+        }
+        return all;
+    },
+
+    get visibleResults() {
+        return this.filteredResults.slice(0, this.visibleCount);
+    },
+
+    get hasMore() {
+        return this.visibleCount < this.filteredResults.length;
+    },
+
+    get groupTypes() {
+        const all = $store.csdb.results.group || [];
+        const types = [...new Set(all.map(r => r.type).filter(Boolean))].sort();
+        return types;
+    },
+
+    loadMore() {
+        const total = this.filteredResults.length;
+        this.visibleCount = Math.min(this.visibleCount + this.batchSize, total);
+    },
+
+    resetVisible() {
+        this.visibleCount = this.batchSize;
+    },
+
+    setupObserver() {
+        if (this._observer) this._observer.disconnect();
+        this._observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && this.hasMore) {
+                this.loadMore();
+            }
+        }, { rootMargin: '200px' });
+        this.$nextTick(() => {
+            const sentinel = this.$refs.sentinel;
+            if (sentinel) this._observer.observe(sentinel);
+        });
+    },
+
+    async doQuickSearch() {
+        this.resetVisible();
+        await $store.csdb.searchQuick(this.query);
+        this.setupObserver();
+    },
+
+    async doGroupSearch() {
+        this.releaseTypeFilter = '';
+        this.resetVisible();
+        await $store.csdb.searchGroup(this.groupQuery);
+        this.setupObserver();
+    },
+
+    async doToplistSearch() {
+        this.resetVisible();
+        await $store.csdb.searchToplist(this.toplistSubtype);
+        this.setupObserver();
+    },
+
+    async openDetail(result) {
+        if (this.detailLoading) return;
+        this.detail = { id: result.id, name: result.name, year: '', type: result.type || '', group: result.group || '', date: result.date || '', party: result.party || '', rating: null, votes: null, downloads: [] };
+        this.detailLoading = true;
+        try {
+            const details = await $store.csdb.fetchReleaseDetails(result.id);
+            if (details) {
+                this.detail = {
+                    id: result.id,
+                    name: result.name,
+                    type: result.type || '',
+                    year: details.year || '',
+                    group: details.group || result.group || '',
+                    date: details.date || result.date || '',
+                    party: details.party || result.party || '',
+                    rating: details.rating,
+                    votes: details.votes,
+                    downloads: details.downloads || [],
+                };
+            }
+        } finally {
+            this.detailLoading = false;
+        }
+    },
+
+    closeDetail() { this.detail = null; },
+
+    // Download result modal
+    downloadResult: null,
+
+    async downloadFile(dl) {
+        try {
+            const proxyUrl = dl.url.replace(/^https?:\/\/csdb\.dk/, '/csdb');
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob = await res.blob();
+            let zipContents = null;
+            if (dl.filename.toLowerCase().endsWith('.zip')) {
+                const zip = await JSZip.loadAsync(blob);
+                zipContents = [];
+                zip.forEach(path => zipContents.push(path));
+            }
+            this.downloadResult = {
+                filename: dl.filename,
+                externalUrl: dl.externalUrl,
+                size: blob.size,
+                zipContents,
+            };
+            $store.toast.success(dl.filename, 'Downloaded');
+        } catch (err) {
+            $store.toast.error('Download failed: ' + err.message);
+        }
+    },
+
+    formatSize(bytes) {
+        if (!bytes) return '';
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return bytes + ' B';
+    },
+}"
+>
+    <style>
+        .csdb-tabs .tabs {
+            margin-bottom: 0.75rem;
+        }
+        .csdb-result-row {
+            cursor: default;
+        }
+        .csdb-result-row:hover {
+            background-color: #f5f5f5;
+        }
+        .csdb-link {
+            color: #3273dc;
+            text-decoration: none;
+        }
+        .csdb-link:hover {
+            text-decoration: underline;
+        }
+        .csdb-type-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background-color: #e8e8e8;
+            color: #555;
+            white-space: nowrap;
+        }
+        .csdb-party {
+            font-size: 0.8em;
+            color: #888;
+        }
+        .csdb-group-info {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .csdb-rating {
+            font-weight: bold;
+        }
+        .csdb-rating-high {
+            color: #23d160;
+        }
+        .csdb-rating-mid {
+            color: #ffdd57;
+        }
+        .csdb-rating-low {
+            color: #ff3860;
+        }
+        .csdb-multi-select {
+            min-height: 80px;
+        }
+        .csdb-load-more {
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            color: #999;
+        }
+        .csdb-downloads-list {
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .csdb-download-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.6rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .csdb-download-item:last-child {
+            border-bottom: none;
+        }
+        .csdb-dl-icon {
+            color: #888;
+            flex-shrink: 0;
+        }
+        @media (prefers-color-scheme: dark) {
+            .modal-card {
+                border: 1px solid #555;
+            }
+            .modal-card-head {
+                background-color: #2c2c2c;
+                border-bottom-color: #555;
+            }
+            .modal-card-title {
+                color: #f0f0f0;
+            }
+            .modal-card-body {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+            }
+            .modal-card-body .table {
+                background-color: transparent;
+                color: #e0e0e0;
+            }
+            .modal-card-body .table th,
+            .modal-card-body .table td {
+                border-color: #3a3a3a;
+                color: #e0e0e0;
+            }
+        }
+    </style>
+
+    <!-- Header -->
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+        <h2 class="subtitle is-5 mb-0">
+            <span class="icon"><i class="fas fa-search"></i></span>
+            CSDb Search
+        </h2>
+    </div>
+
+    <!-- Tabs -->
+    <div class="csdb-tabs">
+        <div class="tabs is-small is-boxed">
+            <ul>
+                <li :class="{ 'is-active': activeTab === 'quick' }">
+                    <a @click="activeTab = 'quick'; resetVisible()">
+                        <span class="icon is-small"><i class="fas fa-search"></i></span>
+                        <span>Quick</span>
+                    </a>
+                </li>
+                <li :class="{ 'is-active': activeTab === 'group' }">
+                    <a @click="activeTab = 'group'; resetVisible()">
+                        <span class="icon is-small"><i class="fas fa-users"></i></span>
+                        <span>Group</span>
+                    </a>
+                </li>
+                <li :class="{ 'is-active': activeTab === 'toplist' }">
+                    <a @click="activeTab = 'toplist'; resetVisible()">
+                        <span class="icon is-small"><i class="fas fa-trophy"></i></span>
+                        <span>Top List</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Quick Search -->
+        <div x-show="activeTab === 'quick'">
+            <div class="field has-addons">
+                <div class="control">
+                    <input class="input is-small" type="text" placeholder="Search releases (e.g. edge of disgrace)..."
+                           x-model="query"
+                           @keydown.enter="doQuickSearch()"
+                           style="width: 16em">
+                </div>
+                <div class="control">
+                    <button class="button is-info is-small" @click="doQuickSearch()" :disabled="$store.csdb.searching">
+                        Search
+                    </button>
+                </div>
+            </div>
+            <div x-show="$store.csdb.searching" class="has-text-centered py-4">
+                <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span>Searching CSDb...</span>
+            </div>
+            <div x-show="$store.csdb.error" class="notification is-danger is-light is-size-7 py-2 px-3 mt-3">
+                <span x-text="$store.csdb.error"></span>
+            </div>
+            <div x-show="visibleResults.length > 0 && !$store.csdb.searching" class="table-container mt-3">
+                <table class="table is-fullwidth is-hoverable is-size-7">
+                    <thead>
+                        <tr>
+                            <th>Release</th>
+                            <th>Group</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="result in visibleResults" :key="result.id">
+                            <tr class="csdb-result-row">
+                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
+                                <td x-text="result.group"></td>
+                                <td><span class="csdb-type-tag" x-text="result.type" x-show="result.type"></span></td>
+                                <td x-text="result.date"></td>
+                                <td>
+                                    <button class="button is-small is-light" @click="openDetail(result)" :disabled="detailLoading" title="View details">
+                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div x-show="!$store.csdb.searching && ($store.csdb.results.quick || []).length === 0 && !$store.csdb.error"
+                 class="has-text-centered has-text-grey is-size-7 py-4">
+                Search CSDb for C64 demos, games, intros, and more.
+            </div>
+        </div>
+
+        <!-- Group Search -->
+        <div x-show="activeTab === 'group'">
+            <div class="field has-addons">
+                <div class="control">
+                    <input class="input is-small" type="text" placeholder="Group name (e.g. Censor Design)..."
+                           x-model="groupQuery"
+                           @keydown.enter="doGroupSearch()"
+                           style="width: 16em">
+                </div>
+                <div class="control">
+                    <button class="button is-info is-small" @click="doGroupSearch()" :disabled="$store.csdb.searching">
+                        Search
+                    </button>
+                </div>
+            </div>
+            <div x-show="$store.csdb.searching" class="has-text-centered py-4">
+                <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span>Searching CSDb...</span>
+            </div>
+            <div x-show="$store.csdb.error" class="notification is-danger is-light is-size-7 py-2 px-3 mt-3">
+                <span x-text="$store.csdb.error"></span>
+            </div>
+            <div x-show="$store.csdb.groupInfo" class="csdb-group-info mt-3">
+                <strong><a class="csdb-link" :href="'https://csdb.dk/group/?id=' + $store.csdb.groupInfo?.id" target="_blank" x-text="$store.csdb.groupInfo?.name"></a></strong>
+                <span x-show="$store.csdb.groupInfo?.country" x-text="'(' + $store.csdb.groupInfo?.country + ')'"></span>
+                <span> &mdash; </span>
+                <span x-text="$store.csdb.resultCounts.group + ' releases'"></span>
+            </div>
+            <div x-show="($store.csdb.results.group || []).length > 0 && !$store.csdb.searching">
+                <div class="mt-2 mb-1 is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5em">
+                    <div class="select is-small">
+                        <select x-model="releaseTypeFilter" @change="resetVisible(); setupObserver()">
+                            <option value="">All</option>
+                            <template x-for="t in groupTypes" :key="t">
+                                <option :value="t" x-text="t"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <span class="tag is-light" x-text="filteredResults.length + ' releases'"></span>
+                </div>
+            </div>
+            <div x-show="visibleResults.length > 0 && !$store.csdb.searching" class="table-container mt-3">
+                <table class="table is-fullwidth is-hoverable is-size-7">
+                    <thead>
+                        <tr>
+                            <th>Release</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Party</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="result in visibleResults" :key="result.id">
+                            <tr class="csdb-result-row">
+                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
+                                <td><span class="csdb-type-tag" x-text="result.type" x-show="result.type"></span></td>
+                                <td x-text="result.date"></td>
+                                <td class="csdb-party" x-text="result.party"></td>
+                                <td>
+                                    <button class="button is-small is-light" @click="openDetail(result)" :disabled="detailLoading" title="View details">
+                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div x-show="!$store.csdb.searching && ($store.csdb.results.group || []).length === 0 && !$store.csdb.error"
+                 class="has-text-centered has-text-grey is-size-7 py-4">
+                Search for a group by name.
+            </div>
+        </div>
+
+        <!-- Top List -->
+        <div x-show="activeTab === 'toplist'">
+            <div class="field has-addons">
+                <div class="control">
+                    <div class="select is-small">
+                        <select x-model="toplistSubtype">
+                            <template x-for="rt in $store.csdb.releaseTypes" :key="rt.id">
+                                <option :value="rt.id" x-text="rt.label"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                <div class="control">
+                    <button class="button is-info is-small" @click="doToplistSearch()" :disabled="$store.csdb.searching">
+                        Show List
+                    </button>
+                </div>
+            </div>
+            <div x-show="$store.csdb.searching" class="has-text-centered py-4">
+                <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span>Searching CSDb...</span>
+            </div>
+            <div x-show="$store.csdb.error" class="notification is-danger is-light is-size-7 py-2 px-3 mt-3">
+                <span x-text="$store.csdb.error"></span>
+            </div>
+            <div x-show="$store.csdb.resultCounts.toplist > 0 && !$store.csdb.searching" class="mt-3 mb-1">
+                <span class="tag is-light" x-text="$store.csdb.resultCounts.toplist + ' entries'"></span>
+            </div>
+            <div x-show="visibleResults.length > 0 && !$store.csdb.searching" class="table-container mt-3">
+                <table class="table is-fullwidth is-hoverable is-size-7">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Release</th>
+                            <th>Group</th>
+                            <th>Rating</th>
+                            <th>Votes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="result in visibleResults" :key="result.id">
+                            <tr class="csdb-result-row">
+                                <td x-text="result.rank"></td>
+                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
+                                <td x-text="result.group"></td>
+                                <td>
+                                    <span class="csdb-rating"
+                                          :class="{
+                                              'csdb-rating-high': result.rating >= 8,
+                                              'csdb-rating-mid': result.rating >= 5 && result.rating < 8,
+                                              'csdb-rating-low': result.rating < 5
+                                          }"
+                                          x-text="result.rating + '/10'"></span>
+                                </td>
+                                <td x-text="result.votes"></td>
+                                <td>
+                                    <button class="button is-small is-light" @click="openDetail(result)" :disabled="detailLoading" title="View details">
+                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div x-show="!$store.csdb.searching && ($store.csdb.results.toplist || []).length === 0 && !$store.csdb.error"
+                 class="has-text-centered has-text-grey is-size-7 py-4">
+                Select a type and show the top list.
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll sentinel for lazy loading (shared) -->
+    <div x-ref="sentinel" x-show="hasMore && !$store.csdb.searching" class="csdb-load-more">
+        <span class="icon is-small"><i class="fas fa-spinner fa-spin"></i></span>
+        Loading more...
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal" :class="{ 'is-active': detail }" @keydown.escape.window="closeDetail()">
+        <div class="modal-background" @click="closeDetail()"></div>
+        <div class="modal-card">
+            <header class="modal-card-head py-3">
+                <p class="modal-card-title is-size-6 mb-0">Details</p>
+                <button class="delete" @click="closeDetail()"></button>
+            </header>
+            <section class="modal-card-body">
+                <div x-show="detailLoading" class="has-text-centered py-4">
+                    <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span class="is-size-7">Loading...</span>
+                </div>
+                <table x-show="!detailLoading" class="table is-fullwidth is-narrow is-size-7">
+                    <tbody>
+                        <tr>
+                            <th style="width:5rem">Release</th>
+                            <td>
+                                <span x-text="detail?.name"></span>
+                                <span x-show="detail?.year" x-text="'[' + detail?.year + ']'" class="ml-2 has-text-grey"></span>
+                            </td>
+                        </tr>
+                        <tr x-show="detail?.group">
+                            <th style="width:5rem">Group</th>
+                            <td x-text="detail?.group"></td>
+                        </tr>
+                        <tr x-show="detail?.type">
+                            <th>Type</th>
+                            <td x-text="detail?.type"></td>
+                        </tr>
+                        <tr x-show="detail?.date">
+                            <th>Date</th>
+                            <td x-text="detail?.date"></td>
+                        </tr>
+                        <tr x-show="detail?.party">
+                            <th>Party</th>
+                            <td x-text="detail?.party"></td>
+                        </tr>
+                        <tr x-show="detail?.rating !== null && detail?.rating !== undefined">
+                            <th>Rating</th>
+                            <td>
+                                <span class="csdb-rating"
+                                      :class="{
+                                          'csdb-rating-high': detail?.rating >= 8,
+                                          'csdb-rating-mid': detail?.rating >= 5 && detail?.rating < 8,
+                                          'csdb-rating-low': detail?.rating < 5
+                                      }"
+                                      x-text="detail?.rating + '/10'"></span>
+                                <span x-show="detail?.votes" class="csdb-party ml-2" x-text="'(' + detail?.votes + ' votes)'"></span>
+                            </td>
+                        </tr>
+                        <tr x-show="detail?.id">
+                            <th>CSDb-Link</th>
+                            <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + detail?.id" target="_blank" x-text="detail?.id"></a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Downloads -->
+                <div x-show="!detailLoading && detail?.downloads?.length > 0" class="mt-3">
+                    <p class="is-size-7 has-text-weight-semibold mb-2">
+                        <span class="icon is-small"><i class="fas fa-download"></i></span>
+                        Downloads
+                    </p>
+                    <div class="csdb-downloads-list">
+                        <template x-for="dl in (detail?.downloads || [])" :key="dl.url">
+                            <div class="csdb-download-item">
+                                <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset;flex-shrink:0;color:#888" @click="downloadFile(dl)" title="Download">
+                                    <span class="icon is-small"><i class="fas fa-download"></i></span>
+                                </button>
+                                <span class="is-size-7" x-text="dl.externalUrl"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Download Result Modal -->
+    <div class="modal" :class="{ 'is-active': downloadResult }" @keydown.escape.window="downloadResult = null">
+        <div class="modal-background" @click="downloadResult = null"></div>
+        <div class="modal-card">
+            <header class="modal-card-head py-3">
+                <p class="modal-card-title is-size-6 mb-0">Download</p>
+                <button class="delete" @click="downloadResult = null"></button>
+            </header>
+            <section class="modal-card-body">
+                <table class="table is-fullwidth is-narrow is-size-7">
+                    <tbody>
+                        <tr>
+                            <th style="width:5rem">File</th>
+                            <td x-text="downloadResult?.filename"></td>
+                        </tr>
+                        <tr>
+                            <th>Size</th>
+                            <td x-text="formatSize(downloadResult?.size)"></td>
+                        </tr>
+                        <tr>
+                            <th>Link</th>
+                            <td><a class="csdb-link" :href="downloadResult?.externalUrl" target="_blank" x-text="downloadResult?.externalUrl"></a></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div x-show="downloadResult?.zipContents">
+                    <p class="is-size-7 has-text-weight-semibold mb-1">Contents</p>
+                    <pre class="is-size-7" style="max-height:200px;overflow-y:auto;font-family:monospace"><template x-for="f in (downloadResult?.zipContents || [])"><div x-text="f"></div></template></pre>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>

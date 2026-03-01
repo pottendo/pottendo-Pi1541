@@ -1,180 +1,157 @@
 <!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>pi1541ui</title>
+        <!-- Bulma CSS from CDN -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+        />
 
-<head>
-	<style>
-		table.dirs {
-			border-collapse: collapse;
-			width: 100%;
-		}
-		table.dirs th, table.dirs td {
-			text-align: left;
-			padding: 4px;
-			border-bottom: 1px solid #DDD;
-		}
-		table.dirs tr:nth-child(even) {background-color: #525c5c;}
-		table.dirs tr:nth-child(odd) {background-color: #657272;}
-		table.dirs tr:hover {background-color: #6a7575;}
-		@font-face {
-      		font-family: 'C64 Pro Mono';
-      		src: url('C64_Pro_Mono.ttf') format('truetype');
-      		font-weight: normal;
-      		font-style: normal;
-    	}
-		a:link {
- 			color: rgb(255, 255, 255);
-  			background-color: transparent;
-  			text-decoration: none;
-		}		
-		a:visited {
- 			color: rgb(247, 239, 239);
-  			background-color: transparent;
-  			text-decoration: none;
-		}
-		a:active {
- 			color: rgb(238, 255, 0);
-  			background-color: transparent;
-  			text-decoration: none;
-		}
-		a:hover {
- 			color: rgb(238, 255, 0);
-  			background-color: transparent;
-  			text-decoration: none;
-		}
-	</style>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.5.2/darkly/bootstrap.min.css"
-		integrity="sha512-8lE+UgnY2CgbE+WDsGwSwAiMOswuRYm11jXYV5KWH6XfSDAzrdRMbPQDpCwzVjJbe9quHrNNPV6N/llRKnw5Hg=="
-		crossorigin="anonymous" />
-	<link rel="icon" href="/favicon.ico" type="image/x-icon">
-	<title>Pi1541 Web-Interface</title>
-</head>
 
-<body>
-	<br />
-	<div class="container">
-		<div class="container" style="background-color: #000000; text-align: center; padding-bottom: 8px; padding-top: 8px;">
-			<table>
-				<td>
-					<h1 style="text-align:left">Pi1541 WebUI</h1>
-					<p style="text-align:left">by pottendo</p>
-					<h3 style="text-align:left">Alternative Server</h3>
-				</td>
-				<td>
-					<a href="index.html">
-						<img src="/web/pi1541-logo.png" style="height: 160px; width: 720px; cursor:pointer;" />
-					</a>
-				</td>
-			</table>
-		</div>
-		<div class="container bg-dark">
-			<br />
-			<!--	<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;"> 
-					<h3 style="text-align: left">Menu</h3>	-->
-			<table style="width: 100%;">
-				<tr>
-					<td>
-						<div style="display: flex; justify-content: space-between; width: 100%;">
-							<a href="index.html"><input type="submit" class="btn btn-success"
-									value="Upload/Manage SDCard" /></a>
-							<a href="mount-imgs.html"><input type="submit" class="btn btn-success"
-									value="Mount Images" /></a>
-							<a href="edit-config.html"><input type="submit" class="btn btn-success"
-									value="Change Config" /></a>
-							<a href="update.html"><input type="submit" class="btn btn-success"
-									value="Update Pi1541" /></a>
-							<a href="logger.html"><input type="submit" class="btn btn-success"
-									value="Logging" /></a>
-							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)" style="font-weight: bold; color: black;"
-									value="Reset Pi1541" /></a>
-						</div>
-					</td>
-				</tr>
-			</table>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-			<table style="width: 100%;">
-				<tr><td>
-					<div style="display: flex; justify-content: space-between; width: 100%;">
-						<h4 style="text-align: left">Status</h4>
-						<div style="text-align: right" id="externalText">Loading...</div>
-					</div>
-				</td></tr>
-			</table>
-			<h4 style="text-align:left">Pi1541 webserver files upload into /web</h4>
-			<form action="update-web.html" method="post" name="options-form" accept-charset="UTF-8" enctype="multipart/form-data">
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" class="custom-file-input1" id="UploadWeb" name="webfile">
-						<label class="custom-file-label" for="UploadWeb">Choose file</label>
-					</div>
-					<br /> <br />
-					<input type="submit" class="btn btn-success" name="buttsubmit" value="Upload file to SD:/web" />
-				</div>
-			</form>
-			<hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
-		</div>
-		<p class="small" style="text-align: left" id="VersionText">Loading...</p>
-		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"
-				target="_blank">Pi1541 firebase</a>.</p>
-		<p class="small">Find the pottendo-Pi1541 project resources here <a
-				href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a>.</p>
-		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
-			integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
-			crossorigin="anonymous"></script>
-		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-			integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
-			crossorigin="anonymous"></script>
-		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-			integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
-			crossorigin="anonymous"></script>
-		<script>
-			$(document).ready(function () {
-				document.querySelector('.custom-file-input1').addEventListener('change', function (e) {
-					var fileName = document.getElementById("UploadWeb").files[0].name;
-					var nextSibling = e.target.nextElementSibling;
-					nextSibling.innerText = fileName;
-				});
-			});
-		</script>
+        <!-- Alpine.js Stores (load before Alpine) -->
+<script defer src="stores/discStore.js"></script>
+        <script defer src="stores/proxyStore.js"></script>
+        <script defer src="stores/cacheStore.js"></script>
+        <script defer src="stores/favouritesStore.js"></script>
+        <script defer src="stores/csdbStore.js"></script>
+        <script defer src="stores/toastStore.js"></script>
+        <script defer src="stores/componentLoader.js"></script>
 
-		<script>
-			function delConfirm(envent) {
-				if (confirm("Are you sure?"))
-					return true;
-				else {
-					event.preventDefault();
-					return false;
-				}
-			};
-		</script>
-		<script>
-			fetch('/pistats.html')
-			  .then(response => {
-				if (!response.ok) throw new Error("Network error");
-				return response.text();
-			  })
-			  .then(html => {
-				document.getElementById('externalText').innerHTML = html;
-			  })
-			  .catch(err => {
-				document.getElementById('externalText').textContent = "Failed to load stats content.";
-				console.error(err);
-			  });
-			fetch('/pi1541Version.html')
-			  .then(response => {
-				if (!response.ok) throw new Error("Network error");
-				return response.text();
-			  })
-			  .then(html => {
-				document.getElementById('VersionText').innerHTML = html;
-			  })
-			  .catch(err => {
-				document.getElementById('VersionText').textContent = "Failed to load version content.";
-				console.error(err);
-			  });
-		</script>
-	</div>
-</body>
+        <!-- iziToast -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/izitoast@1.4.0/dist/css/iziToast.min.css" />
+        <script src="https://cdn.jsdelivr.net/npm/izitoast@1.4.0/dist/js/iziToast.min.js"></script>
 
+        <!-- JSZip for inspecting zip archives -->
+        <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+        <!-- Alpine.js from CDN -->
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body x-data="{ darkMode: localStorage.getItem('darkMode') === 'true', fontSize: parseInt(localStorage.getItem('fontSize')) || 100 }"
+          :class="{ 'dark': darkMode }"
+          x-init="
+            document.documentElement.style.fontSize = fontSize + '%';
+            $watch('darkMode', val => localStorage.setItem('darkMode', val));
+            $watch('fontSize', val => { document.documentElement.style.fontSize = val + '%'; localStorage.setItem('fontSize', val); });
+          ">
+        <!-- Navigation -->
+        <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="#">
+                    <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Floppy sleeve with hub hole punched out (evenodd) -->
+                        <path d="M6,2 H58 V62 H6 V24 H9 V18 H6 Z M24,36 A8,8 0 1,0 40,36 A8,8 0 1,0 24,36 Z" fill="#222" fill-rule="evenodd" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
+                        <!-- Label area -->
+                        <rect x="14" y="5" width="36" height="12" rx="1" fill="#f5f5dc" stroke="#999" stroke-width="0.5"/>
+                        <!-- Label lines -->
+                        <line x1="17" y1="9" x2="47" y2="9" stroke="#bbb" stroke-width="0.7"/>
+                        <line x1="17" y1="13" x2="38" y2="13" stroke="#bbb" stroke-width="0.7"/>
+                        <!-- Grey ring around hub hole -->
+                        <circle cx="32" cy="36" r="8" fill="none" stroke="#777" stroke-width="1.5"/>
+                        <!-- Index hole -->
+                        <circle cx="22" cy="28" r="1.5" fill="#444"/>
+                        <!-- Head access slot -->
+                        <rect x="18" y="52" width="28" height="4" rx="1" fill="#444"/>
+                    </svg>
+                    <strong class="has-text-black is-size-4 ml-2">pi1541ui</strong>
+                </a>
+                <div class="navbar-item" style="margin-left: auto; gap: 0.25rem; display: flex;">
+                    <button class="button is-small dark-mode-toggle" @click="fontSize = Math.max(fontSize - 10, 70)" title="Decrease font size">
+                        <span class="icon is-small"><i class="fas fa-font" style="font-size: 0.45em;"></i></span>
+                    </button>
+                    <button class="button is-small dark-mode-toggle" @click="fontSize = Math.min(fontSize + 10, 150)" title="Increase font size">
+                        <span class="icon is-small"><i class="fas fa-font" style="font-size: 1.3em;"></i></span>
+                    </button>
+                    <button class="button is-small dark-mode-toggle"
+                            @click="darkMode = !darkMode"
+                            :title="darkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+                        <span class="icon is-small">
+                            <i :class="darkMode ? 'fas fa-lightbulb' : 'fas fa-moon'"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+
+        <!-- Main Content -->
+        <section class="section py-4 px-3">
+            <div class="container"
+                 x-data="{ activeTab: localStorage.getItem('activeTab') || 'browser' }"
+                 x-init="$watch('activeTab', val => localStorage.setItem('activeTab', val))">
+
+                <!-- Pi Stats -->
+                <div id="pi-stats-component"></div>
+
+                <!-- Tab Navigation -->
+                <div class="tabs is-boxed mb-0">
+                    <ul>
+                        <li :class="{ 'is-active': activeTab === 'browser' }">
+                            <a @click="activeTab = 'browser'">
+                                <span class="icon is-small"><i class="fas fa-folder-open"></i></span>
+                                <span>Browser</span>
+                            </a>
+                        </li>
+                        <li :class="{ 'is-active': activeTab === 'favourites' }">
+                            <a @click="activeTab = 'favourites'">
+                                <span class="icon is-small"><i class="fas fa-star"></i></span>
+                                <span>Favourites</span>
+                            </a>
+                        </li>
+                        <li :class="{ 'is-active': activeTab === 'csdb' }">
+                            <a @click="activeTab = 'csdb'">
+                                <span class="icon is-small"><i class="fas fa-database"></i></span>
+                                <span>CSDb</span>
+                            </a>
+                        </li>
+                        <li :class="{ 'is-active': activeTab === 'operations' }">
+                            <a @click="activeTab = 'operations'">
+                                <span class="icon is-small"><i class="fas fa-wrench"></i></span>
+                                <span>Operations</span>
+                            </a>
+                        </li>
+                        <li :class="{ 'is-active': activeTab === 'config' }">
+                            <a @click="activeTab = 'config'">
+                                <span class="icon is-small"><i class="fas fa-cog"></i></span>
+                                <span>Config</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Tab Panels -->
+                <div class="tab-content">
+                    <div x-show="activeTab === 'browser'" id="file-browser-component"></div>
+                    <div x-show="activeTab === 'favourites'" id="favourites-panel-component"></div>
+                    <div x-show="activeTab === 'csdb'" id="csdb-search-component"></div>
+                    <div x-show="activeTab === 'operations'" id="operations-panel-component"></div>
+                    <div x-show="activeTab === 'config'" id="config-component"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="content has-text-centered">
+                <p>
+                    <strong>pi1541ui</strong> <span class="footer-sep">|</span>
+                    <a href="https://github.com/pottendo/pottendo-Pi1541" target="_blank">pottendo-Pi1541</a> <span class="footer-sep">|</span>
+                    <a href="https://cbm-pi1541.firebaseapp.com/" target="_blank">Pi1541</a>
+                </p>
+            </div>
+        </footer>
+
+        <!-- Font Awesome for icons -->
+        <script
+            defer
+            src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
+        ></script>
+        <script defer src="static/pi-font-loader.js"></script>
+    </body>
 </html>

@@ -1,0 +1,83 @@
+<div x-show="$store.favourites.items.length > 0"
+     x-data="{ collapsed: false }"
+     class="box mb-0"
+     style="padding-bottom: 0.75rem;"
+     @favourite-navigate.window="collapsed = false">
+
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-2" style="cursor: pointer" @click="collapsed = !collapsed">
+        <span class="has-text-weight-semibold">
+            <span class="icon is-small has-text-warning">
+                <i class="fas fa-star"></i>
+            </span>
+            Favourites
+            <span class="tag is-light is-rounded ml-1" x-text="$store.favourites.items.length"></span>
+        </span>
+        <span class="icon is-small">
+            <i :class="collapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up'"></i>
+        </span>
+    </div>
+
+    <table x-show="!collapsed" class="table is-fullwidth is-narrow is-striped" style="font-size: 0.9em;">
+        <tbody>
+            <template x-for="fav in $store.favourites.items" :key="fav.type + '::' + (fav.discPath || '') + '::' + fav.path + '::' + (fav.line || '')">
+                <tr :class="{ 'has-background-light': fav.type === 'directory' }">
+                    <td style="width: 2rem;">
+                        <template x-if="fav.type === 'file' || fav.type === 'detail'">
+                            <span class="icon is-small mount-icon" role="button" tabindex="0"
+                                  @click="$store.proxy.mountFile(fav.type === 'detail' ? fav.discPath : fav.path)"
+                                  title="Mount this image">
+                                <i class="far fa-play-circle"></i>
+                            </span>
+                        </template>
+                        <template x-if="fav.type === 'directory' && (() => { const dir = $store.disc.findDirectoryByPath(fav.path); return dir && (dir.disc_images || []).some(d => d.path.split('/').pop().toLowerCase() === 'autoswap.lst'); })()">
+                            <span class="icon is-small mount-icon" role="button" tabindex="0"
+                                  @click="$store.proxy.mountFile(fav.path + '/autoswap.lst')"
+                                  title="Mount autoswap.lst">
+                                <i class="far fa-play-circle"></i>
+                            </span>
+                        </template>
+                    </td>
+                    <td>
+                        <!-- Directory or file favourite -->
+                        <template x-if="fav.type !== 'detail'">
+                            <span>
+                                <a style="cursor: pointer"
+                                   @click="
+                                     if (fav.type === 'directory') {
+                                       $dispatch('favourite-navigate', { path: fav.path });
+                                     } else {
+                                       $dispatch('favourite-show-details', { path: fav.path });
+                                     }
+                                   ">
+                                    <span class="icon is-small">
+                                        <i :class="fav.type === 'directory' ? 'fas fa-folder' : 'fas fa-compact-disc disc-icon'"></i>
+                                    </span>
+                                    <span x-show="fav.type === 'directory'" class="dir-name" x-text="fav.path.split('/').pop()"></span>
+                                    <code x-show="fav.type === 'file'" x-text="fav.path.split('/').pop()"></code>
+                                </a>
+                                <span class="has-text-grey is-size-7 ml-2"
+                                      x-text="fav.path.split('/').slice(0, -1).join('/') || '/'"></span>
+                            </span>
+                        </template>
+                        <!-- Detail line favourite -->
+                        <template x-if="fav.type === 'detail'">
+                            <span>
+                                <a style="cursor: pointer"
+                                   @click="$dispatch('favourite-show-details', { path: fav.discPath })">
+                                    <span class="icon is-small"><i class="fas fa-compact-disc disc-icon"></i></span>
+                                    <code x-text="fav.discPath.split('/').pop()"></code>
+                                </a>
+                                <code class="detail-bookmark-line" x-text="fav.line"></code>
+                            </span>
+                        </template>
+                    </td>
+                    <td style="width: 2rem;">
+                        <span class="fav-star has-text-warning"
+                              @click="fav.type === 'detail' ? $store.favourites.removeDetail(fav.discPath, fav.line) : $store.favourites.remove(fav.path)"
+                              title="Remove from favourites">&#9733;</span>
+                    </td>
+                </tr>
+            </template>
+        </tbody>
+    </table>
+</div>

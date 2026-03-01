@@ -1,0 +1,28 @@
+<div class="box" x-data="{ endpoint: $store.proxy.pi_endpoint, csdb: $store.csdb?.csdb_endpoint || 'http://localhost:8000/csdb' }">
+  <h3 class="title is-5">Configuration</h3>
+
+  <div class="field">
+    <label class="label has-text-white">Pi endpoint</label>
+    <div class="control has-icons-left">
+      <input class="input" type="text" x-model="endpoint" placeholder="http://localhost:8000/proxy" />
+      <span class="icon is-small is-left"><i class="fas fa-link"></i></span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="label has-text-white">CSDb endpoint</label>
+    <div class="control has-icons-left">
+      <input class="input" type="text" x-model="csdb" placeholder="http://localhost:8000/csdb" />
+      <span class="icon is-small is-left"><i class="fas fa-database"></i></span>
+    </div>
+  </div>
+
+  <div class="field is-grouped">
+    <div class="control">
+      <button class="button is-primary" @click="$store.proxy.setPiEndpoint(endpoint); $store.csdb.setCsdbEndpoint(csdb); iziToast.success({title:'Saved',message:'Settings saved'});">Save</button>
+    </div>
+    <div class="control">
+      <button class="button" @click="endpoint = $store.proxy.pi_endpoint; csdb = $store.csdb.csdb_endpoint">Reset</button>
+    </div>
+  </div>
+</div>
