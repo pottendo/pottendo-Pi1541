@@ -335,6 +335,11 @@ u32 Screen::PrintText(bool petscii, u32 x, u32 y, char *ptr, RGBA TxtColour, RGB
 	if (!opened)
 		return 0;
 
+	if (ptr == nullptr)
+	{
+		DEBUG_LOG("%s: ignoring (null)", __FUNCTION__);
+		return 0;
+	}
 	if (petscii && CBMFont) fontHeight = 8;
 	else fontHeight = BitFontHt;
 

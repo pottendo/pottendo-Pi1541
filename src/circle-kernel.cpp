@@ -301,7 +301,6 @@ TShutdownMode CKernel::Run(void)
 	CPUThrottle.Update();
 
 	kernel_main(0, 0, 0);/* options will be initialized */
-	new_ip = true;
 	if (screen_failed)
 		options.SetHeadLess(1);
 	const char *pi1541HWOption = options.SplitIECLines() ? "Option B Hardware" : "Option A Hardware";
@@ -461,7 +460,6 @@ void CKernel::run_webserver(bool isWifi)
 	m_Net->GetConfig()->GetIPAddress()->Format(&IPString);
 	strcpy(ip_address, (const char *) IPString);
 	log ("Open \"http://%s/\" in your web browser!", ip_address);
-	new_ip = true;
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
 	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
 	if (isWifi)

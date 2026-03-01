@@ -418,7 +418,6 @@ void InitialiseLCD()
 //	if (refreshStatusDisplay && emulating)
 //		printf("\E[1ALED %s%d\E[0m Motor %d Track %0d.%d ATN %d DAT %d CLK %d %s\r\n", LED ? termainalTextRed : termainalTextNormal, LED, Motor, Track >> 1, Track & 1 ? 5 : 0, ATN, DATA, CLOCK, roms.ROMNames[romIndex]);
 //}
-
 void UpdateLCD(const char* track, unsigned temperature)
 {
 	if (screenLCD)
@@ -537,10 +536,16 @@ void UpdateScreen()
 		}
 #if defined (__CIRCLE__)
 		{
-			const char *p;
-			if (Kernel.get_ip(&p)) {
+			const char *p = 0;
+			static char op[32];
+			Kernel.get_ip(&p);
+			if (strcmp(p, op) != 0) {
 				snprintf(tempBuffer, tempBufferSize, "IP address: %s", p);
 				screen->PrintText(false, 0, y + 20, tempBuffer, textColour, bgColour);
+				strncpy(op, p, 32);
+				snprintf(tempBuffer, tempBufferSize,
+					"pottendo-Pi1541 (%s) Pi1541 V%d.%02d", PPI1541VERSION, versionMajor, versionMinor);
+				screen->PrintText(false, 0, y + 40, tempBuffer, textColour, bgColour);
 			}
 			if (Kernel.usb_updatepnp())
 			{
@@ -549,10 +554,6 @@ void UpdateScreen()
 				numberOfUSBMassStorageDevices = USPiMassStorageDeviceAvailable();
 				usb_mass_update = true;
 			}
-			snprintf(tempBuffer, tempBufferSize, 
-					 "pottendo-Pi1541 (%s) Pi1541 V%d.%02d", PPI1541VERSION, versionMajor, versionMinor);
-			screen->PrintText(false, 0, y + 40, tempBuffer, textColour, bgColour);
-
 		}
 #endif
 		if (options.HDMIGraphIEC())
