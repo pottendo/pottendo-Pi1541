@@ -1492,7 +1492,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 2; /* indicate .lst mount */
-						MsDelay(100);
+						MsDelay(200);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
@@ -1524,7 +1524,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 1;	/* indicate image mount */
-						MsDelay(100);
+						MsDelay(200);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
