@@ -1,10 +1,9 @@
 # pottendo-Pi1541 V2.2 WIP
 
-This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of February 2026, Step 50.1).
+This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of February 2026, Step 50.1).
 
 ## News vs 2.1
 V2.2Beta1
-- Enable D71 image support
 - webserver now hands out files from /web
 - stats show current mounted image
 
@@ -168,7 +167,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + 
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.25 - which is pretty good, IMHO! **Credits to Steve!**
-As the original source builds are provided in `orig-build`, the version using circle appends 'c', e.g. when displayed on the LCD.
+As the original source builds are provided in `orig-build`, the version using circle appends 'C', e.g. when displayed on the LCD.
 <br />
 
 ## Compatibility
