@@ -213,11 +213,12 @@ EOF
 fi
 
 echo "building pottendo-Pi1541 for ${archs}"
+addopts="--opt-tls"
 for a in ${archs} ; do
     cd ${CIRCLE}
     case "$a" in
 	pi3-32)
-	    opts="-r 3 --opt-tls"
+	    opts="-r 3"
 	    ;;
 	pi3-64)
 	    opts="-r 3 -p aarch64-none-elf-"
@@ -236,6 +237,7 @@ for a in ${archs} ; do
 	    exit 1
 	    ;;
     esac
+    opts="${opts} ${addopts}"
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
     ./configure $opts 2>&1 >make-${a}.log
