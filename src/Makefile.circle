@@ -18,7 +18,7 @@ include $(CIRCLEBASE)/Config.mk
 
 CIRCLEHOME = $(CIRCLEBASE)/libs/circle
 NEWLIBDIR = $(CIRCLEBASE)/install/$(NEWLIB_ARCH)
-
+MBEDTLS_DIR = $(CIRCLEBASE)/libs/mbedtls
 #CIRCLEOBJS = circle-main.o circle-kernel.o webserver.o
 PI1541OBS = $(COMMON_OBJS)
 
@@ -26,7 +26,7 @@ OBJS = $(CIRCLE_OBJS) $(PI1541OBS)
 
 include $(CIRCLEHOME)/Rules.mk
 
-ADDONINC = -I$(CIRCLEHOME)/addon/linux
+ADDONINC = -I$(CIRCLEHOME)/addon/linux -I$(MBEDTLS_DIR)/include
 
 CFLAGS += -O3 -D__CIRCLE__ -I. -I./Circle -I "$(NEWLIBDIR)/include" \
        	  -I $(STDDEF_INCPATH) -I $(CIRCLEBASE)/include $(ADDONINC) \
@@ -38,6 +38,10 @@ AFLAGS = -march=armv8-a+crc -mtune=cortex-a53 -mfpu=crypto-neon-fp-armv8 -mfloat
 # -mno-unaligned-access \
 
 LIBS := \
+	$(CIRCLEBASE)/src/circle-mbedtls/libcircle-mbedtls.a \
+	$(MBEDTLS_DIR)/library/libmbedtls.a \
+  	$(MBEDTLS_DIR)/library/libmbedx509.a \
+  	$(MBEDTLS_DIR)/library/libmbedcrypto.a \
 	$(NEWLIBDIR)/lib/libm.a $(NEWLIBDIR)/lib/libc.a $(NEWLIBDIR)/lib/libcirclenewlib.a \
 	$(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
 	$(CIRCLEHOME)/addon/wlan/libwlan.a \

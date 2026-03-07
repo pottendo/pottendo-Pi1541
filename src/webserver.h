@@ -22,11 +22,12 @@
 
 #include <circle/net/httpdaemon.h>
 #include <circle/actled.h>
+#include <string>
 
 class CWebServer : public CHTTPDaemon
 {
 public:
-	CWebServer (CNetSubSystem *pNetSubSystem,
+	CWebServer (CNetSubSystem *pNetSubSystem, 
 		    CActLED	  *pActLED,			// the LED to be controlled
 		    CSocket	  *pSocket = 0,		// is 0 for 1st created instance (listener)
 			unsigned max_content_size = 1000 * 1024, unsigned max_multipart_size = 20000 * 1024);		
@@ -43,10 +44,12 @@ public:
 				unsigned    *pLength,		// in: buffer size, out: content length
 				const char **ppContentType);	// set this if not "text/html"
 
+	THTTPStatus pi1541_proxy_html(std::string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType);
 private:
 	const size_t m_nMaxContentSize;
 	const size_t m_nMaxMultipartSize;
 	CActLED *m_pActLED;
+	CNetSubSystem &m_NetSubSystem;
 };
 
 #endif

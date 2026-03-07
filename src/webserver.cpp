@@ -23,6 +23,9 @@
 #include <circle/util.h>
 #include <circle/memory.h>
 #include <circle/timer.h>
+#include <circle/net/dnsclient.h>
+#include <circle-mbedtls/httpclient.h>
+#include <circle-mbedtls/http.h>
 #include <assert.h>
 #include "circle-kernel.h"
 #include "options.h"
@@ -106,7 +109,8 @@ CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket 
 :	CHTTPDaemon (pNetSubSystem, pSocket, max_content_size, 80, max_multipart_size),
 	m_nMaxContentSize(max_content_size),
 	m_nMaxMultipartSize(max_multipart_size),
-	m_pActLED (pActLED)
+	m_pActLED (pActLED),
+	m_NetSubSystem (*pNetSubSystem)
 {
 	
 }
@@ -815,6 +819,45 @@ void drives_html(string &drives)
 	f_chdir(scwd);
 }
 
+THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType)
+{
+	assert(pBuffer != 0);
+	assert(pLength != 0);
+	assert(ppContentType != 0);
+
+	CDNSClient dnsClient(&m_NetSubSystem);
+	CIPAddress srvip;
+	size_t urlst = url.find_first_of("//");
+	if (urlst == string::npos)
+	{
+		DEBUG_LOG("%s: Invalid URL %s", __FUNCTION__, url.c_str());
+		return HTTPNotFound;
+	}
+	size_t docst = url.substr(urlst + 2).find_first_of('/');
+	string hn = url.substr(urlst + 2,  ((docst == string::npos) ? string::npos : docst));
+	if (!dnsClient.Resolve(hn.c_str(), &srvip))
+	{
+		DEBUG_LOG("%s: DNS resolution failed for URL %s (%s)", __FUNCTION__, url.c_str(), hn.c_str());
+		return HTTPNotFound;
+	}
+	CString ipstr;
+	srvip.Format(&ipstr);
+	DEBUG_LOG("%s: DNS resolution succeeded for host %s: %s", __FUNCTION__, hn.c_str(), ipstr.c_str());
+
+	CircleMbedTLS::CTLSSimpleSupport m_TLSSupport(&m_NetSubSystem);
+	CircleMbedTLS::CHTTPClient httpClient(&m_TLSSupport, srvip, HTTPS_PORT, hn.c_str(), true);
+	string doc;
+	if (docst == string::npos)
+		doc = "/";
+	else
+	    doc = url.substr(urlst + 2 + docst);
+	DEBUG_LOG("%s: getting '%s' from %s", __FUNCTION__, doc.c_str(), hn.c_str());
+	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength);
+	DEBUG_LOG("%s: HTTP status = %d, len = %d", __FUNCTION__, status, *pLength);
+	*ppContentType = "text/html; charset=UTF-8";
+	return (THTTPStatus)status;
+}
+
 THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pParams,
 				    const char  *pFormData,
@@ -848,6 +891,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		DEBUG_LOG("%s: serving '%s'", __FUNCTION__, fn.c_str());
 		FIL fp;
 		UINT br;
+
+		if (strcmp(pPath, "/web/pi1541-proxy.html") == 0)
+		{
+			string url(pParams);
+			return pi1541_proxy_html(url, pBuffer, pLength, ppContentType);
+		}
 		if (strcmp(pPath, "/web/update-web.html") == 0)
 		{
 			const char *pPartHeader;

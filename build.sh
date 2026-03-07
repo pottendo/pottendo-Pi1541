@@ -217,7 +217,7 @@ for a in ${archs} ; do
     cd ${CIRCLE}
     case "$a" in
 	pi3-32)
-	    opts="-r 3"
+	    opts="-r 3 --opt-tls"
 	    ;;
 	pi3-64)
 	    opts="-r 3 -p aarch64-none-elf-"
