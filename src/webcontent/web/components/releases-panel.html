@@ -1,0 +1,71 @@
+<style>
+    .release-row.is-mounted td:first-child {
+        border-left: 3px solid orange;
+    }
+</style>
+
+<div class="box">
+    <template x-if="$store.release.all().length === 0">
+        <p class="has-text-grey is-size-7">No releases stored yet.</p>
+    </template>
+    <template x-if="$store.release.all().length > 0">
+        <div>
+            <div class="field mb-2">
+                <div class="control">
+                    <div class="select is-small">
+                        <select x-model="$store.release.typeFilter">
+                            <template x-for="t in $store.release.availableTypes()" :key="t">
+                                <option :value="t" x-text="t"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <table class="table is-fullwidth is-narrow is-hoverable is-size-7">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Group</th>
+                        <th>Year</th>
+                        <th>Type</th>
+                        <th>Installed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="r in $store.release.filtered()" :key="r.meta.id">
+                        <tr class="release-row" :class="{ 'is-mounted': r.installs?.at(-1)?.path && $store.disc.mountedFile === r.installs.at(-1).path + '/_autoswap.lst' }">
+                            <td style="width:4rem;white-space:nowrap">
+                                <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                        :disabled="!r.installs?.at(-1)?.path || $store.proxy.connecting"
+                                        @click="$store.fileOps.mountFile(r.installs.at(-1).path + '/_autoswap.lst')"
+                                        title="Mount">
+                                    <span class="icon is-small"><i class="fas fa-play"></i></span>
+                                </button>
+                                <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset" @click="$store.release.openDetail(r.meta, false)" title="View details">
+                                    <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                </button>
+                            </td>
+                            <td x-text="r.meta.name"></td>
+                            <td x-text="r.meta.group"></td>
+                            <td x-text="r.meta.year"></td>
+                            <td x-text="r.meta.type"></td>
+                            <td :title="r.installs?.at(-1)?.installedAt">
+                                <template x-if="r.installs?.at(-1)?.installedAt">
+                                    <span>
+                                        <span x-text="r.installs.at(-1).installedAt.slice(0, 10)"></span>
+                                        <span class="has-text-grey ml-1" x-text="$store.release.timeAgo(r.installs.at(-1).installedAt)"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!r.installs?.at(-1)?.installedAt">
+                                    <span class="has-text-grey">—</span>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <p x-show="$store.release.filtered().length === 0" class="has-text-grey is-size-7">No releases match the selected type.</p>
+        </div>
+    </template>
+</div>

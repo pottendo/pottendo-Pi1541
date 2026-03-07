@@ -20,11 +20,7 @@
     // Navigation methods
     async navigateTo(path) {
         if (path !== '/' && !$store.disc.isDirectoryLoaded(path)) {
-            try {
-                await $store.disc.loadDirectoryContents(path);
-            } catch (error) {
-                console.error(`[file-browser] Error loading directory ${path}:`, error);
-            }
+            await $store.proxy.loadDirectory(path);
         }
 
         this.currentPath = path;
@@ -47,7 +43,7 @@
     async mountFile(path) {
         this.mountingFile = true;
         try {
-            await $store.proxy.mountFile(path);
+            await $store.fileOps.mountFile(path);
         } finally {
             this.mountingFile = false;
         }
@@ -107,6 +103,10 @@
         .file-item .icon {
             margin-right: 0.5rem;
         }
+        .file-item .mount-icon {
+            margin-right: 0;
+        }
+
         .fa-spinner {
             font-size: 0.8em;
         }
@@ -128,11 +128,12 @@
         }
         .table-container {
             position: relative;
+            overflow: visible;
         }
         .loading-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(26, 26, 26, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -164,6 +165,12 @@
 .dir-details {
             font-size: 0.85rem;
             color: #888;
+        }
+        .dir-name {
+            color: #4da6ff;
+        }
+        .file-item code {
+            color: white;
         }
     </style>
 
@@ -254,7 +261,10 @@
 
     <!-- Breadcrumbs / Search results header -->
     <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
-        <div x-show="!searchQuery" class="path-breadcrumb"><a @click="navigateTo('/')" style="cursor: pointer;">/</a><template x-for="(part, index) in currentPath.split('/').filter(p => p !== '')" :key="index"><span><span x-show="index > 0" class="path-sep">/</span><a @click="navigateTo('/' + currentPath.split('/').slice(1, index + 2).join('/'))" style="cursor: pointer;" x-text="part"></a></span></template></div>
+        <div x-show="!searchQuery" class="path-breadcrumb" style="flex: 1;"><a @click="navigateTo('/')" style="cursor: pointer;">/</a><template x-for="(part, index) in currentPath.split('/').filter(p => p !== '')" :key="index"><span><span x-show="index > 0" class="path-sep">/</span><a @click="navigateTo('/' + currentPath.split('/').slice(1, index + 2).join('/'))" style="cursor: pointer;" x-text="part"></a></span></template></div>
+        <button x-show="!searchQuery" class="button is-small ml-2" :disabled="$store.proxy.connecting" @click="$store.proxy._reloadDirectory(currentPath)" title="Refresh current directory">
+            <span class="icon is-small"><i class="fas fa-sync" :class="{ 'fa-spin': $store.proxy.connecting }"></i></span>
+        </button>
         <span x-show="searchQuery" class="has-text-weight-semibold has-text-grey">
             <span class="icon is-small"><i class="fas fa-search"></i></span>
             <span x-text="(() => {
@@ -298,7 +308,14 @@
                 x-for="item in items"
                 :key="item.path + '-' + item.type"
             >
-                <tr :class="{ 'has-background-light': item.isDirectory, 'is-selected-file': selectedFile && item.type === 'file' && item.path === selectedFilePath }">
+                <tr :class="{ 'has-background-light': item.isDirectory || item.type === 'parent', 'is-selected-file': selectedFile && item.type === 'file' && item.path === selectedFilePath }">
+                    <td class="is-narrow">
+                        <div class="file-item">
+                            <button x-show="item.type === 'file'" class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset" @click.stop="mountFile(item.path)" title="Mount this image">
+                                <span class="icon is-small"><i class="fas fa-play"></i></span>
+                            </button>
+                        </div>
+                    </td>
                     <td style="cursor: pointer" @click.stop="(item.type === 'parent') ? navigateUp() : (item.type === 'directory' ? navigateTo(item.path) : showDetails(item))">
                         <span x-show="item.type === 'parent'"><span class="icon is-small"><i class="fas fa-arrow-up"></i></span> <span x-text="item.name"></span></span>
                         <span x-show="item.type === 'directory'" class="dir-name"><span class="icon is-small"><i class="fas fa-folder"></i></span> <span x-text="item.name"></span></span>
@@ -312,9 +329,6 @@
                         </template>
                     </td>
                     <td>
-                        <span x-show="item.type === 'file'" class="icon is-small mount-icon" role="button" tabindex="0" @click.stop="mountFile(item.path)" @keydown.enter.stop="mountFile(item.path)" title="Mount this image">
-                            <i class="far fa-play-circle" @click.stop="mountFile(item.path)" @keydown.enter.stop="mountFile(item.path)"></i>
-                        </span>
                         <span class="dir-details" x-show="item.isDirectory && item.type === 'directory' && (item.subdirCount > 0 || item.discCount > 0)">
                             <span x-show="item.subdirCount > 0" x-text="item.subdirCount + ' subdirectories' + (item.discCount > 0 ? ',' : '')"></span>
                             <span x-show="item.discCount > 0" x-text="(item.subdirCount > 0 ? ' ' : '') + item.discCount + ' files'"></span>
@@ -329,6 +343,38 @@
                         <span x-show="item.type === 'directory' || item.type === 'file'" class="fav-star" @click.stop.prevent="$store.favourites.toggle(item.path, item.type)" title="Toggle favourite"
                               x-text="$store.favourites.isFavourite(item.path) ? '\u2605' : '\u2606'"
                               :class="$store.favourites.isFavourite(item.path) ? 'has-text-warning' : 'has-text-grey'"></span>
+                    </td>
+                    <td class="is-narrow">
+                        <div x-show="item.type === 'directory' || item.type === 'file'" class="dropdown is-right" x-data="{ open: false }" :class="{ 'is-active': open }" @click.outside="open = false">
+                            <div class="dropdown-trigger">
+                                <button class="button is-small is-white" @click.stop="open = !open" :disabled="$store.proxy.connecting">
+                                    <span class="icon is-small"><i class="fas fa-ellipsis-v"></i></span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu">
+                                <div class="dropdown-content">
+                                    <a class="dropdown-item" @click.stop="
+                                        open = false;
+                                        const oldName = item.path.split('/').pop();
+                                        const newName = prompt('Rename to:', oldName);
+                                        if (newName && newName.trim() && newName.trim() !== oldName) $store.fileOps.rename(item.path, newName.trim());
+                                    ">
+                                        <span class="icon is-small"><i class="fas fa-pencil-alt"></i></span>
+                                        <span>Rename</span>
+                                    </a>
+                                    <hr class="dropdown-divider">
+                                    <a class="dropdown-item has-text-danger" @click.stop="
+                                        open = false;
+                                        const parentPath = item.path.split('/').slice(0, -1).join('/') || '/';
+                                        const name = item.path.split('/').pop();
+                                        if (confirm('Delete \'' + name + '\'?')) $store.fileOps.deleteObject(parentPath, name);
+                                    ">
+                                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                        <span>Delete</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             </template>
@@ -350,6 +396,19 @@
             </tr>
         </tbody>
     </table>
+    </div>
+
+    <!-- Create Directory -->
+    <div class="mt-2" x-show="!searchQuery">
+        <button class="button is-small is-success"
+                :disabled="$store.proxy.connecting"
+                @click="
+                    const name = prompt('New directory name:');
+                    if (name && name.trim()) $store.fileOps.createDirectory(currentPath, name.trim());
+                ">
+            <span class="icon is-small"><i class="fas fa-folder-plus"></i></span>
+            <span>New Directory</span>
+        </button>
     </div>
 
     <!--div class="field is-grouped is-grouped-right mt-4 mb-4">
@@ -399,45 +458,9 @@
         </p>
     </div-->
 
-    <!-- Details box shown when a file is selected -->
-    <div x-show="selectedFile" class="mt-4 file-details-panel">
-        <div class="is-flex is-align-items-center" style="gap: 0.5rem;">
-            <button class="button is-small is-warning"
-                    @click="mountFile(selectedFilePath)"
-                    :disabled="mountingFile || loadingFile">
-                <span class="icon is-small">
-                    <i :class="mountingFile ? 'fas fa-spinner fa-pulse' : 'far fa-play-circle'"></i>
-                </span>
-                <span x-text="mountingFile ? 'Mounting...' : 'Mount'"></span>
-            </button>
-            <div style="flex: 1; min-width: 0; overflow: hidden;">
-                <code x-text="selectedFile ? selectedFile.path.split('/').pop() : ''"></code>
-                <span class="has-text-grey is-size-7 ml-2" x-text="selectedFilePath ? (selectedFilePath.split('/').slice(0, -1).join('/') || '/') : ''"></span>
-                <span x-show="loadingFile" class="icon is-small ml-1">
-                    <i class="fas fa-spinner fa-pulse"></i>
-                </span>
-            </div>
-            <button class="button is-small" @click="selectPrevFile()" :disabled="selectedFileIndex <= 0 || loadingFile" title="Previous file">
-                <span class="icon is-small"><i class="fas fa-chevron-up"></i></span>
-            </button>
-            <button class="button is-small" @click="selectNextFile()" :disabled="selectedFileIndex === -1 || selectedFileIndex >= fileItems.length - 1 || loadingFile" title="Next file">
-                <span class="icon is-small"><i class="fas fa-chevron-down"></i></span>
-            </button>
-            <button class="button is-small" @click="selectedFile = null; selectedFilePath = null">
-                Close
-            </button>
-        </div>
-        <div x-show="selectedFile && selectedFile.disc_content"
-             style="font-size: 16px; font-family: 'C64 Pro Mono', monospace; padding: 8px; background-color: #2844c4; color: #9fade9; line-height: 16px; margin-top: 0.5rem;">
-            <template x-for="(dl, dlIdx) in (selectedFile && selectedFile.disc_content ? $store.disc.petsciiToLines(selectedFile.disc_content) : [])" :key="dlIdx">
-                <div class="detail-line">
-                    <span class="fav-star detail-fav-star"
-                          @click="$store.favourites.toggleDetail(selectedFilePath, dl.ascii)"
-                          x-text="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? '\u2605' : '\u2606'"
-                          :class="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? 'has-text-warning' : 'detail-star-dim'"></span>
-                    <span x-html="dl.html"></span>
-                </div>
-            </template>
-        </div>
-    </div>
+    <!-- Upload Panel -->
+    <div id="upload-panel-component" x-show="!searchQuery"></div>
+
+    <!-- Disc detail panel (sub-component, shares this x-data scope) -->
+    <div id="disc-detail-component"></div>
 </div>

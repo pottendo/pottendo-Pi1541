@@ -1,0 +1,43 @@
+<!-- Disc detail panel — shown when a file is selected in the file browser.
+     Injected inside file-browser's x-data scope; accesses its local state
+     (selectedFile, selectedFilePath, loadingFile, mountingFile, etc.) directly. -->
+<div x-show="selectedFile" class="mt-4 file-details-panel">
+    <div class="is-flex is-align-items-center" style="gap: 0.5rem;">
+        <button class="button is-small is-warning"
+                @click="mountFile(selectedFilePath)"
+                :disabled="mountingFile || loadingFile">
+            <span class="icon is-small">
+                <i :class="mountingFile ? 'fas fa-spinner fa-pulse' : 'far fa-play-circle'"></i>
+            </span>
+            <span x-text="mountingFile ? 'Mounting...' : 'Mount'"></span>
+        </button>
+        <div style="flex: 1; min-width: 0; overflow: hidden;">
+            <code x-text="selectedFile ? selectedFile.path.split('/').pop() : ''"></code>
+            <span class="has-text-grey is-size-7 ml-2" x-text="selectedFilePath ? (selectedFilePath.split('/').slice(0, -1).join('/') || '/') : ''"></span>
+            <span x-show="loadingFile" class="icon is-small ml-1">
+                <i class="fas fa-spinner fa-pulse"></i>
+            </span>
+        </div>
+        <button class="button is-small" @click="selectPrevFile()" :disabled="selectedFileIndex <= 0 || loadingFile" title="Previous file">
+            <span class="icon is-small"><i class="fas fa-chevron-up"></i></span>
+        </button>
+        <button class="button is-small" @click="selectNextFile()" :disabled="selectedFileIndex === -1 || selectedFileIndex >= fileItems.length - 1 || loadingFile" title="Next file">
+            <span class="icon is-small"><i class="fas fa-chevron-down"></i></span>
+        </button>
+        <button class="button is-small" @click="selectedFile = null; selectedFilePath = null">
+            Close
+        </button>
+    </div>
+    <div x-show="selectedFile && selectedFile.disc_content"
+         style="font-size: 16px; font-family: 'C64 Pro Mono', monospace; padding: 8px; background-color: #2844c4; color: #9fade9; line-height: 16px; margin-top: 0.5rem;">
+        <template x-for="(dl, dlIdx) in (selectedFile && selectedFile.disc_content ? PetsciiUtils.petsciiToLines(selectedFile.disc_content) : [])" :key="dlIdx">
+            <div class="detail-line">
+                <span class="fav-star detail-fav-star"
+                      @click="$store.favourites.toggleDetail(selectedFilePath, dl.ascii)"
+                      x-text="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? '\u2605' : '\u2606'"
+                      :class="$store.favourites.isDetailFavourite(selectedFilePath, dl.ascii) ? 'has-text-warning' : 'detail-star-dim'"></span>
+                <span x-html="dl.html"></span>
+            </div>
+        </template>
+    </div>
+</div>

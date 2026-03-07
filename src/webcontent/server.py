@@ -3,17 +3,19 @@
 Simple Python HTTP server for 1541UI
 
 Serves static files from the web/ directory and provides two reverse proxies:
-  /proxy/*  -> Pi1541 device (default http://192.168.178.91)
-  /csdb/*   -> CSDB (https://csdb.dk)
+  /pi-proxy/*   -> Pi1541 device (default http://192.168.178.91)
+  /csdb-proxy/* -> CSDB (https://csdb.dk)
 
 Proxied responses are passed through unchanged (including gzip encoding);
 only transfer-encoding is stripped since the body is already de-chunked.
 Server-side redirect following keeps the browser on the proxy origin.
 CORS headers are injected on all proxied responses.
 
-Usage:  python server.py        # serves on http://localhost:8000
+Usage:  python server.py                        # serves on http://localhost:8000
+        python server.py --pi http://10.0.0.5   # override Pi1541 target
 """
 
+import argparse
 import http.client
 import http.server
 import os
@@ -24,10 +26,10 @@ from pathlib import Path
 # Configuration
 PORT = 8000
 UI_DIR = "web"
-PROXY_PREFIX = "/proxy"
-PROXY_TARGET = "http://192.168.1.31"
-CSDB_PREFIX = "/csdb"
-CSDB_TARGET = "https://csdb.dk"
+PI_PROXY_PREFIX = "/pi-proxy"
+PI_PROXY_TARGET = "http://192.168.178.91"
+CSDB_PROXY_PREFIX = "/csdb-proxy"
+CSDB_PROXY_TARGET = "https://csdb.dk"
 
 
 class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -35,10 +37,10 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=UI_DIR, **kwargs)
 
     def _get_proxy_target(self):
-        if self.path.startswith(CSDB_PREFIX):
-            return CSDB_PREFIX, CSDB_TARGET
-        if self.path.startswith(PROXY_PREFIX):
-            return PROXY_PREFIX, PROXY_TARGET
+        if self.path.startswith(CSDB_PROXY_PREFIX):
+            return CSDB_PROXY_PREFIX, CSDB_PROXY_TARGET
+        if self.path.startswith(PI_PROXY_PREFIX):
+            return PI_PROXY_PREFIX, PI_PROXY_TARGET
         return None, None
 
     def _handle_method(self, default_handler=None):
@@ -163,10 +165,26 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def run_server():
     """Start the HTTP server"""
+    global PI_PROXY_TARGET
+
+    parser = argparse.ArgumentParser(description="pi1541ui development server")
+    parser.add_argument(
+        "--pi",
+        dest="pi_target",
+        default=PI_PROXY_TARGET,
+        metavar="URL",
+        help=f"Pi1541 target URL (default: {PI_PROXY_TARGET})",
+    )
+    args = parser.parse_args()
+
+    PI_PROXY_TARGET = args.pi_target
+
     # Change to the directory containing the ui folder
     os.chdir(Path(__file__).parent)
 
     print(f"1541UI Server - Serving from './{UI_DIR}' directory")
+    print(f"Pi1541 proxy: {PI_PROXY_PREFIX} -> {PI_PROXY_TARGET}")
+    print(f"CSDb proxy:   {CSDB_PROXY_PREFIX} -> {CSDB_PROXY_TARGET}")
     print(f"Available at: http://localhost:{PORT}")
     print("Press Ctrl+C to stop the server")
 

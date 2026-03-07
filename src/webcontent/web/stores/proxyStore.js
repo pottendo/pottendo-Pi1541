@@ -8,15 +8,11 @@ document.addEventListener("alpine:init", () => {
     connecting: false,
 
     // Pi endpoint persisted in localStorage (can be changed at runtime)
-    pi_endpoint: localStorage.getItem("pi_endpoint") || "http://localhost:8000/proxy",
+    pi_endpoint: localStorage.getItem("pi_endpoint") || "http://localhost:8000/pi-proxy",
     setPiEndpoint(prefix) {
       this.pi_endpoint = prefix;
       localStorage.setItem("pi_endpoint", prefix);
     },
-
-    // Pi stats state
-    stats: { deviceId: null, currentDiskimage: null, piTemp: null, piFreq: null, time: null },
-    statsLoading: false,
 
     /**
      * Downloads index.html from the specified directory
@@ -65,10 +61,11 @@ document.addEventListener("alpine:init", () => {
           );
         };
 
-        // Extract current path - look for div containing "Current path:" and get the italic element
-        const currentPathDivs = findElementsContainingText(
-          "div",
-          "Current path:",
+        // Extract current path - find the div that directly owns the "Current path:" text node
+        const currentPathDivs = Array.from(doc.querySelectorAll("div")).filter(el =>
+          Array.from(el.childNodes).some(
+            node => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Current path:")
+          )
         );
         let currentPath = null;
         if (currentPathDivs.length > 0) {
@@ -196,56 +193,6 @@ document.addEventListener("alpine:init", () => {
         return null;
       } finally {
         this.connecting = false;
-      }
-    },
-
-    /**
-     * Transforms parsed data into the structure expected by discStore
-     * @param {object} parsedData - Data from parseIndex()
-     * @returns {object} - Data in discStore structure format
-     */
-    transformToDiscStoreStructure(parsedData) {
-      try {
-        // Extract current path and remove "SD:/1541" prefix if present
-        const currentPath = parsedData.currentPath || "/";
-        const cleanPath =
-          currentPath.replace("SD:/1541", "").replace("SD:", "") || "/";
-
-        // Create root structure
-        const root = {
-          path: "/",
-          date_string: this.getCurrentDateString(),
-          subdirectories: [],
-          disc_images: [],
-        };
-
-        // Add directories from parsed data
-        parsedData.directories.forEach((dirName) => {
-          root.subdirectories.push({
-            path: `/${dirName}`,
-            date_string: this.getCurrentDateString(),
-            subdirectories: [],
-            disc_images: [],
-          });
-        });
-
-        // Add files from parsed data
-        parsedData.files.forEach((fileName) => {
-          root.disc_images.push({
-            path: `/${fileName}`,
-            date_string: this.getCurrentDateString(),
-          });
-        });
-
-        return root;
-      } catch (err) {
-        console.error("[proxyStore] transformToDiscStoreStructure error:", err);
-        return {
-          path: "/",
-          date_string: this.getCurrentDateString(),
-          subdirectories: [],
-          disc_images: [],
-        };
       }
     },
 
@@ -385,30 +332,75 @@ document.addEventListener("alpine:init", () => {
     },
 
     /**
-     * Mounts a file on the Pi1541 device
-     * @param {string} filePath - File path (e.g., "/games/RTYPE  9DMHI.D64")
-     * @returns {Promise<void>}
+     * Parses an index HTML response and merges it into the disc tree at the given path.
+     * Preserves existing subdirectory details and disc content.
+     * @param {string} html - HTML response from the Pi
+     * @param {string} path - Absolute directory path being updated (e.g., "/test")
      */
-    async mountFile(filePath) {
+    _applyIndexActionResponse(html, path) {
+      const relPath = path === "/" ? "" : path.replace(/^\//, "");
+      const parsed = this.parseIndex(html);
+      const data = this.transformToDiscStoreStructureWithLoaded(parsed, relPath, true);
+
+      const disc = Alpine.store("disc");
+      const dir = path === "/" ? disc.root : disc.findDirectoryByPath(path);
+      if (!dir) return;
+
+      dir.loaded = true;
+
+      const existingSubdirMap = new Map((dir.subdirectories || []).map(s => [s.path, s]));
+      dir.subdirectories = (data.subdirectories || []).map(fresh => {
+        const existing = existingSubdirMap.get(fresh.path);
+        return existing ? existing : fresh;
+      });
+
+      const existingImageMap = new Map((dir.disc_images || []).map(i => [i.path, i]));
+      dir.disc_images = (data.disc_images || []).map(fresh => {
+        const existing = existingImageMap.get(fresh.path);
+        return (existing && existing.disc_content) ? existing : fresh;
+      });
+
+      if (Alpine.store("cache")) Alpine.store("cache").saveTree(disc.root);
+    },
+
+    /**
+     * Re-fetches the index for a directory and applies it to the disc tree.
+     * Silent background reload — no connecting state, no toast. Used after
+     * mutations (create/delete/rename/upload) to sync the tree.
+     * @param {string} path - Absolute directory path (e.g., "/test")
+     */
+    async _reloadDirectory(path) {
+      const relPath = path === "/" ? "" : path.replace(/^\//, "");
+      const html = await this.downloadIndex(relPath);
+      if (html) this._applyIndexActionResponse(html, path);
+    },
+
+    /**
+     * Loads a directory's contents for the first time (lazy navigation).
+     * Shows the connecting overlay and reports errors via toast.
+     * Replaces discStore.loadDirectoryContents().
+     * @param {string} path - Absolute directory path (e.g., "/games")
+     */
+    async loadDirectory(path) {
+      this.connecting = true;
+      this.connectionError = null;
       try {
-        this.connecting = true;
+        const relPath = path === "/" ? "" : path.replace(/^\//, "");
+        const html = await this.downloadIndex(relPath);
+        if (!html) {
+          this.connectionError = "Device unreachable";
+          Alpine.store("toast").error("Device unreachable");
+          return;
+        }
+        this._applyIndexActionResponse(html, path);
         this.connectionError = null;
-        console.log(`[proxyStore] Mounting file: ${filePath}`);
-        await this.downloadFileDetails(filePath, "MOUNT");
-        console.log(`[proxyStore] Mounted: ${filePath}`);
-        Alpine.store("disc").mountedFile = filePath;
-        this.connectionError = null;
-        Alpine.store("toast").success(filePath.split("/").pop(), "Mounted");
       } catch (err) {
-        console.error("[proxyStore] mountFile error:", err);
-        this.connectionError = "Failed to mount file";
-        Alpine.store("toast").error("Failed to mount file");
-        return;
+        console.error("[proxyStore] loadDirectory error:", err);
+        this.connectionError = "Device unreachable";
+        Alpine.store("toast").error("Device unreachable");
       } finally {
         this.connecting = false;
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
-      await this.processStats();
     },
 
     /**
@@ -461,74 +453,6 @@ document.addEventListener("alpine:init", () => {
           disc_content: null,
         };
       }
-    },
-
-    /**
-     * Converts PETSCII-encoded text (U+0EExx codepoints) to readable ASCII.
-     * Alphanumeric and common punctuation are converted; all others become '?'.
-     * HTML <br> / <br /> tags are converted to newlines.
-     * @param {string} petsciiHtml - HTML string containing PETSCII-encoded characters
-     * @returns {string} - ASCII representation
-     */
-    petsciiToAscii(petsciiHtml) {
-      // Replace <br> tags with newline markers, then strip remaining HTML tags
-      const text = petsciiHtml
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<[^>]*>/g, "");
-
-      // Decode HTML entities (&#x0ee30; etc.) by using a textarea
-      const textarea = document.createElement("textarea");
-      textarea.innerHTML = text;
-      const decoded = textarea.value;
-
-      let result = "";
-      for (const char of decoded) {
-        const code = char.codePointAt(0);
-
-        if (code >= 0x0ee00 && code <= 0x0eeff) {
-          let petscii = code - 0x0ee00;
-
-          // 0x80-0xFF are reverse video versions of 0x00-0x7F
-          if (petscii >= 0x80) {
-            petscii -= 0x80;
-          }
-
-          // Space (0x20) and shifted space (0x60)
-          if (petscii === 0x20 || petscii === 0x60) {
-            result += " ";
-          }
-          // Digits 0-9
-          else if (petscii >= 0x30 && petscii <= 0x39) {
-            result += String.fromCharCode(petscii);
-          }
-          // A-Z (PETSCII unshifted: 0x41-0x5A)
-          else if (petscii >= 0x41 && petscii <= 0x5a) {
-            result += String.fromCharCode(petscii);
-          }
-          // A-Z (PETSCII shifted/lowercase: 0x01-0x1A → A-Z)
-          else if (petscii >= 0x01 && petscii <= 0x1a) {
-            result += String.fromCharCode(0x40 + petscii);
-          }
-          // Common punctuation
-          else if (
-            ".,:;!?()-+*/=<>\"'@#$%&".includes(String.fromCharCode(petscii))
-          ) {
-            result += String.fromCharCode(petscii);
-          }
-          // Everything else (graphic chars, control codes)
-          else {
-            result += "?";
-          }
-        } else if (char === "\n") {
-          result += "\n";
-        }
-        // Regular ASCII passthrough
-        else if (code >= 0x20 && code <= 0x7e) {
-          result += char;
-        }
-      }
-
-      return result;
     },
 
     /**
@@ -604,74 +528,6 @@ document.addEventListener("alpine:init", () => {
     },
 
     /**
-     * Downloads pistats.html from the Pi1541 device
-     * @returns {Promise<string|null>} - Promise resolving to the HTML content
-     */
-    async downloadStats() {
-      try {
-        const url = `${this.pi_endpoint}/pistats.html`;
-        console.log(`[proxyStore] Fetching stats URL: ${url}`);
-        const resp = await fetch(url);
-        const text = await resp.text();
-        return text;
-      } catch (err) {
-        console.error("[proxyStore] downloadStats error:", err);
-        return null;
-      }
-    },
-
-    /**
-     * Parses pistats HTML and extracts device status fields
-     * @param {string} htmlString - The HTML content to parse
-     * @returns {object} - Object containing deviceId, currentDiskimage, piTemp, time
-     */
-    parseStats(htmlString) {
-      try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlString, "text/html");
-        const italics = doc.querySelectorAll("i");
-        const tempRaw = italics[2]?.textContent.trim() ?? null;
-        const tempParts = tempRaw ? tempRaw.split(" @") : [];
-        return {
-          deviceId:         italics[0]?.textContent.trim() ?? null,
-          currentDiskimage: italics[1]?.textContent.trim().replace("SD:/1541", "").replace("SD:", "") || null,
-          piTemp:           tempParts[0] ?? null,
-          piFreq:           tempParts[1] ?? null,
-          time:             italics[3]?.textContent.trim() ?? null,
-        };
-      } catch (err) {
-        console.error("[proxyStore] parseStats error:", err);
-        return { deviceId: null, currentDiskimage: null, piTemp: null, piFreq: null, time: null };
-      }
-    },
-
-    /**
-     * Downloads and parses pistats.html, updating this.stats
-     * @returns {Promise<object|null>} - Promise resolving to { deviceId, currentDiskimage, piTemp, time }
-     */
-    async processStats() {
-      try {
-        this.statsLoading = true;
-        const htmlContent = await this.downloadStats();
-        if (!htmlContent) {
-          console.error("[proxyStore] processStats: No HTML content received");
-          Alpine.store("toast").error("Could not fetch Pi stats");
-          return null;
-        }
-        const stats = this.parseStats(htmlContent);
-        console.log("[proxyStore] Parsed stats:", stats);
-        this.stats = stats;
-        return stats;
-      } catch (err) {
-        console.error("[proxyStore] processStats error:", err);
-        Alpine.store("toast").error("Could not fetch Pi stats");
-        return null;
-      } finally {
-        this.statsLoading = false;
-      }
-    },
-
-    /**
      * Recursively loads all subdirectories starting from the given path.
      * @param {string} [startPath="/"] - Directory path to start from
      */
@@ -743,7 +599,7 @@ document.addEventListener("alpine:init", () => {
         if (parsedData.disc_content) {
           console.log(
             "[proxyStore] Disk directory:\n" +
-              this.petsciiToAscii(parsedData.disc_content),
+              PetsciiUtils.petsciiToAscii(parsedData.disc_content),
           );
         }
 

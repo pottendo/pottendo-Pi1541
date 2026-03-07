@@ -25,4 +25,43 @@
       <button class="button" @click="endpoint = $store.proxy.pi_endpoint; csdb = $store.csdb.csdb_endpoint">Reset</button>
     </div>
   </div>
+
+  <div class="field">
+    <label class="label has-text-white">Font size</label>
+    <div class="field has-addons">
+      <div class="control">
+        <button class="button is-small" @click="fontSize = Math.max(fontSize - 10, 70)" title="Decrease font size">
+          <span class="icon is-small"><i class="fas fa-font" style="font-size: 0.45em;"></i></span>
+        </button>
+      </div>
+      <div class="control">
+        <span class="button is-small is-static" x-text="fontSize + '%'"></span>
+      </div>
+      <div class="control">
+        <button class="button is-small" @click="fontSize = Math.min(fontSize + 10, 150)" title="Increase font size">
+          <span class="icon is-small"><i class="fas fa-font" style="font-size: 1.3em;"></i></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h4 class="title is-6 has-text-danger">Danger Zone</h4>
+  <div class="field is-grouped">
+    <div class="control">
+      <button class="button is-danger is-outlined is-small"
+              @click="if(confirm('Clear all caches and settings? Page will reload.')) { localStorage.clear(); indexedDB.deleteDatabase('pi1541ui'); location.reload(); }">
+        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+        <span>Clear caches &amp; settings</span>
+      </button>
+    </div>
+    <div class="control">
+      <button class="button is-danger is-outlined is-small" :disabled="$store.proxy.connecting"
+              @click="if(confirm('Delete /csdb-releases from the device?')) $store.release.deleteReleasesDir()">
+        <span class="icon is-small"><i class="fas fa-folder-minus"></i></span>
+        <span>Delete releases dir</span>
+      </button>
+    </div>
+  </div>
 </div>

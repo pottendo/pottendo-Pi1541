@@ -1,21 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>pi1541ui</title>
         <!-- Bulma CSS from CDN -->
         <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-        />
+                rel="stylesheet"
+                href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"
+        >
 
+        <!-- Shared utilities (load before stores) -->
+        <script defer src="utils/petscii.js"></script>
 
         <!-- Alpine.js Stores (load before Alpine) -->
-<script defer src="stores/discStore.js"></script>
+        <script defer src="stores/discStore.js"></script>
         <script defer src="stores/proxyStore.js"></script>
+        <script defer src="stores/piStatsStore.js"></script>
+        <script defer src="stores/fileOpsStore.js"></script>
         <script defer src="stores/cacheStore.js"></script>
         <script defer src="stores/favouritesStore.js"></script>
+        <script defer src="stores/releaseStore.js"></script>
         <script defer src="stores/csdbStore.js"></script>
         <script defer src="stores/toastStore.js"></script>
         <script defer src="stores/componentLoader.js"></script>
@@ -33,11 +38,9 @@
         <!-- Custom CSS -->
         <link rel="stylesheet" href="style.css" />
     </head>
-    <body x-data="{ darkMode: localStorage.getItem('darkMode') === 'true', fontSize: parseInt(localStorage.getItem('fontSize')) || 100 }"
-          :class="{ 'dark': darkMode }"
+    <body x-data="{ fontSize: parseInt(localStorage.getItem('fontSize')) || 100 }"
           x-init="
             document.documentElement.style.fontSize = fontSize + '%';
-            $watch('darkMode', val => localStorage.setItem('darkMode', val));
             $watch('fontSize', val => { document.documentElement.style.fontSize = val + '%'; localStorage.setItem('fontSize', val); });
           ">
         <!-- Navigation -->
@@ -61,20 +64,33 @@
                     </svg>
                     <strong class="has-text-black is-size-4 ml-2">pi1541ui</strong>
                 </a>
-                <div class="navbar-item" style="margin-left: auto; gap: 0.25rem; display: flex;">
-                    <button class="button is-small dark-mode-toggle" @click="fontSize = Math.max(fontSize - 10, 70)" title="Decrease font size">
-                        <span class="icon is-small"><i class="fas fa-font" style="font-size: 0.45em;"></i></span>
-                    </button>
-                    <button class="button is-small dark-mode-toggle" @click="fontSize = Math.min(fontSize + 10, 150)" title="Increase font size">
-                        <span class="icon is-small"><i class="fas fa-font" style="font-size: 1.3em;"></i></span>
-                    </button>
-                    <button class="button is-small dark-mode-toggle"
-                            @click="darkMode = !darkMode"
-                            :title="darkMode ? 'Switch to light mode' : 'Switch to dark mode'">
-                        <span class="icon is-small">
-                            <i :class="darkMode ? 'fas fa-lightbulb' : 'fas fa-moon'"></i>
-                        </span>
-                    </button>
+            </div>
+            <div class="navbar-stats" x-init="$store.piStats.processStats()">
+                <div class="navbar-stats-items">
+                    <span class="navbar-stats-item navbar-stats-image">
+                        <span class="icon is-small"><i class="fas fa-compact-disc"></i></span>
+                        <strong class="is-size-7 has-text-black" x-text="$store.piStats.stats.currentDiskimage ?? '—'"></strong>
+                    </span>
+                    <span class="navbar-stats-item">
+                        <span class="icon is-small"><i class="fas fa-hdd"></i></span>
+                        <strong class="is-size-7 has-text-black" x-text="$store.piStats.stats.deviceId != null ? '#' + $store.piStats.stats.deviceId : '—'"></strong>
+                    </span>
+                    <span class="navbar-stats-item">
+                        <span class="icon is-small"><i class="fas fa-thermometer-half"></i></span>
+                        <strong class="is-size-7 has-text-black" x-text="$store.piStats.stats.piTemp ?? '—'"></strong>
+                    </span>
+                    <span class="navbar-stats-item">
+                        <span class="icon is-small"><i class="fas fa-microchip"></i></span>
+                        <strong class="is-size-7 has-text-black" x-text="$store.piStats.stats.piFreq ?? '—'"></strong>
+                    </span>
+                    <span class="navbar-stats-item">
+                        <button class="button is-small navbar-icon-btn stats-refresh"
+                                @click="$store.piStats.processStats()"
+                                :class="{ 'is-loading': $store.piStats.statsLoading }"
+                                title="Refresh stats">
+                            <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+                        </button>
+                    </span>
                 </div>
             </div>
         </nav>
@@ -85,9 +101,6 @@
             <div class="container"
                  x-data="{ activeTab: localStorage.getItem('activeTab') || 'browser' }"
                  x-init="$watch('activeTab', val => localStorage.setItem('activeTab', val))">
-
-                <!-- Pi Stats -->
-                <div id="pi-stats-component"></div>
 
                 <!-- Tab Navigation -->
                 <div class="tabs is-boxed mb-0">
@@ -110,6 +123,12 @@
                                 <span>CSDb</span>
                             </a>
                         </li>
+                        <li :class="{ 'is-active': activeTab === 'releases' }">
+                            <a @click="activeTab = 'releases'">
+                                <span class="icon is-small"><i class="fas fa-compact-disc"></i></span>
+                                <span>Releases</span>
+                            </a>
+                        </li>
                         <li :class="{ 'is-active': activeTab === 'operations' }">
                             <a @click="activeTab = 'operations'">
                                 <span class="icon is-small"><i class="fas fa-wrench"></i></span>
@@ -130,11 +149,15 @@
                     <div x-show="activeTab === 'browser'" id="file-browser-component"></div>
                     <div x-show="activeTab === 'favourites'" id="favourites-panel-component"></div>
                     <div x-show="activeTab === 'csdb'" id="csdb-search-component"></div>
+                    <div x-show="activeTab === 'releases'" id="releases-panel-component"></div>
                     <div x-show="activeTab === 'operations'" id="operations-panel-component"></div>
                     <div x-show="activeTab === 'config'" id="config-component"></div>
                 </div>
             </div>
         </section>
+
+        <!-- Global modals -->
+        <div id="release-detail-component"></div>
 
         <!-- Footer -->
         <footer class="footer">

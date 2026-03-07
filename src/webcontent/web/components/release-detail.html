@@ -1,0 +1,222 @@
+<style>
+    .csdb-link {
+        color: #3273dc;
+        text-decoration: none;
+    }
+    .csdb-link:hover {
+        text-decoration: underline;
+    }
+    .csdb-party {
+        font-size: 0.8em;
+        color: #888;
+    }
+    .csdb-rating {
+        font-weight: bold;
+    }
+    .csdb-rating-high { color: #23d160; }
+    .csdb-rating-mid  { color: #ffdd57; }
+    .csdb-rating-low  { color: #ff3860; }
+    .csdb-downloads-list {
+        border: 1px solid #444;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .csdb-download-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.6rem;
+        border-bottom: 1px solid #333;
+    }
+    .csdb-download-item:last-child { border-bottom: none; }
+    .modal-card { border: 1px solid #555; }
+    .modal-card-head { background-color: #2c2c2c; border-bottom-color: #555; }
+    .modal-card-title { color: #f0f0f0; }
+    .modal-card-body { background-color: #1e1e1e; color: #e0e0e0; }
+    .modal-card-body .table { background-color: transparent; color: #e0e0e0; }
+    .modal-card-body .table th,
+    .modal-card-body .table td { border-color: #3a3a3a; color: #e0e0e0; }
+</style>
+
+<!-- Detail Modal -->
+<div class="modal" :class="{ 'is-active': $store.release.detail }" @keydown.escape.window="$store.release.closeDetail()">
+    <div class="modal-background" @click="$store.release.closeDetail()"></div>
+    <div class="modal-card">
+        <header class="modal-card-head py-3">
+            <p class="modal-card-title is-size-6 mb-0">Details</p>
+            <button class="delete" @click="$store.release.closeDetail()"></button>
+        </header>
+        <section class="modal-card-body">
+            <div x-show="$store.release.detailLoading" class="has-text-centered py-4">
+                <span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="is-size-7">Loading...</span>
+            </div>
+            <table x-show="!$store.release.detailLoading" class="table is-fullwidth is-narrow is-size-7">
+                <tbody>
+                    <tr>
+                        <th style="width:5rem">Release</th>
+                        <td>
+                            <span x-text="$store.release.detail?.name"></span>
+                            <span x-show="$store.release.detail?.year" x-text="'[' + $store.release.detail?.year + ']'" class="ml-2 has-text-grey"></span>
+                        </td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.group">
+                        <th>Group</th>
+                        <td x-text="$store.release.detail?.group"></td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.date">
+                        <th>Date</th>
+                        <td x-text="$store.release.detail?.date"></td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.party">
+                        <th>Party</th>
+                        <td x-text="$store.release.detail?.party"></td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.rating !== null && $store.release.detail?.rating !== undefined">
+                        <th>Rating</th>
+                        <td>
+                            <span class="csdb-rating"
+                                  :class="{
+                                      'csdb-rating-high': $store.release.detail?.rating >= 8,
+                                      'csdb-rating-mid': $store.release.detail?.rating >= 5 && $store.release.detail?.rating < 8,
+                                      'csdb-rating-low': $store.release.detail?.rating < 5
+                                  }"
+                                  x-text="$store.release.detail?.rating + '/10'"></span>
+                            <span x-show="$store.release.detail?.votes" class="csdb-party ml-2" x-text="'(' + $store.release.detail?.votes + ' votes)'"></span>
+                        </td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.type">
+                        <th>Type</th>
+                        <td x-text="$store.release.detail?.type"></td>
+                    </tr>
+                    <tr x-show="$store.release.detail?.id">
+                        <th>CSDb</th>
+                        <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + $store.release.detail?.id" target="_blank" x-text="'https://csdb.dk/release/?id=' + $store.release.detail?.id"></a></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Installed state -->
+            <div x-show="!$store.release.detailLoading && !$store.release.downloadResult && $store.release.isInstalled($store.release.detail?.id)" class="mt-3">
+                <hr class="my-0 mb-3">
+                <p class="is-size-7 has-text-weight-semibold mb-2">
+                    <span class="icon is-small"><i class="fas fa-check-circle has-text-success"></i></span>
+                    Installed
+                </p>
+                <table class="table is-fullwidth is-narrow is-size-7 mb-3">
+                    <tbody>
+                        <tr>
+                            <th style="width:5rem">Location</th>
+                            <td style="font-family:monospace" x-text="$store.release.get($store.release.detail?.id)?.installs?.at(-1)?.path"></td>
+                        </tr>
+                        <tr>
+                            <th>Installed</th>
+                            <td>
+                                <span x-text="$store.release.get($store.release.detail?.id)?.installs?.at(-1)?.installedAt?.slice(0, 10)"></span>
+                                <span class="has-text-grey ml-1" x-text="$store.release.timeAgo($store.release.get($store.release.detail?.id)?.installs?.at(-1)?.installedAt)"></span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="display:flex;justify-content:space-between">
+                    <button class="button is-small is-light" @click="$store.release.closeDetail()">
+                        <span class="icon is-small"><i class="fas fa-times"></i></span>
+                        <span>Close</span>
+                    </button>
+                    <button class="button is-small is-danger" @click="$store.release.uninstallRelease($store.release.detail.id)">
+                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                        <span>Uninstall</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Downloads -->
+            <div x-show="!$store.release.detailLoading && $store.release.detail?.downloads?.length > 0 && !$store.release.downloadResult && !$store.release.isInstalled($store.release.detail?.id)" class="mt-3">
+                <p class="is-size-7 has-text-weight-semibold mb-1">
+                    <span class="icon is-small"><i class="fas fa-download"></i></span>
+                    Downloads
+                </p>
+                <p class="is-size-7 has-text-grey mb-2">Click the icon to download. Install on next step.</p>
+                <div class="csdb-downloads-list">
+                    <template x-for="dl in ($store.release.detail?.downloads || [])" :key="dl.url">
+                        <div class="csdb-download-item" style="justify-content:space-between">
+                            <span class="is-size-7" x-text="dl.externalUrl"></span>
+                            <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset;flex-shrink:0;color:#ff3860" @click="$store.csdb.downloadFile(dl, $store.release.detail.id)" title="Download">
+                                <span class="icon is-small"><i class="fas fa-download"></i></span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <div class="mt-2">
+                    <button class="button is-small is-light" @click="$store.release.closeDetail()">
+                        <span class="icon is-small"><i class="fas fa-times"></i></span>
+                        <span>Cancel</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Download Result (inline) -->
+            <div x-show="$store.release.downloadResult" class="mt-4">
+                <hr class="my-0 mb-3">
+                <p class="is-size-7 has-text-weight-semibold mb-2">
+                    <span class="icon is-small"><i class="fas fa-file-download"></i></span>
+                    Downloaded
+                </p>
+                <table class="table is-fullwidth is-narrow is-size-7">
+                    <tbody>
+                        <tr>
+                            <th style="width:5rem">File</th>
+                            <td x-text="$store.release.downloadResult?.filename"></td>
+                        </tr>
+                        <tr>
+                            <th>Size</th>
+                            <td x-text="$store.release.formatSize($store.release.downloadResult?.size)"></td>
+                        </tr>
+                        <tr>
+                            <th>Link</th>
+                            <td><a class="csdb-link" :href="$store.release.downloadResult?.externalUrl" target="_blank" x-text="$store.release.downloadResult?.externalUrl"></a></td>
+                        </tr>
+                        <tr>
+                            <th>Contents</th>
+                            <td>
+                                <template x-if="$store.release.downloadResult?.zipContents">
+                                    <div class="is-size-7" style="font-family:monospace">
+                                        <template x-for="f in ($store.release.downloadResult?.zipContents || [])">
+                                            <div style="display:flex;justify-content:space-between;gap:1rem">
+                                                <span x-text="f.name"></span>
+                                                <span class="has-text-grey" style="white-space:nowrap" x-text="f.size != null ? $store.release.formatSize(f.size) : ''"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!$store.release.downloadResult?.zipContents">
+                                    <span x-text="$store.release.downloadResult?.filename"></span>
+                                </template>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="is-size-7 has-text-weight-semibold mt-3 mb-1">Auto install</p>
+                <p class="is-size-7 has-text-grey mb-1">Clicking Install will upload the disk images and generate _autoswap.lst for auto-mount. Once done, run it from the Releases tab.</p>
+                <table class="table is-fullwidth is-narrow is-size-7 mb-3">
+                    <tbody>
+                        <tr>
+                            <th style="width:5rem">Location</th>
+                            <td style="font-family:monospace" x-text="$store.release.installPath()"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="display:flex;justify-content:space-between">
+                    <button class="button is-small is-light" @click="$store.release.downloadResult = null">
+                        <span class="icon is-small"><i class="fas fa-times"></i></span>
+                        <span>Cancel</span>
+                    </button>
+                    <button class="button is-small is-danger" :class="{ 'is-loading': $store.release.installing }" :disabled="$store.release.installing" @click="$store.release.installRelease($store.release.downloadResult.releaseId, $store.release.downloadResult.id)">
+                        <span class="icon is-small"><i class="fas fa-save"></i></span>
+                        <span x-text="$store.release.installing ? 'Installing release...' : 'Install'"></span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

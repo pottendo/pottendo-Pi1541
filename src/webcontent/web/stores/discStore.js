@@ -49,53 +49,6 @@ document.addEventListener("alpine:init", () => {
       return dir ? dir.disc_images.find((d) => d.path === filePath) : null;
     },
 
-    // Load a directory's contents using proxy store
-    async loadDirectoryContents(path) {
-      try {
-        if (
-          typeof Alpine !== "undefined" &&
-          Alpine.store &&
-          Alpine.store("proxy")
-        ) {
-          const relativePath = path === "/" ? "" : path.substring(1);
-
-          console.log(`[discStore] Loading directory contents for: ${path}`);
-
-          const result = await Alpine.store("proxy").processIndex(relativePath);
-
-          if (result) {
-            const directory = this.findDirectoryByPath(path);
-            if (directory) {
-              directory.loaded = true;
-              directory.subdirectories = result.subdirectories || [];
-              directory.disc_images = result.disc_images || [];
-
-              directory.subdirectories.forEach((subdir) => {
-                subdir.loaded = false;
-              });
-
-              console.log(
-                `[discStore] Successfully loaded ${directory.subdirectories.length} subdirectories and ${directory.disc_images.length} files`,
-              );
-
-              if (Alpine.store("cache")) Alpine.store("cache").saveTree(this.root);
-              return true;
-            }
-          }
-        } else {
-          console.warn(
-            "[discStore] Proxy store not available for loading directory contents",
-          );
-        }
-      } catch (err) {
-        console.error(
-          `[discStore] Error loading directory contents for ${path}:`,
-          err,
-        );
-      }
-      return false;
-    },
-
     // Check if a directory is loaded
     isDirectoryLoaded(path) {
       const directory = this.findDirectoryByPath(path);
@@ -112,26 +65,10 @@ document.addEventListener("alpine:init", () => {
     // Pre-compute uppercased ASCII lines from disc_content for fast search.
     // Call once when disc_content is set; store result as disc.disc_ascii.
     computeDiscAscii(html) {
-      const lines = this.petsciiToLines(html)
+      const lines = PetsciiUtils.petsciiToLines(html)
         .map((l) => l.ascii.toUpperCase())
         .filter((l) => l.length > 0);
       return lines.slice(0, -1);
-    },
-
-    // Extract searchable ASCII lines from C64 screen-code HTML using a single regex pass.
-    petsciiToLines(html) {
-      return html.split(/<br\s*\/?>/i).map((line) => {
-        const chars = line.match(/[\uee01-\uee3f\uee81-\ueebf]/g) || [];
-        const ascii = chars.map((c) => {
-          let sc = c.codePointAt(0) - 0xee00;
-          if (sc >= 0x80) sc -= 0x80;
-          if (sc >= 0x01 && sc <= 0x1a) return String.fromCharCode(sc + 0x40);
-          if (sc === 0x1f) return "_";
-          if (sc >= 0x20 && sc <= 0x3f) return String.fromCharCode(sc);
-          return "";
-        }).join("");
-        return { ascii, html: line };
-      });
     },
 
     searchIgnoreList: ["autoswap.lst"],

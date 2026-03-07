@@ -1,7 +1,7 @@
 (function injectPiFont(){
   function apply(){
     if (window.Alpine && Alpine.store && Alpine.store('proxy')){
-      var endpoint = Alpine.store('proxy').pi_endpoint || 'http://localhost:8000/proxy';
+      var endpoint = Alpine.store('proxy').pi_endpoint || 'http://localhost:8000/pi-proxy';
       var fontUrl = endpoint.replace(/\/+$/, '') + '/C64_Pro_Mono.ttf';
       // set CSS variable for fallback
       document.documentElement.style.setProperty('--pi-font-url', fontUrl);

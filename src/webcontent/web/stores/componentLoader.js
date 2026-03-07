@@ -5,10 +5,6 @@ document.addEventListener("alpine:init", () => {
   Alpine.store("componentLoader", {
     // Component configuration
     components: {
-      "pi-stats": {
-        containerId: "pi-stats-component",
-        filePath: "components/pi-stats.html",
-      },
 "favourites-panel": {
         containerId: "favourites-panel-component",
         filePath: "components/favourites-panel.html",
@@ -17,6 +13,14 @@ document.addEventListener("alpine:init", () => {
         containerId: "file-browser-component",
         filePath: "components/file-browser.html",
       },
+      "upload-panel": {
+        containerId: "upload-panel-component",
+        filePath: "components/upload-panel.html",
+      },
+      "disc-detail": {
+        containerId: "disc-detail-component",
+        filePath: "components/disc-detail.html",
+      },
       "operations-panel": {
         containerId: "operations-panel-component",
         filePath: "components/operations-panel.html",
@@ -24,6 +28,14 @@ document.addEventListener("alpine:init", () => {
       "csdb-search": {
         containerId: "csdb-search-component",
         filePath: "components/csdb-search.html",
+      },
+      "releases-panel": {
+        containerId: "releases-panel-component",
+        filePath: "components/releases-panel.html",
+      },
+      "release-detail": {
+        containerId: "release-detail-component",
+        filePath: "components/release-detail.html",
       },
       "config": {
         containerId: "config-component",
@@ -48,9 +60,13 @@ document.addEventListener("alpine:init", () => {
 
     // Load all components
     async loadAllComponents() {
-      for (const [componentName, config] of Object.entries(this.components)) {
-        await this.loadComponent(componentName);
-      }
+      // upload-panel and disc-detail containers live inside file-browser,
+      // so file-browser must be injected first.
+      const needsFileBrowser = ['upload-panel', 'disc-detail'];
+      const independent = Object.keys(this.components).filter(n => !needsFileBrowser.includes(n));
+
+      await Promise.all(independent.map(n => this.loadComponent(n)));
+      await Promise.all(needsFileBrowser.map(n => this.loadComponent(n)));
     },
 
     // Load a single component
@@ -94,6 +110,4 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
-  // Initialize the component loader when Alpine starts
-  Alpine.store("componentLoader").init();
 });

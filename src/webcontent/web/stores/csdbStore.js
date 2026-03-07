@@ -8,7 +8,7 @@ document.addEventListener("alpine:init", () => {
     error: null,
     results: { quick: [], group: [], toplist: [] },
     resultCounts: { quick: 0, group: 0, toplist: 0 },
-    csdb_endpoint: localStorage.getItem("csdb_endpoint") || "http://localhost:8000/csdb",
+    csdb_endpoint: localStorage.getItem("csdb_endpoint") || "http://localhost:8000/csdb-proxy",
 
     setCsdbEndpoint(url) {
       this.csdb_endpoint = url;
@@ -154,6 +154,39 @@ document.addEventListener("alpine:init", () => {
     },
 
     /**
+     * Download a release file, storing result in downloadResult
+     * @param {{ url: string, filename: string, externalUrl: string }} dl
+     * @param {number} id - Release ID
+     */
+    async downloadFile(dl, id) {
+      console.log(`[csdbStore] downloadFile: url=${dl.url}`);
+      try {
+        const res = await fetch(dl.url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        let zipContents = null;
+        if (dl.filename.toLowerCase().endsWith('.zip')) {
+          const zip = await JSZip.loadAsync(blob);
+          zipContents = [];
+          zip.forEach((path, file) => zipContents.push({ name: path, size: file._data?.uncompressedSize ?? null }));
+        }
+        const downloadId = parseInt(new URL(dl.url, location.href).searchParams.get("id")) || null;
+        const record = {
+          id: downloadId,
+          filename: dl.filename,
+          url: dl.url,
+          externalUrl: dl.externalUrl,
+          size: blob.size,
+          zipContents,
+        };
+        Alpine.store('release').downloadResult = { ...record, releaseId: id, blob };
+        Alpine.store('toast').success(dl.filename, 'Downloaded');
+      } catch (err) {
+        Alpine.store('toast').error('Download failed: ' + err.message);
+      }
+    },
+
+    /**
      * Fetch details for a single release
      * @param {number} id - Release ID
      * @returns {Promise<object>} - { rating, votes, group, date, party, placement }
@@ -162,7 +195,8 @@ document.addEventListener("alpine:init", () => {
       try {
         const resp = await fetch(`${this.csdb_endpoint}/release/?id=${id}`);
         const html = await resp.text();
-        return this.parseReleasePage(html);
+        const parsed = this.parseReleasePage(html);
+        return parsed;
       } catch (err) {
         console.error(`[csdbStore] fetchReleaseDetails error for ${id}:`, err);
         return null;
@@ -378,16 +412,16 @@ document.addEventListener("alpine:init", () => {
         );
         const id = idMatch ? parseInt(idMatch[1]) : null;
 
-        // Name and group from title: "[CSDb] - NAME by GROUP (YEAR)"
+        // Name and group from title: "[CSDb] - NAME by GROUP (YEAR)" — year may be absent
         const titleMatch = html.match(
-          /<title>\[CSDb\]\s*-\s*(.+?)\s+by\s+(.+?)\s*\(\d{4}\)/
+          /<title>\[CSDb\]\s*-\s*(.+?)\s+by\s+(.+?)(?:\s*\(\d{4}\))?\s*<\/title>/
         );
         const name = titleMatch ? this.decodeHtmlEntities(titleMatch[1].trim()) : "";
         const group = titleMatch ? this.decodeHtmlEntities(titleMatch[2].trim()) : "";
 
-        // Type from <b>Type :</b><br><a ...>TYPE</a>
-        const typeMatch = html.match(/<b>Type\s*:<\/b><br>\s*<a[^>]*>([^<]+)<\/a>/i);
-        const type = typeMatch ? typeMatch[1].trim() : "";
+        // Type from <a href="...rrelease_type...">TYPE</a>
+        const typeEl = doc.querySelector('a[href*="rrelease_type"]');
+        const type = typeEl ? typeEl.textContent.trim() : "";
 
         // Rating: first "N.N/10 (N votes)" only (page may have two rows)
         const ratingMatch = html.match(/([\d.]+)\/10\s*\((\d+)\s*votes?\)/);
@@ -411,13 +445,15 @@ document.addEventListener("alpine:init", () => {
           if (!externalUrl.startsWith("http://") && !externalUrl.startsWith("https://")) continue;
           if (seen.has(href)) continue;
           seen.add(href);
-          const url = new URL(href, "https://csdb.dk/release/").href;
+          const parsed = new URL(href, "https://csdb.dk/");
+          const url = this.csdb_endpoint + "/release" + parsed.pathname + parsed.search;
           const filename = externalUrl.split("/").pop().split("?")[0] || externalUrl;
+          console.log(`[csdbStore] download: href=${href} url=${url} filename=${filename} externalUrl=${externalUrl}`);
           downloads.push({ url, externalUrl, filename });
         }
 
-        // Year from title: "[CSDb] - NAME by GROUP (YEAR)"
-        const year = titleMatch ? titleMatch[0].match(/\((\d{4})\)/)?.[1] : "";
+        // Year from title: "[CSDb] - NAME by GROUP (YEAR)", fallback to date
+        const year = (titleMatch ? titleMatch[0].match(/\((\d{4})\)/)?.[1] : "") || date.match(/(\d{4})/)?.[0] || "";
 
         const result = { id, name, year, type, rating, votes, group, date, party, downloads };
         console.log("[csdbStore] parseReleasePage:", result);

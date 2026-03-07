@@ -1,10 +1,12 @@
-<div x-show="$store.favourites.items.length > 0"
-     x-data="{ collapsed: false }"
-     class="box mb-0"
-     style="padding-bottom: 0.75rem;"
-     @favourite-navigate.window="collapsed = false">
+<style>
+    .favourites-table code:not(.detail-bookmark-line) { color: white; }
+    .favourites-table td a { display: inline-flex; align-items: center; gap: 0.25rem; }
+</style>
 
-    <div class="is-flex is-justify-content-space-between is-align-items-center mb-2" style="cursor: pointer" @click="collapsed = !collapsed">
+<div class="box mb-0"
+     style="padding-bottom: 0.75rem;">
+
+    <div class="mb-2">
         <span class="has-text-weight-semibold">
             <span class="icon is-small has-text-warning">
                 <i class="fas fa-star"></i>
@@ -12,29 +14,28 @@
             Favourites
             <span class="tag is-light is-rounded ml-1" x-text="$store.favourites.items.length"></span>
         </span>
-        <span class="icon is-small">
-            <i :class="collapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up'"></i>
-        </span>
     </div>
 
-    <table x-show="!collapsed" class="table is-fullwidth is-narrow is-striped" style="font-size: 0.9em;">
+    <p x-show="$store.favourites.items.length === 0" class="has-text-grey is-size-7">No favourites yet. Star a file or directory to add it here.</p>
+
+    <table x-show="$store.favourites.items.length > 0" class="table is-fullwidth is-narrow is-striped favourites-table" style="font-size: 0.9em;">
         <tbody>
             <template x-for="fav in $store.favourites.items" :key="fav.type + '::' + (fav.discPath || '') + '::' + fav.path + '::' + (fav.line || '')">
                 <tr :class="{ 'has-background-light': fav.type === 'directory' }">
                     <td style="width: 2rem;">
                         <template x-if="fav.type === 'file' || fav.type === 'detail'">
-                            <span class="icon is-small mount-icon" role="button" tabindex="0"
-                                  @click="$store.proxy.mountFile(fav.type === 'detail' ? fav.discPath : fav.path)"
-                                  title="Mount this image">
-                                <i class="far fa-play-circle"></i>
-                            </span>
+                            <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                    @click="$store.fileOps.mountFile(fav.type === 'detail' ? fav.discPath : fav.path)"
+                                    title="Mount this image">
+                                <span class="icon is-small"><i class="fas fa-play"></i></span>
+                            </button>
                         </template>
                         <template x-if="fav.type === 'directory' && (() => { const dir = $store.disc.findDirectoryByPath(fav.path); return dir && (dir.disc_images || []).some(d => d.path.split('/').pop().toLowerCase() === 'autoswap.lst'); })()">
-                            <span class="icon is-small mount-icon" role="button" tabindex="0"
-                                  @click="$store.proxy.mountFile(fav.path + '/autoswap.lst')"
-                                  title="Mount autoswap.lst">
-                                <i class="far fa-play-circle"></i>
-                            </span>
+                            <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                    @click="$store.fileOps.mountFile(fav.path + '/autoswap.lst')"
+                                    title="Mount autoswap.lst">
+                                <span class="icon is-small"><i class="fas fa-play"></i></span>
+                            </button>
                         </template>
                     </td>
                     <td>

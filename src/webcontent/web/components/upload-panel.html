@@ -1,0 +1,87 @@
+<div class="box"
+     x-data="{
+        uploadOpen: false,
+        uploadImg: null,
+        uploadDirFiles: null,
+        automount: false,
+        uploading: false,
+        get imgLabel() { return this.uploadImg ? this.uploadImg.name : 'Choose disk image\u2026'; },
+        get dirLabel() {
+            if (!this.uploadDirFiles || !this.uploadDirFiles.length) return 'Choose directory\u2026';
+            const rel = this.uploadDirFiles[0].webkitRelativePath;
+            return rel ? rel.split('/')[0] : this.uploadDirFiles[0].name;
+        }
+     }">
+
+    <button class="button is-small is-info" @click="uploadOpen = !uploadOpen">
+        <span class="icon is-small"><i class="fas fa-upload"></i></span>
+        <span>Upload</span>
+        <span class="icon is-small"><i :class="uploadOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i></span>
+    </button>
+
+    <div x-show="uploadOpen" class="mt-3">
+        <p class="is-size-7 mb-3">
+            Upload to: <code x-text="currentPath"></code>
+        </p>
+        <div class="columns is-variable is-3">
+
+            <!-- Disk image upload -->
+            <div class="column">
+                <p class="is-size-7 has-text-weight-semibold mb-2">Disk image (.d64 / .g64 / .lst)</p>
+                <div class="file has-name is-small is-fullwidth mb-2">
+                    <label class="file-label">
+                        <input class="file-input" type="file" accept=".d64,.D64,.g64,.G64,.lst,.LST"
+                               @change="uploadImg = $event.target.files[0] || null">
+                        <span class="file-cta">
+                            <span class="file-icon"><i class="fas fa-file"></i></span>
+                            <span class="file-label">Choose&hellip;</span>
+                        </span>
+                        <span class="file-name" x-text="imgLabel"></span>
+                    </label>
+                </div>
+                <label class="checkbox is-size-7 mb-2" style="display: block;">
+                    <input type="checkbox" x-model="automount"> Automount after upload
+                </label>
+                <button class="button is-small is-success is-fullwidth"
+                        :disabled="!uploadImg || uploading || $store.proxy.connecting"
+                        @click="
+                            uploading = true;
+                            $store.fileOps.uploadFile(currentPath, uploadImg, automount)
+                                .then(ok => { if (ok) { uploadImg = null; uploadOpen = false; } })
+                                .finally(() => uploading = false);
+                        ">
+                    <span class="icon is-small"><i :class="uploading ? 'fas fa-spinner fa-pulse' : 'fas fa-upload'"></i></span>
+                    <span x-text="uploading ? 'Uploading\u2026' : 'Upload Image'"></span>
+                </button>
+            </div>
+
+            <!-- Directory upload -->
+            <div class="column">
+                <p class="is-size-7 has-text-weight-semibold mb-2">Directory <span class="has-text-grey">(max 15 MB)</span></p>
+                <div class="file has-name is-small is-fullwidth mb-2">
+                    <label class="file-label">
+                        <input class="file-input" type="file" webkitdirectory directory multiple
+                               @change="uploadDirFiles = $event.target.files.length ? $event.target.files : null">
+                        <span class="file-cta">
+                            <span class="file-icon"><i class="fas fa-folder-open"></i></span>
+                            <span class="file-label">Choose&hellip;</span>
+                        </span>
+                        <span class="file-name" x-text="dirLabel"></span>
+                    </label>
+                </div>
+                <button class="button is-small is-success is-fullwidth mt-4"
+                        :disabled="!uploadDirFiles || uploading || $store.proxy.connecting"
+                        @click="
+                            uploading = true;
+                            $store.fileOps.uploadDirectory(currentPath, uploadDirFiles)
+                                .then(ok => { if (ok) { uploadDirFiles = null; uploadOpen = false; } })
+                                .finally(() => uploading = false);
+                        ">
+                    <span class="icon is-small"><i :class="uploading ? 'fas fa-spinner fa-pulse' : 'fas fa-folder-plus'"></i></span>
+                    <span x-text="uploading ? 'Uploading\u2026' : 'Upload Directory'"></span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
