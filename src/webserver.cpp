@@ -844,8 +844,9 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 	srvip.Format(&ipstr);
 	DEBUG_LOG("%s: DNS resolution succeeded for host %s: %s", __FUNCTION__, hn.c_str(), ipstr.c_str());
 
+	u16 pt = url.substr(0, url.find_first_of(':')) == "https" ? HTTPS_PORT : HTTP_PORT;
 	CircleMbedTLS::CTLSSimpleSupport m_TLSSupport(&m_NetSubSystem);
-	CircleMbedTLS::CHTTPClient httpClient(&m_TLSSupport, srvip, HTTPS_PORT, hn.c_str(), true);
+	CircleMbedTLS::CHTTPClient httpClient(&m_TLSSupport, srvip, pt, hn.c_str(), true);
 	string doc;
 	if (docst == string::npos)
 		doc = "/";
