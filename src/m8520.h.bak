@@ -23,10 +23,6 @@
 #include "m6502.h"
 #include "debug.h"
 
-// Will also need to emulate 6526 (ie the CIA inside a 1571)
-// Check the 1571's CIA pinouts
-
-// 1581 signals;-
 // PA0 SIDE0
 // PA1 !RDY
 // PA2 !MOTOR
@@ -35,7 +31,6 @@
 // PA5 POWER LED
 // PA6 ACT LED
 // PA7 !DISK_CHNG
-
 // PB0 DATA IN
 // PB1 DATA OUT
 // PB2 CLK IN
@@ -79,7 +74,7 @@ class m8520
 		IR_TB = 0x02,
 		IR_TOD = 0x04,
 		IR_SDR = 0x08,
-		IR_FLG = 0x10,	// ATN?
+		IR_FLG = 0x10,
 		IR_SET = 0x80
 	};
 
@@ -142,11 +137,11 @@ public:
 	unsigned char Peek(unsigned int address);
 	void Write(unsigned int address, unsigned char value);
 
-	//bool IsPCAsserted() const { return PCAsserted; }
+	bool IsPCAsserted() const { return PCAsserted; }
 	void SetPinFLAG(bool value);	// active low
 	void SetPinCNT(bool value);
 	bool GetPinCNT() const { return CNTPin; }
-	void SetPinSP(bool value) { SPPin = value; }
+	void SetPinSP(bool value);
 	bool GetPinSP() const { return SPPin; }
 	void SetPinTOD(bool value);
 
@@ -262,29 +257,33 @@ public:
 	unsigned char CRARegister;
 	unsigned char CRBRegister;
 
-	//u32 PCAsserted;
+	u32 PCAsserted;
 	bool FLAGPin;
 	bool CNTPin;
 	bool CNTPinOld;
 	bool SPPin;
-	bool SPPinLastOut;
 	bool TODPin;
 
 	unsigned short timerACounter;
 	unsigned short timerALatch;
+	bool timerAActive;
 	bool timerAOutputOnPB6;
-	//bool timerAToggle;
+	bool timerAToggle;
+	bool timerAOneShot;
 	TimerAMode timerAMode;
-	//bool timerA50Hz;
-	//bool ta_pb6;
+	bool timerA50Hz;
+	bool ta_pb6;
 	bool timerAReloaded;
 
 	unsigned short timerBCounter;
 	unsigned short timerBLatch;
-	//bool timerBOutputOnPB7;
-	//bool timerBToggle;
+	bool timerBActive;
+	bool timerBOutputOnPB7;
+	bool timerBToggle;
+	bool timerBOneShot;
 	TimerBMode timerBMode;
-	//bool tb_pb7;
+	bool timerBAlarm;
+	bool tb_pb7;
 	bool timerBReloaded;
 
 	bool TODActive;
@@ -293,12 +292,11 @@ public:
 	unsigned TODLatch;
 
 	SerialPortMode serialPortMode;
-	unsigned char serialDataRegister;
+	unsigned char serialPortRegister;
 	unsigned char serialShiftRegister;
-	bool serialDataRegisterLoaded;
-	int serialBitsShiftedSoFar;
-	bool serialOutputShiftStarted;
-	int serialSetToInputCoolDown;
+	unsigned serialBitsShiftedSoFar;
+	bool serialShiftingEnabled;
+	//unsigned timerATimeOutCount;
 };
 
 #endif

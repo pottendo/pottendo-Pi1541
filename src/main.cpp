@@ -61,6 +61,7 @@ extern "C"
 #include "diskio.h"
 #include "Pi1541.h"
 #include "Pi1581.h"
+#include "Pi1571.h"
 
 #include "FileBrowser.h"
 #include "ScreenLCD.h"
@@ -94,6 +95,7 @@ unsigned versionMinor = 25;
 
 // To exit a mounted disk image we need to watch(snoop) what the emulated CPU is doing when it executes code at some critical ROM addresses.
 #define SNOOP_CD_CBM 0xEA2D
+#define SNOOP_CD_CBM1571 0xEA2D
 #define SNOOP_CD_CBM1581 0xAEB7
 #define SNOOP_CD_CBM1581_JIFFY 0xE281
 #define SNOOP_CD_JIFFY_BOTH 0xFC07
@@ -128,6 +130,7 @@ DiskCaddy diskCaddy;
 Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
+Pi1571 pi1571;
 #endif
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
@@ -281,6 +284,8 @@ extern void write6502(u16 address, const u8 value);
 extern void write6502ExtraRAM(u16 address, const u8 value);
 extern u8 read6502_1581(u16 address);
 extern void write6502_1581(u16 address, const u8 value);
+extern u8 read6502_1571(u16 address);
+extern void write6502_1571(u16 address, const u8 value);
 
 void InitialiseHardware()
 {
@@ -471,7 +476,7 @@ void UpdateScreen()
 	int height = screen->ScaleY(60);
 	int screenHeight = screen->Height();
 	int screenWidthM1 = screen->Width() - 1;
-	int top, top2, top3;
+	int top, top2, top3, top4;
 	int bottom;
 	int graphX = 0;
   //bool refreshUartStatusDisplay;
@@ -485,6 +490,7 @@ void UpdateScreen()
 
 	top2 = top - (bottom - top);
 	top3 = top2 - (bottom - top);
+	top4 = top3 - (bottom - top);
 
 	while (1)
 	{
@@ -508,6 +514,11 @@ void UpdateScreen()
 		{
 			led = pi1581.IsLEDOn();
 			motor = pi1581.IsMotorOn();
+		}
+		else if (emulating == EMULATING_1571)
+		{
+			led = pi1571.IsLEDOn();
+			motor = pi1571.IsMotorOn();
 		}
 
 		if (options.HDMIDisplayIECActivity())
@@ -636,32 +647,30 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-		// value = IEC_Bus::GetPI_SRQ();
-		// if (options.HDMIGraphIEC())
-		//{
-		//	if (value ^ oldSRQ)
-		//	{
-		//		screen->DrawLineV(graphX, 0, 100, SRQColour);
-		//	}
-		//	else
-		//	{
-		//		if (value) screen->PlotPixel(graphX, 0, SRQColour);
-		//		else screen->PlotPixel(graphX, 100, SRQColour);
-		//	}
-		// }
-		//if (options.HDMIDisplayIECActivity())
-		//{
-		// if (value != oldSRQ)
-		//{
-		//	oldSRQ = value;
-		////	snprintf(tempBuffer, tempBufferSize, "%d", value);
-		////	screen->PrintText(false, 41 * 8, y, tempBuffer, textColour, bgColour);
-		////	//refreshUartStatusDisplay = true;
-		//}
-		//}
+
+		value = IEC_Bus::GetPI_SRQ();
+		if (options.HDMIGraphIEC())
+		{
+			if (value ^ oldSRQ)
+			{
+				screen->DrawLineV(graphX, top4, bottom, SRQColour);
+			}
+			else
+			{
+				if (value) screen->PlotPixel(graphX, top4, SRQColour);
+				else screen->PlotPixel(graphX, bottom, SRQColour);
+			}
+		}
+		if (value != oldSRQ)
+		{
+			oldSRQ = value;
+			snprintf(tempBuffer, tempBufferSize, "%d", value);
+			screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
+			//refreshUartStatusDisplay = true;
+		}
 
 		if (graphX++ > screenWidthM1) graphX = 0;
-// black vertical line ahead of graph
+		// black vertical line ahead of graph
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top3, bottom, COLOUR_BLACK);
 
@@ -813,6 +822,13 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 			fileBrowser->ShowDeviceAndROM( roms.ROMName1581 );
 			return EMULATING_1581;
 		}
+		else if (diskImage->IsD71())
+		{
+			pi1571.Insert(diskImage);
+			fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
+			fileBrowser->ShowDeviceAndROM( roms.ROMName1571 );
+			return EMULATING_1571;
+		}		
 		else
 #endif
 		{
@@ -871,6 +887,7 @@ void GlobalSetDeviceID(u8 id)
 	pi1541.SetDeviceID(id);
 #if defined(PI1581SUPPORT)
 	pi1581.SetDeviceID(id);
+	pi1571.SetDeviceID(id);
 #endif
 }
 
@@ -1300,7 +1317,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			pi1581.Update();
 		}
 
-		IEC_Bus::RefreshOuts1581();	// Now output all outputs.
+		IEC_Bus::RefreshOuts1581_1571();	// Now output all outputs.
 
 		IEC_Bus::OutputLED = pi1581.IsLEDOn();
 
@@ -1462,6 +1479,302 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 	}
 	return exitReason;
 }
+
+
+EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
+{
+	DEBUG_LOG("%s: Emulate1571\r\n", __FUNCTION__);
+
+	EXIT_TYPE exitReason = EXIT_UNKNOWN;
+	bool oldLED = false;
+	unsigned ctBefore = 0;
+	unsigned ctAfter = 0;
+	int cycleCount = 0;
+	unsigned caddyIndex;
+	int headSoundCounter = 0;
+	int headSoundFreqCounter = 0;
+	//			const int headSoundFreq = 833;	// 1200Hz = 1/1200 * 10^6;
+	const int headSoundFreq = 1000000 / options.SoundOnGPIOFreq();	// 1200Hz = 1/1200 * 10^6;
+	unsigned char oldHeadDir = 0;
+	int resetCount = 0;
+
+	unsigned numberOfImages = diskCaddy.GetNumberOfImages();
+	unsigned numberOfImagesMax = numberOfImages;
+	if (numberOfImagesMax > 10)
+		numberOfImagesMax = 10;
+
+	core0RefreshingScreen.Acquire();
+	diskCaddy.Display();
+	core0RefreshingScreen.Release();
+
+	inputMappings->directDiskSwapRequest = 0;
+	// Force an update on all the buttons now before we start emulation mode. 
+	IEC_Bus::ReadBrowseMode();
+
+	DataBusReadFn dataBusRead = read6502_1571;
+	DataBusWriteFn dataBusWrite = write6502_1571;
+	pi1571.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
+
+	//IEC_Bus::CIA = &pi1571.CIA;
+	//IEC_Bus::port = pi1571.CIA.GetPortB();
+
+	pi1571.drive.SetVIA(&pi1571.VIA[1]);					// move this inside reset?
+
+	pi1571.Reset();	// will call IEC_Bus::Reset();
+
+	ctBefore = read32(ARM_SYSTIMER_CLO);
+
+	selectedViaIECCommands = false;
+
+	while (exitReason == EXIT_UNKNOWN)
+	{
+		for (int cycle2MHz = 0; cycle2MHz < pi1571.GetMhz(); ++cycle2MHz)
+		{
+			IEC_Bus::ReadEmulationMode1571();
+
+			if (pi1571.m6502.SYNC())	// About to start a new instruction.
+			{
+				pc = pi1571.m6502.GetPC();
+
+				// See if the emulated cpu is executing CD:_ (ie back out of emulated image)
+				if (snoopIndex == 0 && (pc == SNOOP_CD_CBM1571)) snoopPC = pc;
+
+				if (pc == snoopPC)
+				{
+					if (Snoop(pi1571.m6502.GetA(), sizeof(snoopBackCommand) - 1))
+					{
+						emulating = IEC_COMMANDS;
+						exitReason = EXIT_CD;
+					}
+				}
+
+				//if (pc >= 0x8030 && pc < 0xc1d9)
+				//{
+				//	DEBUG_LOG("%s: %04x\r\n", __FUNCTION__, pc);
+				//}
+				//if (pc == 0xD7F3)
+				//{
+				//	DEBUG_LOG("D7F3 %02x\r\n", pi1541.m6502.GetX());
+				//}
+				//if (pc == 0xec34)
+				//{
+				//	DEBUG_LOG("ec34 %02x\r\n", pi1541.m6502.GetA());
+				//}
+					//if (pc == 0xCB5C)
+					//{
+					//	for (int u = 0; u < 13; ++u)
+					//	{
+					//		DEBUG_LOG("%02x %c\r\n", read6502_1571(0x200 + u), read6502_1571(0x200 + u));
+					//	}
+					//}
+			}
+#ifdef DEBUG_TRACE
+			if (pi1571.m6502.SYNC())	// About to start a new instruction.
+			{
+				pcOld3 = pcOld2;
+				pcOld2 = pcOld;
+				pcOld = pc;
+				pc = pi1571.m6502.GetPC();
+
+				if (pc == 0x945E)
+				{
+					//DEBUG_LOG("%02x %d\r\n", pi1571.m6502.GetA(), pi1571.drive.SectorPos());
+
+//					DEBUG_LOG("%02x %d %d %d %d %02x %02x %02x\r\n", pi1571.m6502.GetA(), pi1571.GetMhz(), pi1571.drive.head, pi1571.drive.SectorPos(), pi1571.drive.Track(), pi1571.drive.diskImage->tracks[pi1571.drive.Track()][pi1571.drive.head][pi1571.drive.SectorPos() - 1], pi1571.drive.diskImage->tracks[pi1571.drive.Track()][pi1571.drive.head][pi1571.drive.SectorPos()], pi1571.drive.diskImage->tracks[pi1571.drive.Track()][pi1571.drive.head][pi1571.drive.SectorPos() + 1]);
+				//	u32 j;
+
+				//	for (j = 0; j < pi1571.drive.diskImage->TrackLength(pi1571.drive.Track()); ++j)
+				//	{
+				//		DEBUG_LOG("%d %02x\r\n", j, pi1571.drive.diskImage->tracks[pi1571.drive.Track()][pi1571.drive.head][j]);
+				//	}
+				//wtf:
+				//	goto wtf;
+					bLoggingCYCs = true;
+				}
+				//if (pc == 0x93F3)//0x816E)//0x9d9e)//CB5C)// 0x81a6)//0xebed)//0xe85b || pc == 0xA7B3 || pc == 0xEA71)
+				//{
+				//	//DEBUG_LOG("%04x %04x\r\n", pcOld2, pcOld3);
+				//	cnt++;
+				//	if (cnt == 2)
+				//		bLoggingCYCs = true;
+				//}
+				//if (pc == 0xACB1)
+				//{
+				//	DEBUG_LOG("%04x %04x\r\n", pcOld2, pcOld3);
+				//}
+				if (bLoggingCYCs && !s_bLogginCYCStopped)
+				{
+					pi1571.m6502.GetRegs(pc, sp, a, x, y, status);
+
+					//u8 SP;
+					//u8 A;
+					//u8 X;
+					//u8 Y;
+					//u8 Status;
+					//pi1571.m6502.GetRegs(pc, SP, A, X, Y, Status);
+					////DEBUG_LOG("%04x %02x %02x %02x %02x 1%02x\r\n", pc, A, X, Y, Status & (~0x10), SP);
+					//DEBUG_LOG("%04x %02x %02x %02x %02x\r\n", pc, A, X, Y, Status & (~0x10));
+					{
+						//DEBUG_LOG("T\r\n");
+						//s_TimeLoggedCYC[s_uLoggingCYCCount] = ctBefore;
+						s_PCLoggedCYC[s_uLoggingCYCCount] = pc;
+						s_ALoggedCYC[s_uLoggingCYCCount] = a;
+						s_XLoggedCYC[s_uLoggingCYCCount] = x;
+						s_YLoggedCYC[s_uLoggingCYCCount] = y;
+						s_SpinLoggedCYC[s_uLoggingCYCCount] = pi1571.drive.SectorPos();
+						s_SpinVLoggedCYC[s_uLoggingCYCCount] = pi1571.drive.diskImage->tracks[pi1571.drive.Track()][pi1571.drive.head][pi1571.drive.SectorPos()];
+						s_BRLoggedCYC[s_uLoggingCYCCount] = (pi1571.VIA[0].GetPortA()->GetInput() & 0x80) == 0;
+						//s_SLoggedCYC[s_uLoggingCYCCount] = status & (0xef);
+						//s_SPLoggedCYC[s_uLoggingCYCCount] = sp;
+
+						//s_TBLogged[s_uLoggingCYCCount] = (u8)pi1571.CIA.timerBCounter;
+						//s_ICRMaskLogged[s_uLoggingCYCCount] = (u8)pi1571.CIA.ICRMask;
+						//s_ICRDataLogged[s_uLoggingCYCCount] = (u8)pi1571.CIA.ICRData;
+
+						s_uLoggingCYCCount++;
+
+						if (s_uLoggingCYCCount > (TRACE_AMOUNT - 1))
+							//if (s_uLoggingCYCCount > (0x10 - 1))
+						{
+							DumpLogCYC();
+							//DumpLogCYCIRQ();
+						}
+					}
+				}
+			}
+#endif
+			if (cycle2MHz == 0)
+				pi1571.Update1Mhz();
+			pi1571.m6502.Step();
+			pi1571.Update();
+		}
+
+		IEC_Bus::RefreshOuts1581_1571();	// Now output all outputs.
+
+		//if (cycleCount >= FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap. During this time we don't need to set outputs.
+		{
+			IEC_Bus::OutputLED = pi1571.IsLEDOn();
+			if (IEC_Bus::OutputLED ^ oldLED)
+			{
+				SetACTLed(IEC_Bus::OutputLED);
+				oldLED = IEC_Bus::OutputLED;
+			}
+
+			// Do head moving sound
+			unsigned char headDir = pi1571.drive.GetLastHeadDirection();
+			if (headDir ^ oldHeadDir)	// Need to start a new sound?
+			{
+				oldHeadDir = headDir;
+				if (options.SoundOnGPIO())
+				{
+					headSoundCounter = 1000 * options.SoundOnGPIODuration();
+					headSoundFreqCounter = headSoundFreq;
+				}
+				else
+				{
+					PlaySoundDMA(playsound);
+				}
+			}
+		}
+
+		//IEC_Bus::ReadButtonsEmulationMode();
+		IEC_Bus::ReadGPIOUserInput(true);
+
+		// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
+		inputMappings->CheckKeyboardEmulationMode(numberOfImages, numberOfImagesMax);
+		inputMappings->CheckButtonsEmulationMode();
+
+		bool exitEmulation = inputMappings->Exit();
+		bool exitDoAutoLoad = inputMappings->AutoLoad();
+
+
+		bool reset = IEC_Bus::IsReset();
+		if (reset)
+			resetCount++;
+		else
+			resetCount = 0;
+
+		if ((emulating == IEC_COMMANDS) || (resetCount > 10) || exitEmulation || exitDoAutoLoad)
+		{
+			if (reset)
+				exitReason = EXIT_RESET;
+			if (exitEmulation)
+				exitReason = EXIT_KEYBOARD;
+			if (exitDoAutoLoad)
+				exitReason = EXIT_AUTOLOAD;
+		}
+
+		if (cycleCount < FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap.
+		{
+			cycleCount++;
+			ctAfter = read32(ARM_SYSTIMER_CLO);
+		}
+		else
+		{
+			do	// Sync to the 1MHz clock
+			{
+				ctAfter = read32(ARM_SYSTIMER_CLO);
+				unsigned ct = ctAfter - ctBefore;
+				if (ct > 1)
+				{
+					// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
+					// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
+					//DEBUG_LOG("!");
+				}
+			} while (ctAfter == ctBefore);
+		}
+		ctBefore = ctAfter;
+
+		IEC_Bus::ReadEmulationMode1571();
+		if (cycleCount >= FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap. During this time we don't need to set outputs.
+			IEC_Bus::RefreshOuts1581_1571();	// Now output all outputs.
+
+		if (options.SoundOnGPIO() && headSoundCounter > 0)
+		{
+			headSoundFreqCounter--;		// Continue updating a GPIO non DMA sound.
+			if (headSoundFreqCounter <= 0)
+			{
+				headSoundFreqCounter = headSoundFreq;
+				headSoundCounter -= headSoundFreq * 8;
+				IEC_Bus::OutputSound = !IEC_Bus::OutputSound;
+			}
+		}
+
+		if (numberOfImages > 1)
+		{
+			bool nextDisk = inputMappings->NextDisk();
+			bool prevDisk = inputMappings->PrevDisk();
+			if (nextDisk)
+			{
+				pi1571.Insert(diskCaddy.PrevDisk());
+			}
+			else if (prevDisk)
+			{
+				pi1571.Insert(diskCaddy.NextDisk());
+			}
+			else if (inputMappings->directDiskSwapRequest != 0)
+			{
+				for (caddyIndex = 0; caddyIndex < numberOfImagesMax; ++caddyIndex)
+				{
+					if (inputMappings->directDiskSwapRequest & (1 << caddyIndex))
+					{
+						DiskImage* diskImage = diskCaddy.SelectImage(caddyIndex);
+						if (diskImage && diskImage != pi1571.GetDiskImage())
+						{
+							pi1571.Insert(diskImage);
+							break;
+						}
+					}
+				}
+				inputMappings->directDiskSwapRequest = 0;
+			}
+		}
+
+	}
+	DEBUG_LOG("exitReason = %d\r\n", exitReason);
+	return exitReason;
+}
+
 #endif
 
 FileBrowser* fileBrowser;
@@ -1726,6 +2039,8 @@ extern int mount_new;
 			if (emulating == EMULATING_1541)
 				exitReason = Emulate1541(fileBrowser);
 #if defined(PI1581SUPPORT)
+			else if (emulating == EMULATING_1571)
+				exitReason = Emulate1571(fileBrowser);
 			else
 				exitReason = Emulate1581(fileBrowser);
 #endif
@@ -2002,6 +2317,35 @@ static void CheckOptions()
 			//DEBUG_LOG("Read ROM %s from options\r\n", ROMName);
 		}
 	}
+
+	const char* ROMName1571 = options.GetRomName1571();
+	if (ROMName1571)
+	{
+		DEBUG_LOG("%s: Rom Name = %s\r\n", __FUNCTION__, ROMName1571);
+		if ((FR_OK == f_open(&fp, ROMName1571, FA_READ)))
+		{
+			u32 bytesRead;
+
+			screen->Clear(COLOUR_BLACK);
+			snprintf(tempBuffer, tempBufferSize, "Loading ROM %s\r\n", ROMName1571);
+			screen->MeasureText(false, tempBuffer, &widthText, &heightText);
+			xpos = (widthScreen - widthText) >> 1;
+			ypos = (heightScreen - heightText) >> 1;
+			screen->PrintText(false, xpos, ypos, tempBuffer, COLOUR_WHITE, COLOUR_RED);
+
+			SetACTLed(true);
+			res = f_read(&fp, roms.ROMImage1571, ROMs::ROM1571_SIZE, &bytesRead);
+			SetACTLed(false);
+			if (res == FR_OK && bytesRead == ROMs::ROM1571_SIZE)
+			{
+				strncpy(roms.ROMName1571, ROMName1571, 255);
+				roms.UpdateLongestRomNameLen(strlen(roms.ROMName1571));
+			}
+			f_close(&fp);
+			DEBUG_LOG("%s: Read ROM %s from options\r\n", __FUNCTION__, ROMName1571);
+		}
+	}
+
 #endif
 
 	int ROMIndex;

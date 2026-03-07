@@ -17,6 +17,8 @@
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
 #include "m8520.h"
+#include "iec_bus.h"
+#include "Pi1581.h"
 
 // The 8520 contains a programmable baud rate generator which is used for fast serial transfers. 
 // Timer A is used for the baud rate generator. In the output mode data is shifted out on SP at 1/2 the underflow rate of Timer A.
@@ -78,12 +80,28 @@
 //			endif
 
 
+// Get it to burst again but clear the memory each time
+//	- see if it is receiving anything
+// Trace out
+//	- outputs again
+//		- check the time it takes
+//	- include timer
+// When it loads for the first time
+//	- check what the file name is
+//		- why does it not send anything and stop the task?
+// 2Mhz timings
+//	- need it?
+//		- if not update the timers twice
+// Try without timerAReloaded
+
+
 // A control bit allows the timer output to appear on a PORT B output line(PB6 for TIMER A and PB7 for TIMER B).
 // This function overrides the DDRB control bit and forces the appropriate PB line to an output.
 
 extern u16 pc;
 extern bool bLoggingCYCs;
 
+u8 lastShiftedValue = 0;
 
 m8520::m8520()
 {
@@ -96,47 +114,44 @@ void m8520::Reset()
 	portA.SetDirection(0);
 	portB.SetDirection(0);
 
-	PCAsserted = 0;
+	//PCAsserted = 0;
 
 	FLAGPin = true;	// external devices should be setting this
-	CNTPin = false;	// external devices should be setting this
+	CNTPin = true;	// external devices should be setting this
 	CNTPinOld = false;
 	SPPin = false;	// external devices should be setting this
+	SPPinLastOut = false;
 	TODPin = false;	// external devices should be setting this
 
 	//CRARegister = 0;
 	//CRBRegister = 0;
 	Write(CRA, 0);
 	Write(CRB, 0);
-
+	
 	// The timer control registers are set to zero and the timer latches to all ones.
 	timerACounter = 0;
 	timerALatch = 0xffff;
-	timerAActive = false;
 	timerAOutputOnPB6 = false;
-	timerAToggle = false;
-	timerAOneShot = false;
+	//timerAToggle = false;
 	timerAMode = TA_MODE_PHI2;
-	timerA50Hz = false;
-	//timerATimeOutCount = 0;
-	ta_pb6 = true;
+	//timerA50Hz = false;
+	//ta_pb6 = true;
 	timerAReloaded = false;
 
 	timerBCounter = 0;
 	timerBLatch = 0xffff;
-	timerBActive = false;
-	timerBOutputOnPB7 = false;
-	timerBToggle = false;
-	timerBOneShot = false;
+	//timerBOutputOnPB7 = false;	// replaced with (CRBRegister & CRB_PBON)
+	//timerBToggle = false;
 	timerBMode = TB_MODE_PHI2;
-	timerBAlarm = false;
-	tb_pb7 = true;
+	//tb_pb7 = true;
 	timerBReloaded = false;
 
-	serialPortMode = SP_MODE_INPUT;
-	serialPortRegister = 0;
+	serialDataRegister = 0;
 	serialShiftRegister = 0;
-	serialBitsShiftedSoFar = 8;
+	serialDataRegisterLoaded = false;
+	//serialBitsShiftedSoFar = 8;
+	serialBitsShiftedSoFar = 0;
+	serialOutputShiftStarted = false;
 
 	TODActive = false;
 	TODAlarm = 0;
@@ -146,9 +161,106 @@ void m8520::Reset()
 	ICRMask = 0;
 	ICRData = 0;
 	//OutputIRQ();
+
+	serialSetToInputCoolDown = 0;
 }
 
 extern u16 pc;
+
+void m8520::ShiftOut()
+{
+	if (SerialOutput())
+	{
+		//The individual data bits now appear at half the timeout rate of timer A on the SP line and the clock signal from timer A 
+		// appears on the CNT line(it changes value on each timeout so that the next bit appears on the SP line on each negative transition[high to low]).
+		// The transfer begins with the MSB of the data byte.Once all eight bits have been output, CNT remains high and the SP line retains the value of the last bit sent
+		// in addition, the SP bit in the interrupt control register is set to show that the shift register can be supplied with new data.
+		//DEBUG_LOG("o %d\r\n", serialBitsShiftedSoFar);
+
+		// Output transmission will start following a write to the Serial Data Register(provided TIMER A is running and in continuous mode).
+		// Will use serialBitsShiftedSoFar == 8 to indicate that this is yet to occur
+		if (serialBitsShiftedSoFar >= 8)
+		{
+			// If no further data is to be transmitted, after the 8th CNT pulse, CNT will return high and SP will remain at the level of the last data bit transmitted.
+			CNTPin = true;
+		}
+		else
+		{
+			// Data is shifted out on the SP pin at 1 / 2 the underflow rate of TIMER A.
+			// (provided TIMER A is running and in continuous mode)
+
+			//bool oldCNT = CNTPin;
+			// The clock signal derived from TIMER A appears as an output on the CNT pin.
+			CNTPin = !CNTPin;
+
+			//DEBUG_LOG("CNTPin%d\r\n", CNTPin);
+			// Datashifted out becomes valid on the falling edge of CNT and remains valid until the next falling edge.
+			if (!CNTPin)
+			{
+				serialOutputShiftStarted = true;
+
+				// SDR data is shifted out MSB first and serial input data should also appear in this format.
+				SPPin = (serialShiftRegister & 0x80) != 0;
+				SPPinLastOut = SPPin;
+				serialShiftRegister <<= 1;
+
+				//DEBUG_LOG("o%d %02x\r\n", serialBitsShiftedSoFar, serialShiftRegister);
+
+				//serialBitsShiftedSoFar++;
+
+				//if (serialBitsShiftedSoFar >= 8)
+				//{
+				//	// After 8 CNT pulses an interrupt is generated to indicate more data can be sent.
+				//	// If the Serial Data Register was loaded with new information prior to this interrupt.
+				//	// The new data will automatically be loaded into the shift register and transmission will be continuous.
+				//	if (serialDataRegisterLoaded)
+				//	{
+				//		serialShiftRegister = serialDataRegister;
+				//		serialDataRegisterLoaded = false;
+				//		serialBitsShiftedSoFar = 0;
+				//	}
+
+				//	//DEBUG_LOG("o %04x\r\n", pc);
+				//	//DEBUG_LOG("Q\r\n");
+				//	SetInterrupt(IR_SDR);
+				//}
+			}
+			else if (serialOutputShiftStarted)
+			{
+				serialBitsShiftedSoFar++;
+
+				if (serialBitsShiftedSoFar >= 8)
+				{
+					//DEBUG_LOG("o%02x\r\n", lastShiftedValue);
+					// After 8 CNT pulses an interrupt is generated to indicate more data can be sent.
+					// If the Serial Data Register was loaded with new information prior to this interrupt.
+					// The new data will automatically be loaded into the shift register and transmission will be continuous.
+					if (serialDataRegisterLoaded)
+					{
+						serialShiftRegister = serialDataRegister;
+						lastShiftedValue = serialDataRegister;
+						serialDataRegisterLoaded = false;
+						serialBitsShiftedSoFar = 0;
+					}
+					else
+					{
+						serialOutputShiftStarted = false;
+						// Is this true? I don't think so. (The 3 places 1581 ROM writes to 400c it always only sends 1 byte then polls)
+						//  // Commodore_128_Internals;- 
+						//	// If the SDR is loaded with new data before this event, 
+						//	// these are automatically loaded into the shift register
+						//	// and shifted out No interrupt is generated in this case.
+					}
+
+					{
+						SetInterrupt(IR_SDR);
+					}
+				}
+
+			}
+		}
+	}
+}
 
 // Update for a single cycle
 void m8520::Execute()
@@ -159,7 +271,7 @@ void m8520::Execute()
 	// In continuous mode, the timer will count from the latched value to zero, generate an interrupt, reload the latched value and repeat the procedure continuously.
 
 	// The timer latch is loaded into the timer on any timer underflow
-	if (timerAActive && !timerAReloaded)
+	if (TimerAActive() && !timerAReloaded)
 	{
 		switch (timerAMode)
 		{
@@ -168,7 +280,9 @@ void m8520::Execute()
 				timerACounter--;
 			break;
 			case m8520::TA_MODE_CNT_PVE:
-				if (serialPortMode == SP_MODE_OUTPUT)
+				// Test probably not being used
+				//if (SerialOutput())
+				if (SerialInput())	// it must only be when input as if it was output then timerA will be driving the CNT waveform.
 				{
 					if (CNTPin && !CNTPinOld)
 					{
@@ -179,70 +293,32 @@ void m8520::Execute()
 			break;
 		}
 
-		//timerATimedOut = timerACounter == 0;
+		// Flag the IRQ when hit 0 but reload from latch when -1
+		if (timerACounter == 0)
+		{
+			SetInterrupt(IR_TA);
+
+			// try it here
+			//if (!TimerAOneShot())
+				// ShiftOut();
+		}
 
 		if (timerATimedOut)
 		{
-			//timerATimeOutCount++;
-
-			SetInterrupt(IR_TA);
+			//SetInterrupt(IR_TA);
 
 			ReloadTimerA();
 
-			if (timerAOneShot)
+			if (TimerAOneShot())
 			{
-				timerAActive = false;
+				CRARegister &= ~CRA_START;
 			}
 			else 
 			{
-				if (serialPortMode == SP_MODE_OUTPUT)
-				{
-					//The individual data bits now appear at half the timeout rate of timer A on the SP line and the clock signal from timer A 
-					// appears on the CNT line(it changes value on each timeout so that the next bit appears on the SP line on each negative transition[high to low]).
-					// The transfer begins with the MSB of the data byte.Once all eight bits have been output, CNT remains high and the SP line retains the value of the last bit sent
-					// in addition, the SP bit in the interrupt control register is set to show that the shift register can be supplied with new data.
-					//DEBUG_LOG("o %d\r\n", serialBitsShiftedSoFar);
-
-					if (serialBitsShiftedSoFar >= 8)
-					{
-						// If no further data is to be transmitted, after the 8th CNT pulse, CNT will return high and SP will remain at the level of the last data bit transmitted.
-						CNTPin = true;
-					}
-					else
-					{
-						// Data is shifted out on the SP pin at 1 / 2 the underflow rate of TIMER A.
-						// (provided TIMER A is running and in continuous mode)
-
-						bool oldCNT = CNTPin;
-						// The clock signal derived from TIMER A appears as an output on the CNT pin.
-						CNTPin = !CNTPin;
-
-						// Datashifted out becomes valid on the falling edge of CNT and remains valid until the next falling edge.
-						if (!CNTPin)	//(timerATimeOutCount & 1) == 0)
-						{
-							// SDR data is shifted out MSB first and serial input data should also appear in this format.
-							SPPin = (serialShiftRegister & 0x80) != 0;
-							serialShiftRegister <<= 1;
-
-							//DEBUG_LOG("o%d\r\n", serialBitsShiftedSoFar);
-
-							serialBitsShiftedSoFar++;
-
-							if (serialBitsShiftedSoFar == 8)
-							{
-								//DEBUG_LOG("o %04x\r\n", pc);
-								SetInterrupt(IR_SDR);
-							}
-						}
-					}
-				}
-				//else
-				//{
-				//	CNTPin = true;
-				//}
+				ShiftOut();
 			}
 
-			ta_pb6 = !ta_pb6;
+			//ta_pb6 = !ta_pb6;
 			//if (timerAOutputOnPB6)
 			//{
 			//	// This function overrides the DDRB control bit and forces the appropriate PB line to an output.
@@ -259,7 +335,7 @@ void m8520::Execute()
 
 	//timerBTimedOut = timerBCounter == 0;
 
-	if (timerBActive && !timerBReloaded)
+	if (TimerBActive() && !timerBReloaded)
 	{
 		//DEBUG_LOG("TB %04x\r\n", timerBCounter);
 
@@ -270,7 +346,7 @@ void m8520::Execute()
 				timerBCounter--;
 			break;
 			case m8520::TB_MODE_CNT_PVE:
-				if (serialPortMode == SP_MODE_OUTPUT)
+				//if (SerialInput())	// it must only be when input as if it was output then timerA will be driving the CNT waveform.
 				{
 					if (CNTPin && !CNTPinOld)
 					{
@@ -287,7 +363,7 @@ void m8520::Execute()
 				}
 			break;
 			case m8520::TB_MODE_TA_UNDEFLOW_CNT_PVE:
-				if (serialPortMode == SP_MODE_OUTPUT)
+				if (SerialOutput())
 				{
 					if (timerATimedOut && CNTPin)
 					{
@@ -298,20 +374,24 @@ void m8520::Execute()
 			break;
 		}
 
+		// Flag the IRQ when hit 0 but reload from latch when -1
+		if (timerBCounter == 0)
+			SetInterrupt(IR_TB);
+
 		if (timerBTimedOut)
 		{
 			//DEBUG_LOG("TB out\r\n");
-			SetInterrupt(IR_TB);
+			//SetInterrupt(IR_TB);
 
 			ReloadTimerB();
 
-			if (timerBOneShot)
+			if (TimerBOneShot())
 			{
-				timerBActive = false;
+				CRBRegister &= ~CRB_START;
 			}
 
-			tb_pb7 = !tb_pb7;
-			//if (timerBOutputOnPB7)
+			//tb_pb7 = !tb_pb7;
+			//if (CRBRegister & CRB_PBON)	//timerBOutputOnPB7)
 			//{
 			//	// This function overrides the DDRB control bit and forces the appropriate PB line to an output.
 			//	unsigned char ddr = portB.GetDirection();
@@ -325,18 +405,8 @@ void m8520::Execute()
 		}
 	}
 
-	//switch (serialPortMode)
-	//{
-	//	case SP_MODE_OUTPUT:
-
-	//	break;
-	//	case SP_MODE_INPUT:
-	//		// input mode is handled by the rising edge of CNT in SetPinCNT
-	//	break;
-	//}
-
-	if (PCAsserted)
-		PCAsserted--;
+	//if (PCAsserted)
+	//	PCAsserted--;
 
 	CNTPinOld = CNTPin;
 	timerAReloaded = false;
@@ -354,42 +424,70 @@ void m8520::SetPinFLAG(bool value)	// Active low
 	FLAGPin = value;
 }
 
+#define BUFSIZE 7
+static unsigned char buffer[BUFSIZE];
+static int bufindex = 0;
+
 void m8520::SetPinCNT(bool value)
 {
-	if (serialPortMode == SP_MODE_INPUT)
+	if (serialSetToInputCoolDown == 0)
+//	if (SerialInput())
 	{
 		if (!CNTPin && value)	// rising edge?
 		{
-			//DEBUG_LOG("C%d\r\n", serialBitsShiftedSoFar);
-			if (serialBitsShiftedSoFar < 8)
+			//if (serialBitsShiftedSoFar < 8)
 			{
 				// In input mode, data on the SP pin is shifted into the shift register on the rising edge of the signal applied to the CNT pin.
-				// After 8 CNT pulses, the data in the shift register is dumped into the Serial Data Register and an interrupt is generated.
-
 				serialShiftRegister <<= 1;
 				serialShiftRegister |= SPPin;
 
-				//DEBUG_LOG("i%d\r\n", serialBitsShiftedSoFar);
 				serialBitsShiftedSoFar++;
+				//DEBUG_LOG("%d\r\n", serialBitsShiftedSoFar);
 
-				if (serialBitsShiftedSoFar == 8)
+				if (serialBitsShiftedSoFar >= 8)
 				{
-					//DEBUG_LOG("ib=%02x %d\r\n", serialShiftRegister, pc);
-					serialPortRegister = serialShiftRegister;
-					//serialBitsShiftedSoFar = 0;
+					// After 8 CNT pulses, the data in the shift register is dumped into the Serial Data Register and an interrupt is generated.
+					// here
+					//DEBUG_LOG("i=%02x\r\n", serialShiftRegister);
+
+					//if (bufindex < BUFSIZE)
+					//{
+					//	buffer[bufindex] = serialShiftRegister;
+					//	//DEBUG_LOG("%02x %d\r\n", serialShiftRegister, bufindex);
+					//}
+					//else
+					//{
+					//	if (bufindex == BUFSIZE)
+					//	{
+					//		for (int i = 0; i < BUFSIZE; ++i)
+					//		{
+					//			DEBUG_LOG("%02x\r\n", buffer[i]);
+					//		}
+					//	}
+					//	else
+					//	{
+					//		DEBUG_LOG("%02x\r\n", serialShiftRegister);
+					//	}
+					//}
+					//bufindex++;
+
+					serialDataRegister = serialShiftRegister;
+					serialBitsShiftedSoFar = 0;
+					//serialShiftRegister = 0;	// do we need to do this?
 					SetInterrupt(IR_SDR);
+					//bLoggingCYCs = true;
 				}
 			}
 		}
 		CNTPin = value;
 	}
-}
+	else
+	{
+		serialSetToInputCoolDown--;
+		//DEBUG_LOG("serialSetToInputCoolDown = %d\r\n", serialSetToInputCoolDown);
 
-void m8520::SetPinSP(bool value)
-{
-	SPPin = value;
+	}
 }
-
 
 void m8520::SetPinTOD(bool value)
 {
@@ -418,9 +516,9 @@ unsigned char m8520::Read(unsigned int address)
 		case ORB:
 			value = ReadPortB();
 			// The 8520 datasheet contradicts itself;-
-			// PC will go low forone cycle following a read orwrite of PORT B.
+			// PC will go low for one cycle following a read or write of PORT B.
 			// PC will go low on the 3rd cycle after a PORT B access.
-			PCAsserted = 3;
+			//PCAsserted = 3;
 		break;
 		case DDRA:
 			value = portA.GetDirection();
@@ -446,7 +544,7 @@ unsigned char m8520::Read(unsigned int address)
 		// Since a carry from one stage to the next can occur at any time with respect to a	read operation, a latching function is included to keep all Time of Day information constant during a read sequence.
 		// All TOD registers latch on a read of MSB event and remain latched until after a read of LSB Event.
 		// The TOD clock continues to count when the output registers are latched.
-		// If only one register is to be read, there is no carry problem and the register can be read “on the fly", provided that any read of MSB Event is followed by a read of LSB Event to disable the latching.
+		// If only one register is to be read, there is no carry problem and the register can be read ï¿½on the fly", provided that any read of MSB Event is followed by a read of LSB Event to disable the latching.
 		case EVENT_LSB:
 			value = (unsigned char)(TODLatch);
 		break;
@@ -462,18 +560,13 @@ unsigned char m8520::Read(unsigned int address)
 		case NC:
 		break;
 		case SDR:
-			value = serialPortRegister;
+			value = serialDataRegister;
 			//DEBUG_LOG("rsr%02x\r\n", value);
 			//serialBitsShiftedSoFar = 0;
 		break;
 		case ICR:
 			// The interrupt DATA register is cleared and the IRQ line returns high following a read of the DATA register.
-			value = ICRData;
-			//if (ICRData & IR_FLG)
-			//{
-			//	DEBUG_LOG("IRFLG %04x\r\n", pc);
-			//	bLoggingCYCs = true;
-			//}
+			value = ICRData & (IR_SET | IR_FLG | IR_SDR | IR_TOD | IR_TB | IR_TA);
 			ClearInterrupt(ICRData & (IR_FLG | IR_SDR | IR_TOD | IR_TB | IR_TA));
 			ICRData = 0;
 		break;
@@ -530,17 +623,22 @@ unsigned char m8520::Peek(unsigned int address)
 		case NC:
 			break;
 		case SDR:
-			value = serialPortRegister;
+			value = serialDataRegister;
 			break;
 		case ICR:
 			value = ICRData;
 			break;
 		case CRA:
 			// bit 4 will always read back a zero and writing a zero has no effect
-			value = CRARegister;
+
+			// CRA_LOAD bit is write only; it always returns a 0 when read.
+
+			value = CRARegister & (~CRA_LOAD);
 			break;
 		case CRB:
-			value = CRBRegister;
+			// CRA_LOAD bit is write only; it always returns a 0 when read.
+
+			value = CRBRegister & (~CRB_LOAD);
 			break;
 	}
 	return value;
@@ -560,7 +658,7 @@ void m8520::Write(unsigned int address, unsigned char value)
 			// The 8520 datasheet contradicts itself;-
 			// PC will go low forone cycle following a read orwrite of PORT B.
 			// PC will go low on the 3rd cycle after a PORT B access.
-			PCAsserted = 3;
+			//PCAsserted = 3;
 			break;
 		case DDRA:
 			portA.SetDirection(value);
@@ -571,10 +669,10 @@ void m8520::Write(unsigned int address, unsigned char value)
 
 		// Data written to the timer are latched in the Timer Latch.
 		case TALO:
-			timerALatch = (timerBLatch & 0xff00) | value;
+			timerALatch = (timerALatch & 0xff00) | value;
 			break;
 		case TAHI:
-			timerALatch = (timerBLatch & 0xff) | (value << 8);
+			timerALatch = (timerALatch & 0xff) | (value << 8);
 			// In oneshot mode; a write to Timer High will transfer the timer latch to the counter and initiate counting regardless of the start bit.
 
 			// The timer latch is loaded into the timer following a write to the high byte of the prescaler while the timer is stopped.
@@ -582,7 +680,7 @@ void m8520::Write(unsigned int address, unsigned char value)
 			// The timer latch is loaded into the timer on any timer underflow, on a force load or following a write to the high byte of the prescaler while the timer is stopped.
 			// If the timer is running, a write to the high byte will load the timer latch, but not reload the counter.
 
-			if (!timerAActive/* || timerAOneShot*/)
+			if (!TimerAActive())
 				ReloadTimerA();
 			break;
 		case TBLO:
@@ -593,14 +691,14 @@ void m8520::Write(unsigned int address, unsigned char value)
 			// In oneshot mode; a write to Timer High will transfer the timer latch to the counter and initiate counting regardless of the start bit.
 
 			// The timer latch is loaded into the timer following a write to the high byte of the prescaler while the timer is stopped.
-			if (!timerBActive/* || timerBOneShot*/)
+			if (!TimerBActive())
 				ReloadTimerB();
 			break;
 
 
 		// TOD is automatically stopped whenever a write to the regiser occurs.
 		case EVENT_LSB:
-			if (timerBAlarm)
+			if (TimerBAlarm())
 			{
 				TODAlarm = (TODAlarm & 0xffff00) | value;
 			}
@@ -611,7 +709,7 @@ void m8520::Write(unsigned int address, unsigned char value)
 			}
 			break;
 		case EVENT_8_15:
-			if (timerBAlarm)
+			if (TimerBAlarm())
 			{
 				TODAlarm = (TODAlarm & 0xff00ff) | ((unsigned)value << 8);
 			}
@@ -622,7 +720,7 @@ void m8520::Write(unsigned int address, unsigned char value)
 			}
 			break;
 		case EVENT_MSB:
-			if (timerBAlarm)
+			if (TimerBAlarm())
 			{
 				TODAlarm = (TODAlarm & 0xffff) | ((unsigned)value << 16);
 			}
@@ -636,14 +734,39 @@ void m8520::Write(unsigned int address, unsigned char value)
 		case NC:
 			break;
 		case SDR:
+			// After 8 CNT pulses an interrupt is generated to indicate more data can be sent.
+			// If the Serial Data Register was loaded with new information prior to this interrupt.
+			// The new data will automatically be loaded into the shift register and transmission will be continuous.
 			//DEBUG_LOG("wsr%02x %04x\r\n", value, pc);
-			serialPortRegister = value;
-			//serialShiftRegister = value;
-			if ((CRARegister & CRA_SPMODE))
+			serialDataRegister = value;
+
+			// Output transmission will start following a write to the Serial Data Register(provided TIMER A is running and in continuous mode).
+			//if ((CRARegister & (CRA_SPMODE | CRA_START)) == (CRA_SPMODE | CRA_START))
+			if (SerialOutput() && TimerAActive())
 			{
-				serialBitsShiftedSoFar = 0;
-				//DEBUG_LOG("SDR W 0\r\n");
+				if (serialBitsShiftedSoFar >= 8)
+				{
+					serialShiftRegister = serialDataRegister;
+					serialBitsShiftedSoFar = 0;	// Now when the timer times out the shift will commence
+					serialDataRegisterLoaded = false;	// Only one byte so far ie the one just copied into serialShiftRegister
+					lastShiftedValue = value;
+					//DEBUG_LOG("%02x %04x\r\n", value, pc);
+					serialOutputShiftStarted = false;
+				}
+				else
+				{
+					serialDataRegisterLoaded = true; // Flag that the next byte is queued up inside serialDataRegister
+				}
 			}
+
+			// try Remove this entire if
+			//if (SerialInput())
+			//{
+			//	serialBitsShiftedSoFar = 8;	// try remove this (does this even occur? Input and a write to SDR?)
+			//	DEBUG_LOG("Wrote to SDR when in input mode!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\r\n");
+			//	serialDataRegisterLoaded = false; // need this?
+			//}
+
 			break;
 		case ICR:
 			// The MASK register provides convenient control of Individual mask bits. When writing to the MASK register,
@@ -656,8 +779,6 @@ void m8520::Write(unsigned int address, unsigned char value)
 			else
 				ICRMask |= (value & (IR_FLG | IR_SDR | IR_TOD | IR_TB | IR_TA));
 
-			//DEBUG_LOG("irqm %02x %04x\r\n", ICRMask, pc);
-
 			OutputIRQ();
 			break;
 		case CRA:
@@ -665,70 +786,55 @@ void m8520::Write(unsigned int address, unsigned char value)
 			unsigned char CRARegisterOld = CRARegister;
 
 			CRARegister = value;
-			if (CRARegister & CRA_START)
-			{
-				// Timer A start
-				timerAActive = true;
-			}
-			else
-			{
-				// Timer A stop
-				timerAActive = false;
-			}
 
 			if (CRARegister & CRA_PBON)
 			{
 				// Timer A output appears on PB6
+
+				// Writing a 1 here enables PB6 output.
+				// When PB6 is selected for timer A output, the line automatically becomes an output, regardless of the setting of the data direction register bit for that line.
+
 				timerAOutputOnPB6 = true;
 			}
 			else
 			{
 				// PB6 normal operation
+
+				// Writing a 0 here disables timer A output and restores PB6 to the state and function defined in the port B data and data direction registers.
 				timerAOutputOnPB6 = false;
 			}
 
-			if (CRARegister & CRA_OUTPUTMODE)
-			{
-				// Toggle
-				timerAToggle = true;
+			//if (CRARegister & CRA_OUTPUTMODE)
+			//{
+			//	// Toggle
+			//	timerAToggle = true;
 
-				// The toggle output is set high whenever the timer is started and is set low by RES
-			}
-			else
-			{
-				// Pulse
-				timerAToggle = false;
-			}
-
-			if (CRARegister & CRA_RUNMODE)
-			{
-				// One shot
-
-				if (!timerAOneShot)
-				{
-					ReloadTimerA();
-				}
-
-				timerAOneShot = true;
-			}
-			else
-			{
-				// Continuous
-				timerAOneShot = false;
-			}
+			//	// The toggle output is set high whenever the timer is started and is set low by RES
+			//}
+			//else
+			//{
+			//	// Pulse
+			//	timerAToggle = false;
+			//}
 
 			// bit 4 will always read back a zero and writing a zero has no effect
 			if (CRARegister & CRA_LOAD)
 			{
 				// Force load
 				// A strobe bit allows the timer latch to be loaded into the timer counter at any time, whether the timer is running or not.
+
+				//Writing a 1 to this bit, called the force load strobe, causes the contents of the timer A latch to be transferred to the counter, regardless of whether the timer is currently running or stopped.
+
 				ReloadTimerA();
+				CRARegister &= ~CRA_LOAD;
 			}
 
 			if (CRARegister & CRA_INMODE)
 			{
 				// Timer A counts positive CNT transitions
 				timerAMode = TA_MODE_CNT_PVE;
+				// Test probably not being used
+				DEBUG_LOG("TA_MODE_CNT_PVE\r\n");
 			}
 			else
 			{
@@ -736,96 +842,79 @@ void m8520::Write(unsigned int address, unsigned char value)
 				timerAMode = TA_MODE_PHI2;
 			}
 
+			// 81D5
+
 			//if ((CRARegisterOld ^ CRARegister) & CRA_SPMODE)
 			if ((CRARegisterOld & CRA_SPMODE) ^ (CRARegister & CRA_SPMODE))
 			{
-				if (CRARegister & CRA_SPMODE)
+				//DEBUG_LOG("%02x %02x %04x\r\n", (CRARegisterOld & CRA_SPMODE), (CRARegister & CRA_SPMODE), pc);
+				//if (!(CRARegisterOld & CRA_SPMODE) && (CRARegister & CRA_SPMODE))
+				if (SerialOutput())
 				{
-					// Serial port output - CNT sources shift clock
-					serialPortMode = SP_MODE_OUTPUT;
-					//DEBUG_LOG("o %04x\r\n", pc);
-					//DEBUG_LOG("o\r\n");
-
+					// Output transmission will start following a write to the Serial Data Register(provided TIMER A is running and in continuous mode).
+					// Will use serialBitsShiftedSoFar == 8 to indicate that this is yet to occur
 					serialBitsShiftedSoFar = 8;
-					serialShiftRegister = 0;
+					//serialShiftRegister = serialDataRegister;
+					serialDataRegisterLoaded = false;
+
+					// What becomes of the SPPin when we switch from input to output?
+					SPPin = SPPinLastOut;
+
+					CNTPin = true;
+
+					IEC_Bus::SetFastSerialSRQ(true);
+					IEC_Bus::ReadEmulationMode1581();
+
 				}
+				//if ((CRARegisterOld & CRA_SPMODE) && SerialInput())
 				else
 				{
-					// Serial port input - (external shift clock required)
-					serialPortMode = SP_MODE_INPUT;
-
-					//DEBUG_LOG("i %04x\r\n", pc);
-					//DEBUG_LOG("i\r\n");
-
-					serialBitsShiftedSoFar = 0;
-					serialShiftRegister = 0;
+					//DEBUG_LOG("serialBitsShiftedSoFar = %d %02x %02x\r\n", serialBitsShiftedSoFar, CRARegisterOld, CRARegister);
+					//DEBUG_LOG("12345678901234567890\r\n");//
+					serialBitsShiftedSoFar = 0;		// <- WinUAE does not do this.
+					serialShiftRegister = 0;		// <- WinUAE does not do this.
+					serialDataRegisterLoaded = false;
+					serialSetToInputCoolDown = 0;// 32;
+					//serialSetToInputLastUpdate = true;
+					//CNTPin = IEC_Bus::GetPI_SRQ();
+					IEC_Bus::SetFastSerialSRQ(false);
+					IEC_Bus::ReadEmulationMode1581();
+					bool srq = IEC_Bus::GetPI_SRQ();
+					//DEBUG_LOG("sr=%d\r\n", srq);
+					//SetPinCNT(srq);	// Like the real hardware we have no inverter on the SRQ input 
+					CNTPin = srq;
 				}
 			}
 
-			if (CRARegister & CRA_TODIN)
-			{
-				timerA50Hz = true;
-			}
-			else
-			{
-				timerA50Hz = false;
-			}
+			//if (CRARegister & CRA_TODIN)
+			//{
+			//	timerA50Hz = true;
+			//}
+			//else
+			//{
+			//	timerA50Hz = false;
+			//}
 
 			break;
 		}
 		case CRB:
 			CRBRegister = value;
 
-			CRBRegister = value;
-			if (CRBRegister & CRB_START)
-			{
-				// Timer B start
-				timerBActive = true;
-				//DEBUG_LOG("TB A\r\n");
-			}
-			else
-			{
-				// Timer B stop
-				timerBActive = false;
-			}
-
-			if (CRBRegister & CRB_PBON)
-			{
-				// Timer A output appears on PB6
-				timerBOutputOnPB7 = true;
-			}
-			else
-			{
-				// PB6 normal operation
-				timerBOutputOnPB7 = false;
-			}
-
 
 			// Toggle / Pulse
 			// A control bit selects the output applied to PORT B.
 			// On every timer underflow the output can either toggle or generate a single positive pulse of one cycle duration.
 			// The toggle output is set high whenever the timer is started and is set low by RES.
-			if (CRBRegister & CRB_OUTPUTMODE)
-			{
-				// Toggle
-				timerBToggle = true;
-			}
-			else
-			{
-				// Pulse
-				timerBToggle = false;
-			}
-
-			if (CRBRegister & CRB_RUNMODE)
-			{
-				// One shot
-				timerBOneShot = true;
-			}
-			else
-			{
-				// Continuous
-				timerBOneShot = false;
-			}
+			//if (CRBRegister & CRB_OUTPUTMODE)
+			//{
+			//	// Toggle
+			//	timerBToggle = true;
+			//}
+			//else
+			//{
+			//	// Pulse
+			//	timerBToggle = false;
+			//}
 
 			// bit 4 will always read back a zero and writing a zero has no effect
 			if (CRBRegister & CRB_LOAD)
@@ -833,6 +922,7 @@ void m8520::Write(unsigned int address, unsigned char value)
 				// Force load
 				// A strobe bit allows the timer latch to be loaded into the timer counter at any time, whether the timer is running or not.
 				ReloadTimerB();
+				CRBRegister &= ~CRB_LOAD;
 			}
 
 			switch ((CRBRegister & (CRB_INMODE1 | CRB_INMODE0)) >> 5)
@@ -851,14 +941,6 @@ void m8520::Write(unsigned int address, unsigned char value)
 				break;
 			}
 
-			if (CRBRegister & CRB_ALARM)
-			{
-				timerBAlarm = true;
-			}
-			else
-			{
-				timerBAlarm = false;
-			}
 		break;
 	}
 }

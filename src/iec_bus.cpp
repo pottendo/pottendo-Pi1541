@@ -355,6 +355,7 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 #else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
+	//DEBUG_LOG("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
 #else	
 	gplev0 = CGPIOPin::ReadAll();
 #endif	
@@ -532,6 +533,125 @@ void IEC_Bus::ReadEmulationMode1581(void)
 
 	Resetting = !ignoreReset && ((gplev0 & PIGPIO_MASK_IN_RESET) == (invertIECInputs ? PIGPIO_MASK_IN_RESET : 0));
 }
+
+void IEC_Bus::ReadEmulationMode1571(void)
+{
+	bool AtnaDataSetToOutOld = IEC_Bus::AtnaDataSetToOut;
+	IOPort* portB = port;//pi1571.VIA[0].GetPortB();
+	//m6522* VIA = &pi1571.VIA[0];
+
+	IEC_Bus::gplev0 = read32(ARM_GPIO_GPLEV0);
+
+#ifndef REAL_XOR
+	bool ATNIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_ATN) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_ATN : 0);
+	if (IEC_Bus::PI_Atn != ATNIn)
+	{
+		IEC_Bus::PI_Atn = ATNIn;
+
+		//DEBUG_LOG("A%d\r\n", PI_Atn);
+		//if (port)
+		{
+			if ((portB->GetDirection() & 0x10) != 0)
+			{
+				// Emulate the XOR gate UD3
+				// We only need to do this when fully emulating, iec commands do this internally
+				IEC_Bus::AtnaDataSetToOut = (IEC_Bus::VIA_Atna != IEC_Bus::PI_Atn);
+			}
+
+			portB->SetInput(VIAPORTPINS_ATNIN, ATNIn);	//is inverted and then connected to pb7 and ca1
+			//if (ATNIn)
+			//{
+			//	DEBUG_LOG("CA1 %d\r\n", cnti);
+			//	cnti++;
+			//	if (cnti == 3)
+			//		bLoggingCYCs = true;
+			//}
+			VIA->InputCA1(ATNIn);
+		}
+	}
+
+	if (portB && (portB->GetDirection() & 0x10) == 0)
+		IEC_Bus::AtnaDataSetToOut = false; // If the ATNA PB4 gets set to an input then we can't be pulling data low. (Maniac Mansion does this)
+
+	// moved from PortB_OnPortOut
+	if (IEC_Bus::AtnaDataSetToOut)
+		portB->SetInput(VIAPORTPINS_DATAIN, true);	// simulate the read in software
+
+	if (!IEC_Bus::AtnaDataSetToOut && !IEC_Bus::DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	{
+		bool DATAIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_DATA) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_DATA : 0);
+		//if (PI_Data != DATAIn)
+		{
+			IEC_Bus::PI_Data = DATAIn;
+			portB->SetInput(VIAPORTPINS_DATAIN, DATAIn);	// VIA DATAin pb0 output from inverted DIN 5 DATA
+		}
+	}
+	else
+	{
+		IEC_Bus::PI_Data = true;
+		portB->SetInput(VIAPORTPINS_DATAIN, true);	// simulate the read in software
+	}
+#else
+	bool ATNIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_ATN) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_ATN : 0);
+	if (IEC_Bus::PI_Atn != ATNIn)
+	{
+		IEC_Bus::PI_Atn = ATNIn;
+
+		//DEBUG_LOG("A%d\r\n", PI_Atn);
+		//if (port)
+		{
+			portB->SetInput(VIAPORTPINS_ATNIN, ATNIn);	//is inverted and then connected to pb7 and ca1
+			VIA->InputCA1(ATNIn);
+		}
+	}
+
+	if (!IEC_Bus::DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	{
+		bool DATAIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_DATA) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_DATA : 0);
+		//if (PI_Data != DATAIn)
+		{
+			IEC_Bus::PI_Data = DATAIn;
+			portB->SetInput(VIAPORTPINS_DATAIN, DATAIn);	// VIA DATAin pb0 output from inverted DIN 5 DATA
+		}
+	}
+	else
+	{
+		IEC_Bus::PI_Data = true;
+		portB->SetInput(VIAPORTPINS_DATAIN, true);	// simulate the read in software
+	}
+
+#endif
+	if (!IEC_Bus::ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	{
+		bool CLOCKIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_CLOCK) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_CLOCK : 0);
+		//if (PI_Clock != CLOCKIn)
+		{
+			IEC_Bus::PI_Clock = CLOCKIn;
+			portB->SetInput(VIAPORTPINS_CLOCKIN, CLOCKIn); // VIA CLKin pb2 output from inverted DIN 4 CLK
+		}
+	}
+	else
+	{
+		IEC_Bus::PI_Clock = true;
+		portB->SetInput(VIAPORTPINS_CLOCKIN, true); // simulate the read in software
+	}
+
+	if (!IEC_Bus::SRQSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	{
+		bool SRQIn = (IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_SRQ) == (IEC_Bus::invertIECInputs ? 0 : IEC_Bus::PIGPIO_MASK_IN_SRQ);
+		if (IEC_Bus::PI_SRQ != SRQIn)
+		{
+			IEC_Bus::PI_SRQ = SRQIn;
+		}
+	}
+	else
+	{
+		IEC_Bus::PI_SRQ = false;
+	}
+
+	IEC_Bus::Resetting = !IEC_Bus::ignoreReset && ((IEC_Bus::gplev0 & IEC_Bus::PIGPIO_MASK_IN_RESET) == (IEC_Bus::invertIECInputs ? IEC_Bus::PIGPIO_MASK_IN_RESET : 0));
+}
+
 #endif /* PI1581 SUPPORT */
 
 void IEC_Bus::PortB_OnPortOut(void* pUserData, unsigned char status)
@@ -628,6 +748,6 @@ void IEC_Bus::Reset(void)
 #endif
 
 #if defined(PI1581SUPPORT)
-	RefreshOuts1581();
+	RefreshOuts1581_1571();
 #endif	
 }

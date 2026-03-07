@@ -320,6 +320,8 @@ enum VIAPortPins
 	VIAPORTPINS_CLOCKIN = 0x04,	//pb2
 	VIAPORTPINS_CLOCKOUT = 0x08,//pb3
 	VIAPORTPINS_ATNAOUT = 0x10,	//pb4
+	VIAPORTPINS_DEVSEL0	= 0x20,	//pb5
+	VIAPORTPINS_DEVSEL1	= 0x40,	//pb6
 	VIAPORTPINS_ATNIN = 0x80	//bp7
 };
 
@@ -554,7 +556,7 @@ public:
 	{
 		SRQSetToOut = IEC_Bus::invertIECInputs;
 #if defined(PI1581SUPPORT)
-		RefreshOuts1581();
+		RefreshOuts1581_1571();
 #endif	
 	}
 
@@ -611,6 +613,7 @@ public:
 	static void ReadBrowseMode(void);
 	static void ReadGPIOUserInput(bool minimalCheck = false);
 	static void ReadEmulationMode1541(void);
+	static void ReadEmulationMode1571(void);
 	static void ReadEmulationMode1581(void);
 
 	static void WaitUntilReset(void)
@@ -763,7 +766,7 @@ public:
 #endif /* __PICO2__ || ESP32 */
 
 #if defined(PI1581SUPPORT)
-	static inline void RefreshOuts1581(void)
+	static inline void RefreshOuts1581_1571(void)
 	{
 		unsigned set = 0;
 		unsigned clear = 0;
@@ -994,6 +997,23 @@ public:
 	static bool OutputLED;
 	static bool OutputSound;
 
+	static bool PI_Atn;
+	static bool PI_Data;
+	static bool PI_Clock;
+	static bool PI_SRQ;
+	static bool PI_Reset;
+
+	static bool VIA_Atna;
+	static bool VIA_Data;
+	static bool VIA_Clock;
+
+	static bool DataSetToOut;
+	static bool AtnaDataSetToOut;
+	static bool ClockSetToOut;
+	static bool SRQSetToOut;
+	static bool Resetting;
+
+
 private:
 	static u32 oldClears;
 	static u32 oldSets;
@@ -1014,22 +1034,6 @@ private:
 	static u32 emulationModeCheckButtonIndex;
 
 	static unsigned gplev0;
-
-	static bool PI_Atn;
-	static bool PI_Data;
-	static bool PI_Clock;
-	static bool PI_SRQ;
-	static bool PI_Reset;
-
-	static bool VIA_Atna;
-	static bool VIA_Data;
-	static bool VIA_Clock;
-
-	static bool DataSetToOut;
-	static bool AtnaDataSetToOut;
-	static bool ClockSetToOut;
-	static bool SRQSetToOut;
-	static bool Resetting;
 
 	static int buttonCount;
 
