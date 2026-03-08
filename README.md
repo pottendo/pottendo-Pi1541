@@ -1,6 +1,6 @@
 # pottendo-Pi1541 V2.2 WIP
 
-This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal library (as of February 2026, Step 50.1).
+This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of February 2026, Step 50.1).
 
 ## New HTML/JS UI
 - one can browse to an alternative WebUI, offering more potential to be extended (direct CSDB access, etc.), Credits to @skyie on F64
@@ -8,7 +8,7 @@ This is an optional port of Pi1541 (V1.25F) to the current Circle bare metal lib
 
 ## News vs 2.1
 V2.2Beta1
-- Enable D71 image support
+- Support to extract .zip archives
 - webserver now hands out files from /web
 - stats show current mounted image
 
@@ -172,7 +172,7 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + 
 
 Still the legacy code can be built with support for all supported hardware variants, include PiZero, Pi1 and Pi2 variants - see build chapter _Build_.
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.25 - which is pretty good, IMHO! **Credits to Steve!**
-As the original source builds are provided in `orig-build`, the version using circle appends 'c', e.g. when displayed on the LCD.
+As the original source builds are provided in `orig-build`, the version using circle appends 'C', e.g. when displayed on the LCD.
 <br />
 
 ## Compatibility
@@ -317,7 +317,7 @@ force_turbo=1
 arm_freq=1100
 over_voltage=6
 sdram_freq=450
-sdram_over_voltage=2
+over_voltage_sdram=2
 boot_delay=1
 arm_64bit=0
 gpu_mem=0
@@ -329,7 +329,7 @@ kernel=kernel-Pi0.img
 arm_freq=1400
 over_voltage=4
 sdram_freq=450
-sdram_over_voltage=1
+over_voltage_sdram=1
 boot_delay=1
 gpu_mem=0
 hdmi_group=2
@@ -349,7 +349,7 @@ force_turbo=1
 arm_freq=1100
 over_voltage=6
 sdram_freq=450
-sdram_over_voltage=2
+over_voltage_sdram=2
 boot_delay=1
 arm_64bit=0
 gpu_mem=0
@@ -374,7 +374,7 @@ force_turbo=1
 arm_freq=1400
 over_voltage=4
 sdram_freq=500
-sdram_over_voltage=1
+over_voltage_sdram=1
 temp_soft_limit=70
 temp_limit=80
 boot_delay=1

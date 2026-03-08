@@ -40,6 +40,7 @@
 #include "Petscii.h"
 #include "iec_commands.h"
 #include "logger.h"
+#include "miniz.h"
 using namespace std;
 
 extern Options options;
@@ -819,6 +820,59 @@ void drives_html(string &drives)
 	f_chdir(scwd);
 }
 
+bool extract_zip(string zipfile)
+{
+	bool result = false;
+	char scwd[256];
+	mz_zip_archive zip_archive;
+	memset(&zip_archive, 0, sizeof(zip_archive));
+	f_getcwd(scwd, 255);
+	if (f_chdir(zipfile.substr(0, zipfile.find_last_of('/')).c_str()) != FR_OK)
+	{
+		DEBUG_LOG("%s: f_chdir failed to '%s'", __FUNCTION__, zipfile.substr(0, zipfile.find_last_of('/')).c_str());
+		mz_zip_reader_end(&zip_archive);
+		return false;
+	}
+	const char *zipfn = zipfile.substr(zipfile.find_last_of('/') + 1).c_str();
+	DEBUG_LOG("%s: opening zip file '%s'", __FUNCTION__, zipfn);
+	if (!mz_zip_reader_init_file(&zip_archive, zipfn, 0))
+	{
+		DEBUG_LOG("%s: mz_zip_reader_init_file() failed for '%s'!", __FUNCTION__, zipfile.c_str());
+		goto outzip;
+	}
+    
+	for (int i = 0; i < (int)mz_zip_reader_get_num_files(&zip_archive); i++)
+	{
+		mz_zip_archive_file_stat file_stat;
+		if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
+		{
+			DEBUG_LOG("%s: mz_zip_reader_file_stat() failed!\n", __FUNCTION__);
+			mz_zip_reader_end(&zip_archive);
+			goto outzip;
+		}
+		DEBUG_LOG("%s: extracting Filename: \"%s\", Comment: \"%s\", Uncompressed size: %u, Compressed size: %u, Is Dir: %u\n",
+				  __FUNCTION__,
+				  file_stat.m_filename,
+				  file_stat.m_comment, file_stat.m_uncomp_size,
+				  file_stat.m_comp_size,
+				  mz_zip_reader_is_file_a_directory(&zip_archive, i));
+		if (mz_zip_reader_is_file_a_directory(&zip_archive, i))
+		{
+			if (f_mkdir(file_stat.m_filename) != FR_OK)
+				DEBUG_LOG("%s: mkdir() failed for '%s'", __FUNCTION__, file_stat.m_filename);
+		}
+		else if (!mz_zip_reader_extract_to_file(&zip_archive, i, file_stat.m_filename, 0))
+		{
+			DEBUG_LOG("%s: mz_zip_reader_extract to file () failed for '%s'", __FUNCTION__, file_stat.m_filename);
+		}
+	}
+	result = true;
+	mz_zip_reader_end(&zip_archive);
+outzip:
+	f_chdir(scwd);
+	return result;
+}
+
 THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType)
 {
 	assert(pBuffer != 0);
@@ -881,8 +935,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	// enable HEAP_DEBUG in circle
 	//CMemorySystem::DumpStatus();
 	mem_stat(pPath, mem, true);
-	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
-	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
+	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	
 	// serve content of /web
 	if (strncmp(pPath, "/web", 4) == 0)
@@ -1073,6 +1127,18 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 			else
 				snprintf(msg_str, 1023,"Failed to change medium to <i>%s</i> (%d)", curr_path.c_str(), ret);
+			msg = msg_str;
+			curr_path = "";
+		}
+		if (type == "[EXTRACTZIP]")
+		{
+			// Extract ZIP file
+			DEBUG_LOG("%s: request to extract ZIP file '%s'", __FUNCTION__, curr_path.c_str());
+			if (extract_zip(curr_path))
+				snprintf(msg_str, 1023,"Successfully extracted ZIP file <i>%s</i>", curr_path.c_str());
+			else
+				snprintf(msg_str, 1023,"Failed to extract ZIP file <i>%s</i>", curr_path.c_str());
+			DEBUG_LOG("%s: %s", __FUNCTION__, msg_str);
 			msg = msg_str;
 			curr_path = "";
 		}
@@ -1542,7 +1608,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 2; /* indicate .lst mount */
-						MsDelay(100);
+						MsDelay(200);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";	
@@ -1574,7 +1640,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					{
 						msg = "Mounted <i>" + def_prefix + curr_path + "</i><br />";
 						mount_new = 1;	/* indicate image mount */
-						MsDelay(100);
+						MsDelay(200);
 					}
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
