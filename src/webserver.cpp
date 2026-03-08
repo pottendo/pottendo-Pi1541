@@ -935,8 +935,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	// enable HEAP_DEBUG in circle
 	//CMemorySystem::DumpStatus();
 	mem_stat(pPath, mem, true);
-	DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
-	DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
+	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
+	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
 	
 	// serve content of /web
 	if (strncmp(pPath, "/web", 4) == 0)
