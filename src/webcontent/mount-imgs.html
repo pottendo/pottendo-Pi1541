@@ -48,6 +48,7 @@
 			gap: 16px;
 			align-items: center;
 		}
+		.btn { margin-right: 8px; }
 	</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -126,21 +127,7 @@
 						<tr valign="center">
 							<td>%s</td>
 							<td style="text-align:right;">
-							%s
-								<a href="mount-imgs.html?[MOUNT]&%s">
-									<button type="button" class="btn btn-success">Mount</button>
-								</a>
-								<a href="edit-file.html?[EDIT]&%s">
-									<button type="button" class="btn btn-success">Edit</button>
-								</a>
-								<a href="mount-imgs.html?[DEL]&%s">
-									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Delete</button>
-								</a>
-								<a href="mount-imgs.html?[DOWNLOAD]&%s" download="%s">
-									<button type="button" class="btn btn-success" onClick="return delConfirm(event)">Download</button>
-								</a>
-							%s
-                            	<button type="button" class="btn btn-success" id="rename" name="rename" onclick="prompt_rename()">Rename</button>
+								%s
 							</td>
 						</tr>
 					</table>

@@ -816,7 +816,7 @@ void drives_html(string &drives)
 	f_chdir(scwd);
 }
 
-bool extract_zip(string zipfile)
+bool extract_zip(string zipfile, list<string> *extracted_files = nullptr)
 {
 	bool result = false;
 	char scwd[256];
@@ -842,16 +842,21 @@ bool extract_zip(string zipfile)
 		mz_zip_archive_file_stat file_stat;
 		if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
 		{
-			DEBUG_LOG("%s: mz_zip_reader_file_stat() failed!\n", __FUNCTION__);
+			DEBUG_LOG("%s: mz_zip_reader_file_stat() failed!", __FUNCTION__);
 			mz_zip_reader_end(&zip_archive);
 			goto outzip;
 		}
-		DEBUG_LOG("%s: extracting Filename: \"%s\", Comment: \"%s\", Uncompressed size: %u, Compressed size: %u, Is Dir: %u\n",
+		DEBUG_LOG("%s: extracting Filename: \"%s\", Comment: \"%s\", Uncompressed size: %u, Compressed size: %u, Is Dir: %u",
 				  __FUNCTION__,
 				  file_stat.m_filename,
 				  file_stat.m_comment, file_stat.m_uncomp_size,
 				  file_stat.m_comp_size,
 				  mz_zip_reader_is_file_a_directory(&zip_archive, i));
+		if (extracted_files)
+		{
+			extracted_files->push_back(file_stat.m_filename);
+			continue;
+		}
 		if (mz_zip_reader_is_file_a_directory(&zip_archive, i))
 		{
 			if (f_mkdir(file_stat.m_filename) != FR_OK)
@@ -867,6 +872,48 @@ bool extract_zip(string zipfile)
 outzip:
 	f_chdir(scwd);
 	return result;
+}
+
+static bool file_ops(const char *f, string &buttons, bool is_dir, string &img)
+{
+	string fn(f);
+	bool res = false;
+	if (DiskImage::IsDiskImageExtention(fn.c_str()) ||
+		DiskImage::IsLSTExtention(fn.c_str()))
+	{
+		buttons += "<a href=\"mount-imgs.html?[MOUNT]&" + fn + "\">";
+		buttons += "<button type=\"button\" class=\"btn btn-success\">Mount</button>";
+		buttons += "</a>";
+	}
+	if (DiskImage::IsLSTExtention(fn.c_str()) ||
+		DiskImage::IsTextFileExtention(fn.c_str()))
+	{
+		buttons += "<a href=\"edit-file.html?[EDIT]&" + fn + "\">";
+		buttons += "<button type=\"button\" class=\"btn btn-success\">Edit</button>";
+		buttons += "</a>";
+	}
+	if (endsWith(fn, ".zip"))
+	{
+		buttons += "<a href=\"mount-imgs.html?[EXTRACTZIP]&" + fn + "\">";
+		buttons += "<button type=\"button\" class=\"btn btn-success\">Extract</button>";
+		buttons += "</a>";
+	}
+	if (!is_dir)
+	{
+		buttons += "<a href=\"mount-imgs.html?[DOWNLOAD]&" + fn + "\" download=\"" + img + "\">";
+		buttons += "<button type=\"button\" class=\"btn btn-success\" onClick=\"return delConfirm(event)\">Download</button>";
+		buttons += "</a>";
+	}
+	if (fn != "")
+	{
+		buttons += "<a href=\"mount-imgs.html?[DEL]&" + fn + "\">";
+		buttons += "<button type=\"button\" class=\"btn btn-success\" onClick=\"return delConfirm(event)\">Delete</button>";
+		buttons += "</a>";
+		buttons += "<button type=\"button\" class=\"btn btn-success\" id=\"rename\" name=\"rename\" onclick=\"prompt_rename()\">Rename</button>";
+	}
+
+	res = true;
+	return res;
 }
 
 THTTPStatus CWebServer::GetContent (const char  *pPath,
@@ -1077,18 +1124,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 			else
 				snprintf(msg_str, 1023,"Failed to change medium to <i>%s</i> (%d)", curr_path.c_str(), ret);
-			msg = msg_str;
-			curr_path = "";
-		}
-		if (type == "[EXTRACTZIP]")
-		{
-			// Extract ZIP file
-			DEBUG_LOG("%s: request to extract ZIP file '%s'", __FUNCTION__, curr_path.c_str());
-			if (extract_zip(curr_path))
-				snprintf(msg_str, 1023,"Successfully extracted ZIP file <i>%s</i>", curr_path.c_str());
-			else
-				snprintf(msg_str, 1023,"Failed to extract ZIP file <i>%s</i>", curr_path.c_str());
-			DEBUG_LOG("%s: %s", __FUNCTION__, msg_str);
 			msg = msg_str;
 			curr_path = "";
 		}
@@ -1338,6 +1373,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string dfn = def_prefix + curr_path;
 		string textfile = "";
 		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+
 		if (GetMultipartFormPart(&pPartHeader, &pPartData, &nPartLength))
 		{
 			//DEBUG_LOG("%s: options upload requested, header = '%s'", __FUNCTION__, pPartHeader);
@@ -1387,7 +1423,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=iso-8859-1";
-	}
+	} 
 	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
 		const char *pPartHeader;
@@ -1433,6 +1469,21 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			curr_path = "";
 			type = "[DIR]";
 		}
+		if (type == "[EXTRACTZIP]")
+		{
+			// Extract ZIP file
+			char msg_str[1024];
+			string dfn = def_prefix + curr_path;
+			DEBUG_LOG("%s: request to extract ZIP file '%s'", __FUNCTION__, dfn.c_str());
+			if (extract_zip(dfn))
+				snprintf(msg_str, 1023,"Successfully extracted ZIP file <i>%s</i>", dfn.c_str());
+			else
+				snprintf(msg_str, 1023,"Failed to extract ZIP file <i>%s</i>", dfn.c_str());
+			DEBUG_LOG("%s: %s", __FUNCTION__, msg_str);
+			msg = msg_str;
+			type = "";
+			curr_path = curr_path.substr(0, curr_path.rfind('/'));
+		}
 		if (type == "[DIR]" || type == "") 
 		{
 			if ((direntry_table(header_NT, curr_dir, curr_path, page, AM_DIR) < 0) ||
@@ -1445,7 +1496,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			msg = "No Image selected, nothing mounted";
 			return HTTPNotFound;
 		}
-		else
+		else 
 		{
 			if (fi.fattrib & AM_DIR)
 				is_dir = true;
@@ -1505,17 +1556,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			string fullname = def_prefix + curr_path;
 			if (type == "[DEL]")
 			{
-				if (is_dir)
-					msg += "Refusing to delete directory <i>" + fullname + "</i>";
+				FRESULT ret;
+				// DEBUG_LOG("%s: delete of '%s'", __FUNCTION__, fullname.c_str());
+				if ((ret = f_unlink_full(fullname, msg)) != FR_OK)
+					msg += "Failed to delete <i>" + fullname + "</i> (" + to_string(ret) + ")";
 				else
-				{
-					FRESULT ret;
-					//DEBUG_LOG("%s: delete of '%s'", __FUNCTION__, fullname.c_str());
-					if ((ret = f_unlink_full(fullname, msg)) != FR_OK)
-						msg += "Failed to delete <i>" + fullname + "</i> (" + to_string(ret) + ")";
-					else
-						msg += "Successfully deleted <i>" + fullname + "</i>";
-				}
+					msg += "Successfully deleted <i>" + fullname + "</i>";
 			}
 			if (type == "[DOWNLOAD]")
 			{
@@ -1595,6 +1641,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					else
 						msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";						
 				}
+				else if (endsWith(fullname, ".zip"))
+				{
+					list<string> extracted_files;
+					extracted_files.push_back(string(mount_img) + ":<br />");
+					extract_zip(fullname, &extracted_files);
+					for (auto it = extracted_files.begin(); it != extracted_files.end(); it++)
+						content += *it + "<br />";
+					msg = "Selected <i>" + def_prefix + curr_path + "</i><br />";
+				}
 				else
 				{
 					if (mount_it)
@@ -1610,14 +1665,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		static char _t[256];
 		string encURL = urlEncode(curr_path);
 		strcpy(_t, encURL.c_str());
+		string buttons;
+		file_ops(_t, buttons, is_dir, img);
 		String.Format(s_mount, drives.c_str(), msg.c_str(), 
 					(def_prefix + curr_path).c_str(), 
-					(is_dir ? "<!--" : ""),
-					_t, // Mount
-					_t, // Edit
-					_t, // Delete
-					_t, img.c_str(), // Download
-					(is_dir ? "-->" : ""),
+					buttons.c_str(),
 					curr_dir.c_str(), files.c_str(), content.c_str(),
 					Kernel.get_version(), mem.c_str(),
 					curr_path.c_str(), curr_path.c_str(), _t // rename script
