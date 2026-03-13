@@ -4,7 +4,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News vs 2.1
 V2.2Beta1
-- Support to extract .zip archives
+- Support to extract/preview .zip archives
 - webserver now hands out files from /web
 - stats show current mounted image
 
