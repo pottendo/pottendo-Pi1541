@@ -920,6 +920,45 @@ static bool file_ops(const char *f, string &buttons, bool is_dir, string &img)
 	return res;
 }
 
+static bool parse_ipv4(const char* s, u8 *ip)
+{
+    int octet = 0;
+    int value = 0;
+    int digits = 0;
+
+    while (true)
+    {
+        char c = *s++;
+
+        if (std::isdigit(static_cast<unsigned char>(c)))
+        {
+            value = value * 10 + (c - '0');
+            if (value > 255) return false;
+
+            ++digits;
+            if (digits > 3) return false;
+        }
+        else if (c == '.' || c == '\0')
+        {
+            if (digits == 0) return false;
+            if (octet >= 4) return false;
+
+            ip[octet++] = static_cast<unsigned char>(value);
+
+            value = 0;
+            digits = 0;
+
+            if (c == '\0')
+                break;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return octet == 4;
+}
+
 THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType)
 {
 	assert(pBuffer != 0);
@@ -936,14 +975,25 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 	}
 	size_t docst = url.substr(urlst + 2).find_first_of('/');
 	string hn = url.substr(urlst + 2,  ((docst == string::npos) ? string::npos : docst));
-	if (!dnsClient.Resolve(hn.c_str(), &srvip))
+
+	u8 ipa[4];
+	if (parse_ipv4(hn.c_str(), ipa))
+	{
+		DEBUG_LOG("%s: Hostname %s is a valid IPv4 address", __FUNCTION__, hn.c_str());
+		// If the hostname is a valid IPv4 address, use it directly
+		srvip = CIPAddress(ipa);
+	} 
+	else if (!dnsClient.Resolve(hn.c_str(), &srvip))
 	{
 		DEBUG_LOG("%s: DNS resolution failed for URL %s (%s)", __FUNCTION__, url.c_str(), hn.c_str());
 		return HTTPNotFound;
 	}
-	CString ipstr;
-	srvip.Format(&ipstr);
-	DEBUG_LOG("%s: DNS resolution succeeded for host %s: %s", __FUNCTION__, hn.c_str(), ipstr.c_str());
+	else
+	{
+		CString ipstr;
+		srvip.Format(&ipstr);
+		DEBUG_LOG("%s: DNS resolution succeeded for host %s: %s", __FUNCTION__, hn.c_str(), ipstr.c_str());
+	}
 
 	u16 pt = url.substr(0, url.find_first_of(':')) == "https" ? HTTPS_PORT : HTTP_PORT;
 	CircleMbedTLS::CTLSSimpleSupport m_TLSSupport(&m_NetSubSystem);
@@ -955,7 +1005,7 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 	    doc = url.substr(urlst + 2 + docst);
 	DEBUG_LOG("%s: getting '%s' from %s", __FUNCTION__, doc.c_str(), hn.c_str());
 	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength);
-	DEBUG_LOG("%s: HTTP status = %d, len = %d", __FUNCTION__, status, *pLength);
+	DEBUG_LOG("%s: HTTP status = %d, len = %d", __FUNCTION__, status, ((status == (CircleMbedTLS::THTTPStatus) HTTPOK) ? *pLength : 0));
 	*ppContentType = "text/html; charset=UTF-8";
 	return (THTTPStatus)status;
 }
