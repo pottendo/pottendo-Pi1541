@@ -6,6 +6,14 @@ set OUTPUT=%~dp0..\Pi-Bootpart
 set ARCH=%1
 for /f %%a in ('powershell -command "[int](Get-Date -UFormat %%s)"') do set START=%%a
 
+echo === Syncing source into image ===
+docker build -t %IMAGE% .
+if errorlevel 1 (
+    echo ERROR: image build failed.
+    exit /b 1
+)
+
+echo.
 echo === Copying Pi-Bootpart base (ROMs, firmware, boot files) to %OUTPUT% ===
 docker run --rm -v "%OUTPUT%:/output" --entrypoint sh %IMAGE% -c "cp -r /build/Pi-Bootpart/. /output/"
 if errorlevel 1 (
