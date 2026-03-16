@@ -6,6 +6,10 @@ OUTPUT="$(dirname "$0")/../Pi-Bootpart"
 ARCH="$1"
 START=$SECONDS
 
+echo "=== Syncing source into image ==="
+docker build -t ${IMAGE} .
+
+echo ""
 echo "=== Copying Pi-Bootpart base (ROMs, firmware, boot files) to ${OUTPUT} ==="
 mkdir -p "${OUTPUT}"
 docker run --rm -v "${OUTPUT}:/output" --entrypoint sh ${IMAGE} -c "cp -r /build/Pi-Bootpart/. /output/"
