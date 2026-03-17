@@ -33,7 +33,7 @@ public:
 
 	inline u8 Read(u16 address)
 	{
-		return ROMImages[currentROMIndex][address & 0x3fff];
+		return ROMImages[currentROMIndex][address & ROMMask[currentROMIndex]];
 	}
 	inline u8 ReadMPS802(u16 address)
 	{
@@ -41,7 +41,7 @@ public:
 	}	
 	void ResetCurrentROMIndex();
 
-	static const int ROM_SIZE = 16384;
+	static const int ROM_SIZE = 16384*2; // allow 32kB ROMs
 	static const int ROM_MPS802_SIZE = 8192;
 #if	defined(PI1581SUPPORT)
 	inline u8 Read1581(u16 address)
@@ -62,6 +62,7 @@ public:
 	char ROMNames[MAX_ROMS][256];
 	bool ROMValid[MAX_ROMS];
 	unsigned ROMHash[MAX_ROMS];
+	unsigned ROMMask[MAX_ROMS];
 	
 	unsigned currentROMIndex;
 	unsigned lastManualSelectedROMIndex;
