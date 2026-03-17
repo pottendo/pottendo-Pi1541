@@ -92,6 +92,7 @@ unsigned versionMinor = 25;
 #define COLOUR_MAGENTA RGBA(0xff, 0, 0xff, 0xff)
 #define COLOUR_YELLOW RGBA(0xff, 0xff, 0x00, 0xff)
 
+// Hash Jiffy: 0x533845a9, 1541-II: 0x9eef0d97, 1541: 0x64a2ddd6
 // To exit a mounted disk image we need to watch(snoop) what the emulated CPU is doing when it executes code at some critical ROM addresses.
 #define SNOOP_CD_CBM 0xEA2D
 #define SNOOP_CD_CBM1581 0xAEB7
@@ -766,6 +767,7 @@ static bool Snoop(u8 a, int max)
 			// Exit full emulation back to IEC commands level simulation.
 			snoopIndex = 0;
 			snoopPC = 0;
+			//DEBUG_LOG("%s: CD detected, exiting emulation\n", __FUNCTION__);
 			return true;
 		}
 		else
@@ -1009,9 +1011,8 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 			if (pc == snoopPC)
 			{
-
 				if (Snoop(pi1541.m6502.GetA(), sizeof(snoopBackCommand)))
-					exitCyclesRemaining = 40000;
+					exitCyclesRemaining = 80000;
 			}
 		}
 
@@ -1822,7 +1823,7 @@ static bool AttemptToLoadROM(const char* ROMName, int index)
 		roms.ROMValid[index] = true;
 		SetACTLed(false);
 		f_close(&fp);
-		DEBUG_LOG("Opened ROM %s %d %d %d %08x\r\n", ROMName, ROMs::ROM_SIZE, bytesRead, bytesRead == ROMs::ROM_SIZE, hash);
+		DEBUG_LOG("Opened ROM %s %d %d %d 0x%08x\r\n", ROMName, ROMs::ROM_SIZE, bytesRead, bytesRead == ROMs::ROM_SIZE, hash);
 		return true;
 	}
 	else

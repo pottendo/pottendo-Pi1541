@@ -7,6 +7,7 @@ V2.2Beta1
 - Support to extract/preview .zip archives
 - webserver now hands out files from /web
 - stats show current mounted image
+- Fixed 'CD' command to exit emulation
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
