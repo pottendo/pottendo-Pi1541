@@ -1,0 +1,131 @@
+diff --git a/include/circle-mbedtls/httpclient.h b/include/circle-mbedtls/httpclient.h
+index f1dbfc8..28cf9ee 100644
+--- a/include/circle-mbedtls/httpclient.h
++++ b/include/circle-mbedtls/httpclient.h
+@@ -41,7 +41,9 @@ public:
+ 
+ 	THTTPStatus Get (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			 u8	    *pBuffer,			// content will be returned here
+-			 unsigned   *pLength);			// in: buffer size, out: content length
++			 unsigned   *pLength,                   // in: buffer size, out: content length
++			 u8* pHeader = 0,
++			 unsigned *pHLen = 0);
+ 
+ 	THTTPStatus Post (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			  u8	     *pBuffer,			// content will be returned here
+@@ -53,7 +55,9 @@ private:
+ 			     const char		*pPath,		// may include URL parameters
+ 			     u8			*pBuffer,	// content will be returned here
+ 			     unsigned		*pLength,	// in: buffer size, out: content length
+-			     const char		*pFormData = 0);// form data for POST or 0
++			     const char		*pFormData = 0, // form data for POST or 0
++			     u8* pHeader = 0, // header content will be returned here
++			     unsigned *pHLen = 0); // len allocated for header content
+ 
+ private:
+ 	CTLSSimpleSupport *m_pTLSSupport;
+diff --git a/src/circle-mbedtls/httpclient.cpp b/src/circle-mbedtls/httpclient.cpp
+index 1cd6657..ba5f2fd 100644
+--- a/src/circle-mbedtls/httpclient.cpp
++++ b/src/circle-mbedtls/httpclient.cpp
+@@ -24,7 +24,8 @@
+ #include <circle/net/socket.h>
+ #include <circle/net/in.h>
+ #include <assert.h>
+-
++#include <stdio.h>
++#include <circle/logger.h>
+ #define CLIENT_VERSION	"0.10"
+ #define USER_AGENT	"CHTTPClient/" CLIENT_VERSION " (Circle)"
+ 
+@@ -52,9 +53,10 @@ CHTTPClient::~CHTTPClient (void)
+ 	m_pTLSSupport = 0;
+ }
+ 
+-THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength)
++extern void  mylog(const char *str, ...);
++THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength, u8 *pHeader, unsigned *pHLen)
+ {
+-	return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength);
++    return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength, 0, pHeader, pHLen);
+ }
+ 
+ THTTPStatus CHTTPClient::Post (const char *pPath, u8 *pBuffer, unsigned *pLength, const char *pFormData)
+@@ -67,7 +69,9 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				  const char	     *pPath,
+ 				  u8		     *pBuffer,
+ 				  unsigned	     *pLength,
+-				  const char	     *pFormData)
++				  const char	     *pFormData,
++				  u8* pHeader,
++				  unsigned *pHLen)
+ {
+ 	// connect to server
+ 	assert (m_pTLSSupport != 0);
+@@ -170,9 +174,12 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 	unsigned nLength = 0;
+ 	boolean bChunked = FALSE;
+ 	unsigned long ulBytes = 0;
++	unsigned ulHLen = 0;
+ 
+ 	char Buffer[FRAME_BUFFER_SIZE];
+ 	char Line[HTTP_MAX_REQUEST_LINE];
++	char Line0[HTTP_MAX_REQUEST_LINE];
++	Line0[0] = '\0';
+ 	int nResult;
+ 	char *pSavePtr;
+ 
+@@ -195,13 +202,44 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				{
+ 					if (nChar == 0)		// empty line is end of header
+ 					{
++					    char *pToken;
+ 						nState = bChunked ? 2 : 1;
+ 						nChar = 0;
++						*pHLen = strlen((const char *)pHeader);
++						//mylog("%s: first line = '%s'", __FUNCTION__, Line0);
++						if (   (pToken = strtok_r ((char *) Line0, "/", &pSavePtr)) == 0
++						    || strcmp (pToken, "HTTP") != 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || strcmp (pToken, "200") != 0)
++						{
++						    char *pEnd;
++						    unsigned long ulStatus;
++						    ulStatus = strtoul (pToken, &pEnd, 10);
++						    if (   pEnd != 0
++							   && *pEnd != '\0')
++						    {
++							ulStatus = HTTPInvalidResponseCode;
++						    }
++						    
++						    delete m_pSocket;
++						    m_pSocket = 0;
++						    //mylog("%s: sending back %d", __FUNCTION__, ulStatus);
++						    return (THTTPStatus) ulStatus;
++						}
+ 					}
+ 					else
+ 					{
++					    ulHLen += strlen(Line) + 2;
++					    if ((*pHLen) > ulHLen)
++					    {
++						strcat((char *)pHeader, Line);
++						strcat((char *)pHeader, "\r\n");
++					    }
++					    
+ 						if (nLine++ == 0)	// first line?
+-						{
++						    strcat(Line0, Line); // save first Line
++#if 0						    
+ 							// "HTTP/1.x 200 OK" expected
+ 							char *pToken;
+ 							if (   (pToken = strtok_r (Line, "/", &pSavePtr)) == 0
+@@ -226,6 +264,7 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 							}
+ 						}
+ 						else
++#endif						    
+ 						{
+ 							// check for transfer encoding option
+ 							char *pToken = strtok_r (Line, ": ", &pSavePtr);

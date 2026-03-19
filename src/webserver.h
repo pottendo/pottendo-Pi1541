@@ -42,9 +42,10 @@ public:
 				const char  *pFormData, 	// form data from POST ("" for none)
 		    	u8	    	*pBuffer,		// copy your content here
 				unsigned    *pLength,		// in: buffer size, out: content length
-				const char **ppContentType);	// set this if not "text/html"
+				const char **ppContentType, // set this if not "text/html"
+				const char **pHeader);	
 
-	THTTPStatus pi1541_proxy_html(std::string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType);
+	THTTPStatus pi1541_proxy_html(std::string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pHeader);
 private:
 	const size_t m_nMaxContentSize;
 	const size_t m_nMaxMultipartSize;

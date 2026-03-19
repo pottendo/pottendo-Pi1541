@@ -154,8 +154,10 @@ if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
     rm -rf ${CIRCLE}
     git clone --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    cd ${CIRCLE}
+    patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V50.1.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V50.1-httpDaemon.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make

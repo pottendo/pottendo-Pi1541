@@ -959,7 +959,7 @@ static bool parse_ipv4(const char* s, u8 *ip)
     return octet == 4;
 }
 
-THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType)
+THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pH)
 {
 	assert(pBuffer != 0);
 	assert(pLength != 0);
@@ -1004,9 +1004,34 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 	else
 	    doc = url.substr(urlst + 2 + docst);
 	DEBUG_LOG("%s: getting '%s' from %s", __FUNCTION__, doc.c_str(), hn.c_str());
-	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength);
+	static u8 pHeader[8*1024];
+	pHeader[0] = '\0';
+	unsigned pHLen = sizeof(pHeader);
+	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength, pHeader, &pHLen);
+	char *content_type;
+	if ((content_type = strstr((char*)pHeader, "Content-Type: ")))
+	{
+		static char content_type_buffer[256];
+		content_type += strlen("Content-Type: ");
+		char *n = strchr(content_type, '\r');
+		memcpy(content_type_buffer, content_type, n - content_type);
+		content_type_buffer[n - content_type] = '\0';
+		*ppContentType = content_type_buffer;
+		DEBUG_LOG("%s: found Content-Type: %s", __FUNCTION__, *ppContentType);
+		strcat((char *)pHeader, "Access-Control-Allow-Origin: *\r\n");
+		strcat((char *)pHeader, "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+		//DEBUG_LOG("%s: added CORS headers to response to header '%s'", __FUNCTION__, pHeader);
+	}
+	else 
+	{
+		*ppContentType = "text/html; charset=UTF-8";
+		DEBUG_LOG("%s: using default Content-Type: %s", __FUNCTION__, *ppContentType);
+	}
+	if (HTTPOK != (THTTPStatus)status)
+	{
+		*pH = (const char*)pHeader;
+	}
 	DEBUG_LOG("%s: HTTP status = %d, len = %d", __FUNCTION__, status, ((status == (CircleMbedTLS::THTTPStatus) HTTPOK) ? *pLength : 0));
-	*ppContentType = "text/html; charset=UTF-8";
 	return (THTTPStatus)status;
 }
 
@@ -1015,7 +1040,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				    const char  *pFormData,
 				    u8	        *pBuffer,
 				    unsigned    *pLength,
-				    const char **ppContentType)
+				    const char **ppContentType,
+					const char **pHeader)
 {
 	assert (pPath != 0);
 	assert (ppContentType != 0);
@@ -1047,7 +1073,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (strcmp(pPath, "/web/pi1541-proxy.html") == 0)
 		{
 			string url(pParams);
-			return pi1541_proxy_html(url, pBuffer, pLength, ppContentType);
+			return pi1541_proxy_html(url, pBuffer, pLength, ppContentType, pHeader);
 		}
 		if (strcmp(pPath, "/web/update-web.html") == 0)
 		{

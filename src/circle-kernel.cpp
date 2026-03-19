@@ -335,10 +335,10 @@ TShutdownMode CKernel::Run(void)
 logger_t logger(1000);
 void CKernel::log(const char *fmt, ...)
 {
-    char t[256];
+    char t[2048];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(t, 256, fmt, args);
+    vsnprintf(t, 2048, fmt, args);
 	mLogger.Write("pi1541", LogNotice, t);
 	va_end(args);
 }
@@ -346,10 +346,10 @@ void CKernel::log(const char *fmt, ...)
 // for calling from circle lib
 void mylog(const char *fmt, ...)
 {
-	char buf[1512];
+	char buf[2048];
 	va_list args;
 	va_start(args, fmt);
-	vsnprintf(buf, 1512, fmt, args);
+	vsnprintf(buf, 2048, fmt, args);
 	va_end(args);
 	DEBUG_LOG("%s", buf);
 }
