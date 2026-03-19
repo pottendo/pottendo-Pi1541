@@ -1020,6 +1020,7 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 		DEBUG_LOG("%s: found Content-Type: %s", __FUNCTION__, *ppContentType);
 		strcat((char *)pHeader, "Access-Control-Allow-Origin: *\r\n");
 		strcat((char *)pHeader, "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+		strcat((char *)pHeader, "Access-Control-Allow-Headers: Authorization, Content-Type\r\n");
 		//DEBUG_LOG("%s: added CORS headers to response to header '%s'", __FUNCTION__, pHeader);
 	}
 	else 
