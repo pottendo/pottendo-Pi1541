@@ -35,15 +35,18 @@ public:
 	{
 		return ROMImages[currentROMIndex][address & ROMMask[currentROMIndex]];
 	}
+	void ResetCurrentROMIndex();
+#if defined (ESP32)
+	static const int ROM_SIZE = 16384; // allow only 176kB ROMs on ESP32
+#else
+	static const int ROM_SIZE = 16384*2; // allow 32kB ROMs
+#endif
+#if	defined(PI1581SUPPORT)
 	inline u8 ReadMPS802(u16 address)
 	{
 		return ROMImageMPS802[address & 0x1fff];
 	}	
-	void ResetCurrentROMIndex();
-
-	static const int ROM_SIZE = 16384*2; // allow 32kB ROMs
 	static const int ROM_MPS802_SIZE = 8192;
-#if	defined(PI1581SUPPORT)
 	inline u8 Read1581(u16 address)
 	{
 		return ROMImage1581[address & 0x7fff];
@@ -53,12 +56,12 @@ public:
 	unsigned char ROMImage1581[ROM1581_SIZE];
 	char ROMName1581[256];
 	static const int MAX_ROMS = 7;
+	unsigned char ROMImageMPS802[ROM_MPS802_SIZE];
 #else
 	static const int MAX_ROMS = 1;
 #endif
 
 	unsigned char ROMImages[MAX_ROMS][ROM_SIZE];
-	unsigned char ROMImageMPS802[ROM_MPS802_SIZE];
 	char ROMNames[MAX_ROMS][256];
 	bool ROMValid[MAX_ROMS];
 	unsigned ROMHash[MAX_ROMS];
