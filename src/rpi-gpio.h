@@ -47,7 +47,7 @@
     #define LED_GPIO_BIT    11
     #define LED_ON()        do { RPI_GpioBase->GPSET0[1] = (1 << LED_GPIO_BIT); } while(0)
     #define LED_OFF()       do { RPI_GpioBase->GPCLR0[0] = (1 << LED_GPIO_BIT); } while(0)
-#else
+#elif !defined (__PICO2__) && !defined (ESP32)
     #define LED_GPIO_BIT    16
     #define LED_ON()        do { RPI_GpioBase->GPSET0[1] = (1 << LED_GPIO_BIT); } while(0)
     #define LED_OFF()       do { RPI_GpioBase->GPCLR0[0] = (1 << LED_GPIO_BIT); } while(0)
