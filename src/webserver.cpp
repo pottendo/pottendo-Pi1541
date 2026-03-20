@@ -1028,7 +1028,7 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 		*ppContentType = "text/html; charset=UTF-8";
 		DEBUG_LOG("%s: using default Content-Type: %s", __FUNCTION__, *ppContentType);
 	}
-	if (HTTPOK != (THTTPStatus)status)
+	//if (HTTPOK != (THTTPStatus)status)
 	{
 		*pH = (const char*)pHeader;
 	}
