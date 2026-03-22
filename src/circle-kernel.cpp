@@ -343,6 +343,7 @@ void CKernel::log(const char *fmt, ...)
 	va_end(args);
 }
 
+extern "C" {
 // for calling from circle lib
 void mylog(const char *fmt, ...)
 {
@@ -353,7 +354,7 @@ void mylog(const char *fmt, ...)
 	va_end(args);
 	DEBUG_LOG("%s", buf);
 }
-
+}
 void CKernel::log_web(const char *t)
 {
 	if (options.GetNetEthernet() || options.GetNetWifi())
