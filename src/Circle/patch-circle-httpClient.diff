@@ -25,7 +25,7 @@ index f1dbfc8..28cf9ee 100644
  private:
  	CTLSSimpleSupport *m_pTLSSupport;
 diff --git a/src/circle-mbedtls/httpclient.cpp b/src/circle-mbedtls/httpclient.cpp
-index 1cd6657..ba5f2fd 100644
+index 1cd6657..e066737 100644
 --- a/src/circle-mbedtls/httpclient.cpp
 +++ b/src/circle-mbedtls/httpclient.cpp
 @@ -24,7 +24,8 @@
@@ -43,7 +43,7 @@ index 1cd6657..ba5f2fd 100644
  }
  
 -THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength)
-+extern void  mylog(const char *str, ...);
++extern "C" void  mylog(const char *str, ...);
 +THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength, u8 *pHeader, unsigned *pHLen)
  {
 -	return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength);

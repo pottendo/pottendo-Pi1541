@@ -90,10 +90,19 @@ index 566e6eb7..ee692de0 100644
  
  // NO_BUSY_WAIT deactivates busy waiting in the EMMC, SDHOST and USB
 diff --git a/lib/net/httpdaemon.cpp b/lib/net/httpdaemon.cpp
-index e9a5a458..2b9c3949 100644
+index e9a5a458..d19d2607 100644
 --- a/lib/net/httpdaemon.cpp
 +++ b/lib/net/httpdaemon.cpp
-@@ -190,13 +190,15 @@ void CHTTPDaemon::Worker (void)
+@@ -96,6 +96,8 @@ void CHTTPDaemon::Run (void)
+ 	}
+ }
+ 
++extern "C" void  mylog(const char *str, ...);
++
+ void CHTTPDaemon::WriteAccessLog (const CIPAddress &rRemoteIP, THTTPRequestMethod RequestMethod,
+ 				  const char *pRequestURI, THTTPStatus Status,
+ 				  unsigned nContentLength)
+@@ -190,13 +192,15 @@ void CHTTPDaemon::Worker (void)
  	const char *pContentType = "text/html";
  
  	const char *pStatusMsg = "OK";
@@ -110,7 +119,7 @@ index e9a5a458..2b9c3949 100644
  		assert (nContentLength <= m_nMaxContentSize);
  		assert (pContentType != 0);
  
-@@ -251,12 +253,21 @@ void CHTTPDaemon::Worker (void)
+@@ -251,12 +255,20 @@ void CHTTPDaemon::Worker (void)
  
  	// send HTTP response header
  	CString Header;
@@ -131,7 +140,6 @@ index e9a5a458..2b9c3949 100644
 +	}
 +	else
 +	{
-+	    extern void  mylog(const char *str, ...);
 +	    mylog("%s: sending alternative header: %s", __FUNCTION__, pHeader);
 +	    Header = CString(pHeader);
 +	}
