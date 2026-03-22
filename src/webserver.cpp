@@ -833,9 +833,7 @@ bool extract_zip(string zipfile, list<string> *extracted_files = nullptr)
 		mz_zip_reader_end(&zip_archive);
 		return false;
 	}
-	const char *zipfn = zipfile.substr(zipfile.find_last_of('/') + 1).c_str();
-	DEBUG_LOG("%s: opening zip file '%s'", __FUNCTION__, zipfn);
-	if (!mz_zip_reader_init_file(&zip_archive, zipfn, 0))
+	if (!mz_zip_reader_init_file(&zip_archive, zipfile.c_str(), 0))
 	{
 		DEBUG_LOG("%s: mz_zip_reader_init_file() failed for '%s'!", __FUNCTION__, zipfile.c_str());
 		goto outzip;

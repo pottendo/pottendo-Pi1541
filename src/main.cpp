@@ -1825,10 +1825,10 @@ static bool AttemptToLoadROM(const char* ROMName, int index)
 		else
 		{
 			roms.ROMMask[index] = ROMs::ROM_SIZE - 1;
-			DEBUG_LOG("ROM size read %d may not be valid for 1541 ROMs!");
+			DEBUG_LOG("%s: ROM size read %d may not be valid for 1541 ROMs!", __FUNCTION__, bytesRead);
 		}
 
-		DEBUG_LOG("ROM size %d, mask set to 0x%04x", bytesRead, roms.ROMMask[index]);
+		DEBUG_LOG("%s: ROM size %d, mask set to 0x%04x", __FUNCTION__, bytesRead, roms.ROMMask[index]);
 		hash = HashBuffer(roms.ROMImages[index], (roms.ROMMask[index] + 1));
 		roms.ROMHash[index] = hash;
 
