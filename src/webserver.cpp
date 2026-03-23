@@ -957,34 +957,29 @@ static bool parse_ipv4(const char* s, u8 *ip)
     return octet == 4;
 }
 
-THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pH)
+CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, unsigned *pLength, u8 *pRespHeader, unsigned *pRespHLen)
 {
-	assert(pBuffer != 0);
-	assert(pLength != 0);
-	assert(ppContentType != 0);
-
 	CDNSClient dnsClient(&m_NetSubSystem);
 	CIPAddress srvip;
-	size_t urlst = url.find_first_of("//");
+	size_t urlst = url.find("//");
 	if (urlst == string::npos)
 	{
 		DEBUG_LOG("%s: Invalid URL %s", __FUNCTION__, url.c_str());
-		return HTTPNotFound;
+		return (CircleMbedTLS::THTTPStatus)HTTPNotFound;
 	}
 	size_t docst = url.substr(urlst + 2).find_first_of('/');
-	string hn = url.substr(urlst + 2,  ((docst == string::npos) ? string::npos : docst));
+	string hn = url.substr(urlst + 2, ((docst == string::npos) ? string::npos : docst));
 
 	u8 ipa[4];
 	if (parse_ipv4(hn.c_str(), ipa))
 	{
 		DEBUG_LOG("%s: Hostname %s is a valid IPv4 address", __FUNCTION__, hn.c_str());
-		// If the hostname is a valid IPv4 address, use it directly
 		srvip = CIPAddress(ipa);
-	} 
+	}
 	else if (!dnsClient.Resolve(hn.c_str(), &srvip))
 	{
 		DEBUG_LOG("%s: DNS resolution failed for URL %s (%s)", __FUNCTION__, url.c_str(), hn.c_str());
-		return HTTPNotFound;
+		return (CircleMbedTLS::THTTPStatus)HTTPNotFound;
 	}
 	else
 	{
@@ -994,42 +989,101 @@ THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pL
 	}
 
 	u16 pt = url.substr(0, url.find_first_of(':')) == "https" ? HTTPS_PORT : HTTP_PORT;
-	CircleMbedTLS::CTLSSimpleSupport m_TLSSupport(&m_NetSubSystem);
-	CircleMbedTLS::CHTTPClient httpClient(&m_TLSSupport, srvip, pt, hn.c_str(), true);
+	CircleMbedTLS::CTLSSimpleSupport tlsSupport(&m_NetSubSystem);
+	CircleMbedTLS::CHTTPClient httpClient(&tlsSupport, srvip, pt, hn.c_str(), true);
 	string doc;
 	if (docst == string::npos)
 		doc = "/";
 	else
-	    doc = url.substr(urlst + 2 + docst);
+		doc = url.substr(urlst + 2 + docst);
 	DEBUG_LOG("%s: getting '%s' from %s", __FUNCTION__, doc.c_str(), hn.c_str());
-	static u8 pHeader[8*1024];
-	pHeader[0] = '\0';
-	unsigned pHLen = sizeof(pHeader);
-	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength, pHeader, &pHLen);
-	char *content_type;
-	if ((content_type = strstr((char*)pHeader, "Content-Type: ")))
+	DEBUG_LOG("%s: proxy request url=%s port=%u", __FUNCTION__, url.c_str(), pt);
+	pRespHeader[0] = '\0';
+	// Do not exceed caller's buffer; fall back to 8K if caller didn't set a size
+	if (*pRespHLen == 0)
+		*pRespHLen = sizeof(u8) * 8 * 1024;
+	unsigned respHdrCap = *pRespHLen;
+	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength, pRespHeader, pRespHLen);
+	// Ensure null-termination for safe strstr usage downstream
+	if (*pRespHLen < respHdrCap)
+		pRespHeader[*pRespHLen] = '\0';
+	else if (respHdrCap > 0)
+		pRespHeader[respHdrCap - 1] = '\0';
+	DEBUG_LOG("%s: GET returned status=%d, body length=%u, header length=%u", __FUNCTION__, status, *pLength, *pRespHLen);
+	DEBUG_LOG("%s: response headers:\n%s", __FUNCTION__, (const char *)pRespHeader);
+	return status;
+}
+
+THTTPStatus CWebServer::pi1541_proxy_html(string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pH)
+{
+	assert(pBuffer != 0);
+	assert(pLength != 0);
+	assert(ppContentType != 0);
+
+	unsigned respHLen = sizeof(m_respHeader);
+	CircleMbedTLS::THTTPStatus status = proxy_fetch(url, pBuffer, pLength, m_respHeader, &respHLen);
+
+	// Follow 3xx redirects
+	const unsigned maxRedirects = 5;
+	for (unsigned i = 0; i < maxRedirects && (unsigned)status >= 300 && (unsigned)status < 400; i++)
 	{
-		static char content_type_buffer[256];
-		content_type += strlen("Content-Type: ");
-		char *n = strchr(content_type, '\r');
-		memcpy(content_type_buffer, content_type, n - content_type);
-		content_type_buffer[n - content_type] = '\0';
-		*ppContentType = content_type_buffer;
-		DEBUG_LOG("%s: found Content-Type: %s", __FUNCTION__, *ppContentType);
-		strcat((char *)pHeader, "Access-Control-Allow-Origin: *\r\n");
-		strcat((char *)pHeader, "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
-		strcat((char *)pHeader, "Access-Control-Allow-Headers: Authorization, Location, Content-Type\r\n");
-		//DEBUG_LOG("%s: added CORS headers to response to header '%s'", __FUNCTION__, pHeader);
+		char *loc = strstr((char*)m_respHeader, "Location:");
+		if (!loc) loc = strstr((char*)m_respHeader, "location:");
+		if (!loc) break;
+		loc += strlen("Location:");
+		while (*loc == ' ') loc++;
+		char *eol = strstr(loc, "\r\n");
+		if (!eol) break;
+
+		string newUrl(loc, eol - loc);
+		if (newUrl.find("://") == string::npos)
+		{
+			size_t urlst = url.find("//");
+			size_t docst = url.substr(urlst + 2).find_first_of('/');
+			string base = url.substr(0, urlst + 2) + url.substr(urlst + 2, ((docst == string::npos) ? string::npos : docst));
+			if (newUrl[0] != '/')
+				newUrl = "/" + newUrl;
+			newUrl = base + newUrl;
+		}
+		DEBUG_LOG("%s: following redirect %u -> %s", __FUNCTION__, (unsigned)status, newUrl.c_str());
+		url = newUrl;
+		respHLen = sizeof(m_respHeader);
+		status = proxy_fetch(url, pBuffer, pLength, m_respHeader, &respHLen);
 	}
-	else 
+
+	// Build response: status line, upstream headers (minus replaced ones), correct Content-Length, CORS
+	unsigned off = snprintf(m_proxyHeader, sizeof(m_proxyHeader),
+		"HTTP/1.1 %u\r\n", (unsigned)status);
+
+	char *line = (char*)m_respHeader;
+	while (line && *line)
 	{
-		*ppContentType = "text/html; charset=UTF-8";
-		DEBUG_LOG("%s: using default Content-Type: %s", __FUNCTION__, *ppContentType);
+		char *eol = strstr(line, "\r\n");
+		if (!eol) break;
+		size_t len = eol - line;
+		if (len == 0) break;
+		if (strncasecmp(line, "Content-Length:", strlen("Content-Length:")) != 0 &&
+		    strncasecmp(line, "Transfer-Encoding:", strlen("Transfer-Encoding:")) != 0 &&
+		    strncasecmp(line, "Connection:", strlen("Connection:")) != 0)
+		{
+			if (off + len + 2 > sizeof(m_proxyHeader) - 256)
+				break;
+			memcpy(m_proxyHeader + off, line, len + 2);
+			off += len + 2;
+		}
+		line = eol + 2;
 	}
-	//if (HTTPOK != (THTTPStatus)status)
-	{
-		*pH = (const char*)pHeader;
-	}
+
+	off += snprintf(m_proxyHeader + off, sizeof(m_proxyHeader) - off,
+		"Content-Length: %u\r\n"
+		"Connection: close\r\n"
+		"Access-Control-Allow-Origin: *\r\n"
+		"Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+		"Access-Control-Allow-Headers: Authorization, Location, Content-Type\r\n"
+		"\r\n",
+		*pLength);
+	*pH = m_proxyHeader;
+
 	DEBUG_LOG("%s: HTTP status = %d, len = %d", __FUNCTION__, status, ((status == (CircleMbedTLS::THTTPStatus) HTTPOK) ? *pLength : 0));
 	return (THTTPStatus)status;
 }

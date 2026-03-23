@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 skyie
+//
+// This file is part of pi1541ui.
+// pi1541ui is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later version.
+// See the LICENSE file for details.
+
 // Alpine.js File Operations Store
 // All write operations against the Pi1541 device: upload, delete, rename,
 // create directory, and mount. Read/parse operations remain in proxyStore.
@@ -21,7 +30,7 @@ document.addEventListener("alpine:init", () => {
       try {
         proxy.connecting = true;
         proxy.connectionError = null;
-        const url = `${proxy.pi_endpoint}/index.html?[DIR]&${path}&[MKDIR]&${encodeURIComponent(dirName)}`;
+        const url = `${proxy.effectivePiEndpoint()}/index.html?[DIR]&${path}&[MKDIR]&${encodeURIComponent(dirName)}`;
         console.log(`[fileOpsStore] Creating directory: ${path}/${dirName}`);
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -52,7 +61,7 @@ document.addEventListener("alpine:init", () => {
         console.log(`[fileOpsStore] Directory already exists: ${fullPath}`);
         return;
       }
-      const url = `${proxy.pi_endpoint}/index.html?[DIR]&${parentPath}&[MKDIR]&${encodeURIComponent(dirName)}`;
+      const url = `${proxy.effectivePiEndpoint()}/index.html?[DIR]&${parentPath}&[MKDIR]&${encodeURIComponent(dirName)}`;
       console.log(`[fileOpsStore] Creating directory: ${fullPath}`);
       const resp = await fetch(url);
       if (!resp.ok) {
@@ -71,7 +80,7 @@ document.addEventListener("alpine:init", () => {
       try {
         proxy.connecting = true;
         proxy.connectionError = null;
-        const url = `${proxy.pi_endpoint}/index.html?[DIR]&${encodeURIComponent(path)}&[DEL]&${encodeURIComponent(name)}`;
+        const url = `${proxy.effectivePiEndpoint()}/index.html?[DIR]&${encodeURIComponent(path)}&[DEL]&${encodeURIComponent(name)}`;
         console.log(`[fileOpsStore] Deleting: ${path}/${name}`);
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -99,7 +108,7 @@ document.addEventListener("alpine:init", () => {
         proxy.connectionError = null;
         const parentPath = oldPath.split("/").slice(0, -1).join("/") || "/";
         const newPath = `${parentPath === "/" ? "" : parentPath}/${newName}`;
-        const url = `${proxy.pi_endpoint}/mount-imgs.html?[RENAME]&${encodeURIComponent(oldPath)}&[NEWNAME]&${encodeURIComponent(newPath)}`;
+        const url = `${proxy.effectivePiEndpoint()}/mount-imgs.html?[RENAME]&${encodeURIComponent(oldPath)}&[NEWNAME]&${encodeURIComponent(newPath)}`;
         console.log(`[fileOpsStore] Renaming: ${oldPath} → ${newPath}`);
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -134,7 +143,7 @@ document.addEventListener("alpine:init", () => {
         form.append("buttsubmit", "Upload Diskimage");
 
         console.log(`[fileOpsStore] Uploading file: ${file.name} to ${path}`);
-        const resp = await fetch(`${proxy.pi_endpoint}/index.html`, { method: "POST", body: form });
+        const resp = await fetch(`${proxy.effectivePiEndpoint()}/index.html`, { method: "POST", body: form });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         await proxy._reloadDirectory(path);
         Alpine.store("toast").success(file.name, "Uploaded");
@@ -170,7 +179,7 @@ document.addEventListener("alpine:init", () => {
 
         const dirName = files[0]?.webkitRelativePath?.split("/")[0] || "directory";
         console.log(`[fileOpsStore] Uploading directory: ${dirName} to ${path}`);
-        const resp = await fetch(`${proxy.pi_endpoint}/index.html`, { method: "POST", body: form });
+        const resp = await fetch(`${proxy.effectivePiEndpoint()}/index.html`, { method: "POST", body: form });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         await proxy._reloadDirectory(path);
         Alpine.store("toast").success(dirName, "Directory uploaded");
@@ -198,7 +207,7 @@ document.addEventListener("alpine:init", () => {
       form.append("xpath", path);
       form.append("diskimage", file, file.name);
       form.append("buttsubmit", "Upload Diskimage");
-      const resp = await fetch(`${this._proxy.pi_endpoint}/index.html`, { method: "POST", body: form });
+      const resp = await fetch(`${this._proxy.effectivePiEndpoint()}/index.html`, { method: "POST", body: form });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     },
 

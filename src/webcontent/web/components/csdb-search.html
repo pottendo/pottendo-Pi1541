@@ -3,26 +3,54 @@
     x-data="{
     activeTab: 'quick',
     query: '',
-    groupQuery: '',
+    advancedQuery: '',
+    advancedType: 'group',
 
-    // Group type filter
+    // Filters
     releaseTypeFilter: '',
+    searchFilter: '',
 
     // Toplist
     toplistSubtype: '1',
+
+    // Legends
+    legendGroups: [],
+    legendMusicians: [],
+    legendTab: 'groups',
+
+    // Best releases suggestions
+    sceneReleases: [],
+    advancedSearched: false,
+
+    // Recommendations dropdown
+    recsOpen: false,
 
     // Lazy loading
     visibleCount: 50,
     batchSize: 50,
     _observer: null,
+    _sentinel: null,
+
+    init() {
+        this.$nextTick(() => { this._sentinel = this.$refs.sentinel; });
+    },
 
 
     get filteredResults() {
-        const all = $store.csdb.results[this.activeTab] || [];
-        if ((this.activeTab === 'group' || this.activeTab === 'quick') && this.releaseTypeFilter) {
-            return all.filter(r => r.type === this.releaseTypeFilter);
+        let tab = this.activeTab;
+        if (tab === 'advanced') tab = this.advancedType === 'group' ? 'group' : 'scener';
+        let results = $store.csdb.results[tab] || [];
+        if (this.releaseTypeFilter) results = results.filter(r => r.type === this.releaseTypeFilter);
+        if (this.searchFilter) {
+            const q = this.searchFilter.toLowerCase();
+            results = results.filter(r =>
+                (r.name && r.name.toLowerCase().includes(q)) ||
+                (r.group && r.group.toLowerCase().includes(q)) ||
+                (r.date && r.date.toLowerCase().includes(q)) ||
+                (r.description && r.description.toLowerCase().includes(q))
+            );
         }
-        return all;
+        return results;
     },
 
     get visibleResults() {
@@ -38,8 +66,9 @@
         return [...new Set(all.map(r => r.type).filter(Boolean))].sort();
     },
 
-    get groupTypes() {
-        const all = $store.csdb.results.group || [];
+    get advancedTypes() {
+        const tab = this.advancedType === 'group' ? 'group' : 'scener';
+        const all = $store.csdb.results[tab] || [];
         return [...new Set(all.map(r => r.type).filter(Boolean))].sort();
     },
 
@@ -60,28 +89,89 @@
             }
         }, { rootMargin: '200px' });
         this.$nextTick(() => {
-            const sentinel = this.$refs.sentinel;
-            if (sentinel) this._observer.observe(sentinel);
+            if (this._sentinel) this._observer.observe(this._sentinel);
         });
+    },
+
+    async loadLegends() {
+        try {
+            const [g, m] = await Promise.all([
+                fetch('data/scene-groups.json').then(r => r.json()),
+                fetch('data/scene-musicians.json').then(r => r.json()),
+            ]);
+            this.legendGroups = g;
+            this.legendMusicians = m;
+        } catch (e) {
+            console.error('[csdb-search] Failed to load legends:', e);
+        }
+    },
+
+    get bestReleases() {
+        const type = this.advancedType;
+        const info = type === 'group' ? $store.csdb.groupInfo : $store.csdb.scenerInfo;
+        if (!info || !this.sceneReleases.length) return [];
+        const name = info.name.toLowerCase();
+        const match = this.sceneReleases.find(r => r.type === type && name.includes(r.name.toLowerCase()));
+        return match ? match.releases : [];
+    },
+
+    async loadSceneReleases() {
+        if (this.sceneReleases.length) return;
+        try {
+            this.sceneReleases = await fetch('data/scene-releases.json').then(r => r.json());
+        } catch (e) {
+            console.error('[csdb-search] Failed to load scene releases:', e);
+        }
+    },
+
+    searchLegend(name, searchName, type) {
+        this.activeTab = 'advanced';
+        this.advancedType = type;
+        this.advancedQuery = searchName || name;
+        this.doAdvancedSearch();
     },
 
     async doQuickSearch() {
         this.releaseTypeFilter = '';
+        this.searchFilter = '';
         this.resetVisible();
-        await $store.csdb.searchQuick(this.query);
+        await $store.csdb.search('quick', this.query);
         this.setupObserver();
     },
 
-    async doGroupSearch() {
+    async doSelectGroup(g) {
         this.releaseTypeFilter = '';
+        this.searchFilter = '';
         this.resetVisible();
-        await $store.csdb.searchGroup(this.groupQuery);
+        await $store.csdb.selectGroup(g);
+        this.advancedSearched = true;
+        this.setupObserver();
+    },
+
+    async doSelectScener(s) {
+        this.releaseTypeFilter = '';
+        this.searchFilter = '';
+        this.resetVisible();
+        await $store.csdb.selectScener(s);
+        this.advancedSearched = true;
+        this.setupObserver();
+    },
+
+    async doAdvancedSearch() {
+        this.releaseTypeFilter = '';
+        this.searchFilter = '';
+        this.resetVisible();
+        await this.loadSceneReleases();
+        this.advancedSearched = false;
+        await $store.csdb.search(this.advancedType, this.advancedQuery);
+        this.advancedSearched = true;
         this.setupObserver();
     },
 
     async doToplistSearch() {
+        this.searchFilter = '';
         this.resetVisible();
-        await $store.csdb.searchToplist(this.toplistSubtype);
+        await $store.csdb.search('toplist', this.toplistSubtype);
         this.setupObserver();
     },
 
@@ -169,14 +259,6 @@
         }
     </style>
 
-    <!-- Header -->
-    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-        <h2 class="subtitle is-5 mb-0">
-            <span class="icon"><i class="fas fa-search"></i></span>
-            CSDb Search
-        </h2>
-    </div>
-
     <!-- Tabs -->
     <div class="csdb-tabs">
         <div class="tabs is-small is-boxed">
@@ -187,10 +269,10 @@
                         <span>Quick</span>
                     </a>
                 </li>
-                <li :class="{ 'is-active': activeTab === 'group' }">
-                    <a @click="activeTab = 'group'; resetVisible()">
-                        <span class="icon is-small"><i class="fas fa-users"></i></span>
-                        <span>Group</span>
+                <li :class="{ 'is-active': activeTab === 'advanced' }">
+                    <a @click="activeTab = 'advanced'; resetVisible()">
+                        <span class="icon is-small"><i class="fas fa-search-plus"></i></span>
+                        <span>Advanced</span>
                     </a>
                 </li>
                 <li :class="{ 'is-active': activeTab === 'toplist' }">
@@ -199,17 +281,24 @@
                         <span>Top List</span>
                     </a>
                 </li>
+                <li :class="{ 'is-active': activeTab === 'legends' }">
+                    <a @click="activeTab = 'legends'; if (!legendGroups.length) loadLegends()">
+                        <span class="icon is-small"><i class="fas fa-star"></i></span>
+                        <span>Legends</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
         <!-- Quick Search -->
         <div x-show="activeTab === 'quick'">
+            <p class="is-size-7 has-text-grey mb-2">Search CSDb for C64 demos, games, intros, and more.</p>
             <div class="field has-addons">
                 <div class="control">
                     <input class="input is-small" type="text" placeholder="Search releases (e.g. edge of disgrace)..."
                            x-model="query"
                            @keydown.enter="doQuickSearch()"
-                           style="width: 16em">
+                           style="width: 24em">
                 </div>
                 <div class="control">
                     <button class="button is-info is-small" @click="doQuickSearch()" :disabled="$store.csdb.searching">
@@ -234,6 +323,9 @@
                             </template>
                         </select>
                     </div>
+                    <input class="input is-small" type="text" placeholder="Filter results..."
+                           x-model="searchFilter" @input="resetVisible(); setupObserver()"
+                           style="width: 12em">
                     <span class="is-size-7 has-text-grey" x-text="filteredResults.length + ' releases'"></span>
                 </div>
             </div>
@@ -241,58 +333,74 @@
                 <table class="table is-fullwidth is-hoverable is-size-7">
                     <thead>
                         <tr>
+                            <th></th>
                             <th>Release</th>
                             <th>Group</th>
                             <th>Type</th>
                             <th>Date</th>
-                            <th></th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="result in visibleResults" :key="result.id">
                             <tr class="csdb-result-row" :class="{ 'is-installed': $store.release.get(result.id)?.installs?.length }">
-                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
-                                <td x-text="result.group"></td>
-                                <td x-text="result.type"></td>
-                                <td x-text="result.date"></td>
-                                <td style="width:1.5rem">
-                                    <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset" @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="View details">
-                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                                    </button>
-                                </td>
-                                <td style="width:1.5rem">
+                                <td style="width:3rem;white-space:nowrap">
+                                    <a class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                       :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" title="View on CSDb">
+                                        <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                                    </a>
+                                    <template x-if="$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Manage installed release">
+                                            <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Download & Install">
+                                            <span class="icon is-small"><i class="fas fa-download"></i></span>
+                                        </button>
+                                    </template>
                                     <template x-if="$store.release.get(result.id)?.installs?.at(-1)?.path">
                                         <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
                                                 :disabled="$store.proxy.connecting"
-                                                @click="$store.fileOps.mountFile($store.release.get(result.id).installs.at(-1).path + '/_autoswap.lst')"
+                                                @click="$store.release.mountInstall(result.id)"
                                                 title="Mount">
                                             <span class="icon is-small"><i class="fas fa-play"></i></span>
                                         </button>
                                     </template>
                                 </td>
+                                <td x-text="result.name"></td>
+                                <td x-text="result.group"></td>
+                                <td x-text="result.type"></td>
+                                <td x-text="result.date"></td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
             </div>
-            <div x-show="!$store.csdb.searching && ($store.csdb.results.quick || []).length === 0 && !$store.csdb.error"
-                 class="has-text-centered has-text-grey is-size-7 py-4">
-                Search CSDb for C64 demos, games, intros, and more.
-            </div>
         </div>
 
-        <!-- Group Search -->
-        <div x-show="activeTab === 'group'">
+        <!-- Advanced Search -->
+        <div x-show="activeTab === 'advanced'">
+            <p class="is-size-7 has-text-grey mb-2">Search for a group or scener by name.</p>
             <div class="field has-addons">
                 <div class="control">
-                    <input class="input is-small" type="text" placeholder="Group name (e.g. Censor Design)..."
-                           x-model="groupQuery"
-                           @keydown.enter="doGroupSearch()"
+                    <div class="select is-small">
+                        <select x-model="advancedType" @change="releaseTypeFilter = ''; resetVisible()">
+                            <option value="group">Group</option>
+                            <option value="scener">Scener</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control">
+                    <input class="input is-small" type="text"
+                           :placeholder="advancedType === 'group' ? 'Group name (e.g. Censor Design)...' : 'Scener handle (e.g. Jason Page)...'"
+                           x-model="advancedQuery"
+                           @keydown.enter="doAdvancedSearch()"
                            style="width: 16em">
                 </div>
                 <div class="control">
-                    <button class="button is-info is-small" @click="doGroupSearch()" :disabled="$store.csdb.searching">
+                    <button class="button is-info is-small" @click="doAdvancedSearch()" :disabled="$store.csdb.searching">
                         Search
                     </button>
                 </div>
@@ -304,72 +412,159 @@
             <div x-show="$store.csdb.error" class="notification is-danger is-light is-size-7 py-2 px-3 mt-3">
                 <span x-text="$store.csdb.error"></span>
             </div>
-            <div x-show="$store.csdb.groupInfo" class="csdb-group-info mt-3">
-                <strong><a class="csdb-link" :href="'https://csdb.dk/group/?id=' + $store.csdb.groupInfo?.id" target="_blank" x-text="$store.csdb.groupInfo?.name"></a></strong>
-                <span x-show="$store.csdb.groupInfo?.country" x-text="'(' + $store.csdb.groupInfo?.country + ')'"></span>
-                <span> &mdash; </span>
-                <span x-text="$store.csdb.resultCounts.group + ' releases'"></span>
+            <!-- Group disambiguation -->
+            <template x-if="advancedType === 'group' && $store.csdb.groupMatches.length > 0 && !$store.csdb.searching">
+                <div class="mt-3">
+                    <p class="is-size-7 has-text-grey mb-1">Multiple groups found &mdash; select one:</p>
+                    <table class="table is-fullwidth is-hoverable is-size-7">
+                        <tbody>
+                            <template x-for="g in $store.csdb.groupMatches" :key="g.id">
+                                <tr class="csdb-result-row" style="cursor:pointer"
+                                    @click="doSelectGroup(g)">
+                                    <td x-text="g.name"></td>
+                                    <td class="has-text-grey" x-text="g.country"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <!-- Scener disambiguation -->
+            <template x-if="advancedType === 'scener' && $store.csdb.scenerMatches.length > 0 && !$store.csdb.searching">
+                <div class="mt-3">
+                    <p class="is-size-7 has-text-grey mb-1">Multiple sceners found &mdash; select one:</p>
+                    <table class="table is-fullwidth is-hoverable is-size-7">
+                        <tbody>
+                            <template x-for="s in $store.csdb.scenerMatches" :key="s.id">
+                                <tr class="csdb-result-row" style="cursor:pointer"
+                                    @click="doSelectScener(s)">
+                                    <td x-text="s.name"></td>
+                                    <td class="has-text-grey" x-text="s.country"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <!-- Group result header -->
+            <div x-show="advancedType === 'group' && $store.csdb.groupInfo && !$store.csdb.searching" class="csdb-group-info mt-3">
+                <div class="is-flex is-align-items-center" style="gap:0.4rem">
+                    <a class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                       :href="'https://csdb.dk/group/?id=' + $store.csdb.groupInfo?.id" target="_blank" title="View on CSDb">
+                        <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                    </a>
+                    <strong x-text="$store.csdb.groupInfo?.name"></strong>
+                    <span x-show="$store.csdb.groupInfo?.country" x-text="'(' + $store.csdb.groupInfo?.country + ')'"></span>
+                    <span>&mdash;</span>
+                    <span x-text="$store.csdb.resultCounts.group + ' releases'"></span>
+                </div>
             </div>
-            <div x-show="($store.csdb.results.group || []).length > 0 && !$store.csdb.searching">
+            <!-- Scener result header -->
+            <div x-show="advancedType === 'scener' && $store.csdb.scenerInfo && !$store.csdb.searching" class="csdb-group-info mt-3">
+                <div class="is-flex is-align-items-center" style="gap:0.4rem">
+                <a class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                   :href="'https://csdb.dk/scener/?id=' + $store.csdb.scenerInfo?.id" target="_blank" title="View on CSDb">
+                    <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                </a>
+                <strong x-text="$store.csdb.scenerInfo?.name"></strong>
+                <span x-show="$store.csdb.scenerInfo?.country" x-text="'(' + $store.csdb.scenerInfo?.country + ')'"></span>
+                <span>&mdash;</span>
+                <span x-text="$store.csdb.resultCounts.scener + ' releases'"></span>
+                </div>
+            </div>
+            <div x-show="(filteredResults.length > 0 || (advancedSearched && bestReleases.length > 0)) && !$store.csdb.searching">
                 <div class="mt-2 mb-1 is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5em">
                     <div class="select is-small">
                         <select x-model="releaseTypeFilter" @change="resetVisible(); setupObserver()">
                             <option value="">All</option>
-                            <template x-for="t in groupTypes" :key="t">
+                            <template x-for="t in advancedTypes" :key="t">
                                 <option :value="t" x-text="t"></option>
                             </template>
                         </select>
                     </div>
+                    <input class="input is-small" type="text" placeholder="Filter results..."
+                           x-model="searchFilter" @input="resetVisible(); setupObserver()"
+                           style="width: 12em">
                     <span class="is-size-7 has-text-grey" x-text="filteredResults.length + ' releases'"></span>
+                    <template x-if="advancedSearched && bestReleases.length > 0">
+                        <div class="dropdown ml-auto" :class="{'is-active': recsOpen}" @click.outside="recsOpen = false">
+                            <div class="dropdown-trigger">
+                                <button class="button is-small is-light" @click="recsOpen = !recsOpen" aria-haspopup="true">
+                                    <span>Recommendations</span>
+                                    <span class="icon is-small"><i class="fas fa-angle-down"></i></span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu" role="menu">
+                                <div class="dropdown-content">
+                                    <template x-for="rel in bestReleases" :key="rel">
+                                        <a class="dropdown-item is-size-7"
+                                           :class="{'is-active': searchFilter === rel}"
+                                           @click="searchFilter = searchFilter === rel ? '' : rel; releaseTypeFilter = ''; resetVisible(); setupObserver(); recsOpen = false"
+                                           x-text="rel">
+                                        </a>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
             <div x-show="visibleResults.length > 0 && !$store.csdb.searching" class="table-container mt-3">
                 <table class="table is-fullwidth is-hoverable is-size-7">
                     <thead>
                         <tr>
+                            <th></th>
                             <th>Release</th>
                             <th>Type</th>
                             <th>Date</th>
-                            <th>Party</th>
-                            <th></th>
-                            <th></th>
+                            <th>Description</th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="result in visibleResults" :key="result.id">
                             <tr class="csdb-result-row" :class="{ 'is-installed': $store.release.get(result.id)?.installs?.length }">
-                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
-                                <td x-text="result.type"></td>
-                                <td x-text="result.date"></td>
-                                <td class="csdb-party" x-text="result.party"></td>
-                                <td style="width:1.5rem">
-                                    <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset" @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="View details">
-                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                                    </button>
-                                </td>
-                                <td style="width:1.5rem">
+                                <td style="width:3rem;white-space:nowrap">
+                                    <a class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                       :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" title="View on CSDb">
+                                        <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                                    </a>
+                                    <template x-if="$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Manage installed release">
+                                            <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Download & Install">
+                                            <span class="icon is-small"><i class="fas fa-download"></i></span>
+                                        </button>
+                                    </template>
                                     <template x-if="$store.release.get(result.id)?.installs?.at(-1)?.path">
                                         <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
                                                 :disabled="$store.proxy.connecting"
-                                                @click="$store.fileOps.mountFile($store.release.get(result.id).installs.at(-1).path + '/_autoswap.lst')"
+                                                @click="$store.release.mountInstall(result.id)"
                                                 title="Mount">
                                             <span class="icon is-small"><i class="fas fa-play"></i></span>
                                         </button>
                                     </template>
                                 </td>
+                                <td x-text="result.name"></td>
+                                <td x-text="result.type"></td>
+                                <td x-text="result.date"></td>
+                                <td class="csdb-party" x-text="result.description"></td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
             </div>
-            <div x-show="!$store.csdb.searching && ($store.csdb.results.group || []).length === 0 && !$store.csdb.error"
-                 class="has-text-centered has-text-grey is-size-7 py-4">
-                Search for a group by name.
-            </div>
         </div>
 
         <!-- Top List -->
         <div x-show="activeTab === 'toplist'">
+            <p class="is-size-7 has-text-grey mb-2">Select a type and show the top list.</p>
             <div class="field has-addons">
                 <div class="control">
                     <div class="select is-small">
@@ -394,60 +589,153 @@
                 <span x-text="$store.csdb.error"></span>
             </div>
             <div x-show="$store.csdb.resultCounts.toplist > 0 && !$store.csdb.searching" class="mt-3 mb-1">
-                <span class="tag is-dark" x-text="$store.csdb.resultCounts.toplist + ' entries'"></span>
+                <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5em">
+                    <input class="input is-small" type="text" placeholder="Filter results..."
+                           x-model="searchFilter" @input="resetVisible(); setupObserver()"
+                           style="width: 12em">
+                    <span class="is-size-7 has-text-grey" x-text="filteredResults.length + ' entries'"></span>
+                </div>
             </div>
             <div x-show="visibleResults.length > 0 && !$store.csdb.searching" class="table-container mt-3">
                 <table class="table is-fullwidth is-hoverable is-size-7">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th></th>
                             <th>Release</th>
                             <th>Group</th>
                             <th>Rating</th>
-                            <th>Votes</th>
-                            <th></th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="result in visibleResults" :key="result.id">
                             <tr class="csdb-result-row" :class="{ 'is-installed': $store.release.get(result.id)?.installs?.length }">
-                                <td x-text="result.rank"></td>
-                                <td><a class="csdb-link" :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" x-text="result.name"></a></td>
-                                <td x-text="result.group"></td>
-                                <td>
-                                    <span class="csdb-rating"
-                                          :class="{
-                                              'csdb-rating-high': result.rating >= 8,
-                                              'csdb-rating-mid': result.rating >= 5 && result.rating < 8,
-                                              'csdb-rating-low': result.rating < 5
-                                          }"
-                                          x-text="result.rating + '/10'"></span>
-                                </td>
-                                <td x-text="result.votes"></td>
-                                <td style="width:1.5rem">
-                                    <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset" @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="View details">
-                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                                    </button>
-                                </td>
-                                <td style="width:1.5rem">
+                                <td style="width:3rem;white-space:nowrap">
+                                    <a class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                       :href="'https://csdb.dk/release/?id=' + result.id" target="_blank" title="View on CSDb">
+                                        <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                                    </a>
+                                    <template x-if="$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Manage installed release">
+                                            <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!$store.release.get(result.id)?.installs?.length">
+                                        <button class="button is-small is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                                @click="$store.release.openDetail(result)" :disabled="$store.release.detailLoading" title="Download & Install">
+                                            <span class="icon is-small"><i class="fas fa-download"></i></span>
+                                        </button>
+                                    </template>
                                     <template x-if="$store.release.get(result.id)?.installs?.at(-1)?.path">
                                         <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
                                                 :disabled="$store.proxy.connecting"
-                                                @click="$store.fileOps.mountFile($store.release.get(result.id).installs.at(-1).path + '/_autoswap.lst')"
+                                                @click="$store.release.mountInstall(result.id)"
                                                 title="Mount">
                                             <span class="icon is-small"><i class="fas fa-play"></i></span>
                                         </button>
                                     </template>
+                                </td>
+                                <td x-text="result.name"></td>
+                                <td x-text="result.group"></td>
+                                <td>
+                                    <span class="csdb-rating" x-text="result.rating"></span>
+                                    <span class="has-text-grey" x-text="'(' + result.votes + ')'"></span>
+                                    <span x-show="result.rank" class="has-text-grey" x-text="'#' + result.rank"></span>
                                 </td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
             </div>
-            <div x-show="!$store.csdb.searching && ($store.csdb.results.toplist || []).length === 0 && !$store.csdb.error"
-                 class="has-text-centered has-text-grey is-size-7 py-4">
-                Select a type and show the top list.
+        </div>
+
+        <!-- Legends -->
+        <div x-show="activeTab === 'legends'">
+            <div class="tabs is-small is-toggle mb-3">
+                <ul>
+                    <li :class="{ 'is-active': legendTab === 'groups' }">
+                        <a @click="legendTab = 'groups'">
+                            <span class="icon is-small"><i class="fas fa-users"></i></span>
+                            <span>Demo Crews</span>
+                        </a>
+                    </li>
+                    <li :class="{ 'is-active': legendTab === 'musicians' }">
+                        <a @click="legendTab = 'musicians'">
+                            <span class="icon is-small"><i class="fas fa-music"></i></span>
+                            <span>Musicians</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Groups table -->
+            <div x-show="legendTab === 'groups'" class="table-container">
+                <table class="table is-fullwidth is-hoverable is-size-7">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Group</th>
+                            <th>Highlights</th>
+                            <th>Why</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="g in legendGroups" :key="g.rank">
+                            <tr class="csdb-result-row">
+                                <td x-text="g.rank"></td>
+                                <td style="min-width:10em;font-size:0.95rem"><strong x-text="g.name"></strong></td>
+                                <td class="csdb-party" x-text="g.mustSee"></td>
+                                <td class="csdb-party" style="min-width:24em" x-text="g.why"></td>
+                                <td style="width:1.5rem">
+                                    <button class="button is-small is-info is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                            @click="searchLegend(g.name, g.searchName, 'group')"
+                                            :disabled="$store.csdb.searching"
+                                            title="Search CSDb for this group">
+                                        <span class="icon is-small"><i class="fas fa-search"></i></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Musicians table -->
+            <div x-show="legendTab === 'musicians'" class="table-container">
+                <table class="table is-fullwidth is-hoverable is-size-7">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Handle</th>
+                            <th>Best Known Work</th>
+                            <th>Why</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="m in legendMusicians" :key="m.rank">
+                            <tr class="csdb-result-row">
+                                <td x-text="m.rank"></td>
+                                <td style="min-width:10em;font-size:0.95rem"><strong x-text="m.name"></strong></td>
+                                <td class="csdb-party" x-text="m.bestWork"></td>
+                                <td class="csdb-party" style="min-width:24em" x-text="m.why"></td>
+                                <td style="width:1.5rem">
+                                    <button class="button is-small is-info is-light" style="width:1.5rem;height:1.5rem;min-width:unset"
+                                            @click="searchLegend(m.name, m.searchName, 'scener')"
+                                            :disabled="$store.csdb.searching"
+                                            title="Search CSDb for this scener">
+                                        <span class="icon is-small"><i class="fas fa-search"></i></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div x-show="!legendGroups.length" class="has-text-centered has-text-grey is-size-7 py-4">
+                Loading legends...
             </div>
         </div>
     </div>

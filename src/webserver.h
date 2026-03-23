@@ -21,6 +21,7 @@
 #define _webserver_h
 
 #include <circle/net/httpdaemon.h>
+#include <circle-mbedtls/httpclient.h>
 #include <circle/actled.h>
 #include <string>
 
@@ -46,11 +47,15 @@ public:
 				const char **pHeader);	
 
 	THTTPStatus pi1541_proxy_html(std::string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pHeader);
+	CircleMbedTLS::THTTPStatus proxy_fetch(std::string &url, u8 *pBuffer, unsigned *pLength, u8 *pRespHeader, unsigned *pRespHLen);
+
 private:
 	const size_t m_nMaxContentSize;
 	const size_t m_nMaxMultipartSize;
 	CActLED *m_pActLED;
 	CNetSubSystem &m_NetSubSystem;
+	char m_proxyHeader[8*1024];
+	u8 m_respHeader[8*1024];
 };
 
 #endif

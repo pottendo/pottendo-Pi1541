@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 skyie
+//
+// This file is part of pi1541ui.
+// pi1541ui is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later version.
+// See the LICENSE file for details.
+
 // Alpine.js Proxy Store
 // Fetches a remote index.html and parses its content
 
@@ -7,11 +16,36 @@ document.addEventListener("alpine:init", () => {
     connectionError: null,
     connecting: false,
 
+    // Fetch timeout in milliseconds
+    FETCH_TIMEOUT_MS: 3000,
+
+    /**
+     * Fetch with automatic timeout via AbortController
+     * @param {string} url - URL to fetch
+     * @returns {Promise<Response>}
+     */
+    _fetchWithTimeout(url) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), this.FETCH_TIMEOUT_MS);
+      return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
+    },
+
+    // Endpoint configuration mode: "default" (use page origin) or "custom" (user-configured)
+    endpoint_configuration: localStorage.getItem("endpoint_configuration") || "default",
+    setEndpointConfiguration(mode) {
+      this.endpoint_configuration = mode;
+      localStorage.setItem("endpoint_configuration", mode);
+    },
+
     // Pi endpoint persisted in localStorage (can be changed at runtime)
     pi_endpoint: localStorage.getItem("pi_endpoint") || "http://localhost:8000/pi-proxy",
     setPiEndpoint(prefix) {
       this.pi_endpoint = prefix;
       localStorage.setItem("pi_endpoint", prefix);
+    },
+
+    effectivePiEndpoint() {
+      return this.endpoint_configuration === "custom" ? this.pi_endpoint : window.location.origin;
     },
 
     /**
@@ -22,7 +56,7 @@ document.addEventListener("alpine:init", () => {
     async downloadIndex(directory = "") {
       try {
         // Construct the URL with directory parameter if provided
-        const base = this.pi_endpoint;
+        const base = this.effectivePiEndpoint();
         let url = `${base}/index.html`;
         if (directory) {
           // Encode the directory path and format as index.html?[DIR]&/dir/subdir
@@ -32,12 +66,16 @@ document.addEventListener("alpine:init", () => {
 
         console.log(`[proxyStore] Fetching URL: ${url}`);
 
-        const resp = await fetch(url);
+        const resp = await this._fetchWithTimeout(url);
         const text = await resp.text();
         //console.log("[proxyStore] downloadIndex result:\n", text);
         return text;
       } catch (err) {
-        console.error("[proxyStore] downloadIndex error:", err);
+        if (err.name === "AbortError") {
+          console.error("[proxyStore] downloadIndex timed out");
+        } else {
+          console.error("[proxyStore] downloadIndex error:", err);
+        }
         return null;
       }
     },
@@ -203,7 +241,7 @@ document.addEventListener("alpine:init", () => {
      */
     isCommodoreFile(fileName) {
       const lower = fileName.toLowerCase();
-      return lower.endsWith(".d64") || lower.endsWith(".g64") || lower.endsWith(".lst");
+      return lower.endsWith(".d64") || lower.endsWith(".g64") || lower.endsWith(".lst") || lower.endsWith(".prg");
     },
 
     /**
@@ -317,16 +355,20 @@ document.addEventListener("alpine:init", () => {
     async downloadFileDetails(filePath, action = "FILE") {
       try {
         const encodedPath = encodeURIComponent(filePath);
-        const base = this.pi_endpoint;
+        const base = this.effectivePiEndpoint();
         const url = `${base}/mount-imgs.html?[${action}]&${encodedPath}`;
 
         console.log(`[proxyStore] Fetching file details URL: ${url}`);
 
-        const resp = await fetch(url);
+        const resp = await this._fetchWithTimeout(url);
         const text = await resp.text();
         return text;
       } catch (err) {
-        console.error("[proxyStore] downloadFileDetails error:", err);
+        if (err.name === "AbortError") {
+          console.error("[proxyStore] downloadFileDetails timed out");
+        } else {
+          console.error("[proxyStore] downloadFileDetails error:", err);
+        }
         return null;
       }
     },

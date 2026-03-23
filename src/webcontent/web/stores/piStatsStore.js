@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 skyie
+//
+// This file is part of pi1541ui.
+// pi1541ui is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later version.
+// See the LICENSE file for details.
+
 // Alpine.js Pi Stats Store
 // Handles Pi1541 device stats: fetching, parsing, and display state.
 // Reads pi_endpoint from proxyStore so configuration stays in one place.
@@ -13,13 +22,17 @@ document.addEventListener("alpine:init", () => {
      */
     async downloadStats() {
       try {
-        const url = `${Alpine.store("proxy").pi_endpoint}/pistats.html`;
+        const url = `${Alpine.store("proxy").effectivePiEndpoint()}/pistats.html`;
         console.log(`[piStatsStore] Fetching stats URL: ${url}`);
-        const resp = await fetch(url);
+        const resp = await Alpine.store("proxy")._fetchWithTimeout(url);
         const text = await resp.text();
         return text;
       } catch (err) {
-        console.error("[piStatsStore] downloadStats error:", err);
+        if (err.name === "AbortError") {
+          console.error("[piStatsStore] downloadStats timed out");
+        } else {
+          console.error("[piStatsStore] downloadStats error:", err);
+        }
         return null;
       }
     },

@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 skyie
+//
+// This file is part of pi1541ui.
+// pi1541ui is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later version.
+// See the LICENSE file for details.
+
 // Alpine.js Release Store
 // Persists CSDb release metadata and download history to localStorage
 
@@ -7,6 +16,7 @@ document.addEventListener("alpine:init", () => {
     downloadResult: null,
     detail: null,
     detailLoading: false,
+    downloading: false,
     installing: false,
     typeFilter: 'All',
 
@@ -29,8 +39,11 @@ document.addEventListener("alpine:init", () => {
 
     async openDetail(result, fetch = true) {
       if (this.detailLoading) return;
-      if (!fetch) {
-        this.detail = { ...this.releases[result.id]?.meta };
+      const cached = this.releases[result.id]?.meta;
+      if (!fetch || cached) {
+        this.detail = cached
+          ? { ...cached }
+          : { id: result.id, name: result.name, year: result.year || '', type: result.type || '', group: result.group || '', date: result.date || '', party: result.party || '', rating: result.rating ?? null, votes: result.votes ?? null, downloads: result.downloads || [] };
         return;
       }
       this.detail = { id: result.id, name: result.name, year: result.year || '', type: result.type || '', group: result.group || '', date: result.date || '', party: result.party || '', rating: result.rating ?? null, votes: result.votes ?? null, downloads: result.downloads || [] };
@@ -40,6 +53,9 @@ document.addEventListener("alpine:init", () => {
         if (details) {
           this.detail = { ...details };
         }
+      } catch (err) {
+        Alpine.store('toast').error('Failed to load release details: ' + err.message);
+        this.detail = null;
       } finally {
         this.detailLoading = false;
       }
@@ -151,20 +167,24 @@ document.addEventListener("alpine:init", () => {
             const fileObj = new File([content], fname);
             console.log(`[releaseStore] Uploading ${subdirPath}/${fname}`);
             await fileOps.uploadFileSilent(subdirPath, fileObj);
-            if (/\.(d64|g64)$/i.test(fname)) diskImages.push(fname);
+            if (/\.(d64|g64|t64|prg)$/i.test(fname)) diskImages.push(fname);
           }
         } else {
           const fileObj = new File([blob], filename);
           console.log(`[releaseStore] Uploading ${subdirPath}/${filename}`);
           await fileOps.uploadFileSilent(subdirPath, fileObj);
-          if (/\.(d64|g64)$/i.test(filename)) diskImages.push(filename);
+          if (/\.(d64|g64|t64|prg)$/i.test(filename)) diskImages.push(filename);
         }
 
-        if (diskImages.length > 0) {
+        let mountFile = null;
+        if (diskImages.length > 1) {
           const lstContent = [...diskImages, 'dos1541'].join('\n');
           const lstFile = new File([lstContent], '_autoswap.lst', { type: 'text/plain' });
           console.log(`[releaseStore] Uploading _autoswap.lst:\n${lstContent}`);
           await fileOps.uploadFileSilent(subdirPath, lstFile);
+          mountFile = '_autoswap.lst';
+        } else if (diskImages.length === 1) {
+          mountFile = diskImages[0];
         }
 
         await proxy._reloadDirectory(typePath);
@@ -178,7 +198,7 @@ document.addEventListener("alpine:init", () => {
           size: this.downloadResult.size,
           zipContents: this.downloadResult.zipContents,
         });
-        this.releases[releaseId].installs.push({ path: subdirPath, downloadId, installedAt: new Date().toISOString() });
+        this.releases[releaseId].installs.push({ path: subdirPath, mountFile, downloadId, installedAt: new Date().toISOString() });
         this.persist();
 
         this.downloadResult = null;
@@ -190,6 +210,13 @@ document.addEventListener("alpine:init", () => {
         Alpine.store('toast').error('Install failed: ' + err.message);
       } finally {
         this.installing = false;
+      }
+    },
+
+    async installAndMount(releaseId, downloadId) {
+      await this.installRelease(releaseId, downloadId);
+      if (this.isInstalled(releaseId)) {
+        await this.mountInstall(releaseId);
       }
     },
 
@@ -218,6 +245,23 @@ document.addEventListener("alpine:init", () => {
 
     isInstalled(id) {
       return (this.releases[id]?.installs?.length ?? 0) > 0;
+    },
+
+    mountFilePath(id) {
+      const install = this.releases[id]?.installs?.at(-1);
+      if (!install?.mountFile) return null;
+      return `${install.path}/${install.mountFile}`;
+    },
+
+    async mountInstall(id) {
+      const path = this.mountFilePath(id);
+      if (!path) return;
+      await Alpine.store('fileOps').mountFile(path);
+    },
+
+    isMounted(id) {
+      const path = this.mountFilePath(id);
+      return !!path && Alpine.store('disc').mountedFile === path;
     },
 
     async uninstallRelease(releaseId) {

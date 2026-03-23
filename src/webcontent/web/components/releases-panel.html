@@ -34,11 +34,11 @@
                 </thead>
                 <tbody>
                     <template x-for="r in $store.release.filtered()" :key="r.meta.id">
-                        <tr class="release-row" :class="{ 'is-mounted': r.installs?.at(-1)?.path && $store.disc.mountedFile === r.installs.at(-1).path + '/_autoswap.lst' }">
+                        <tr class="release-row" :class="{ 'is-mounted': $store.release.isMounted(r.meta.id) }">
                             <td style="width:4rem;white-space:nowrap">
                                 <button class="button is-small is-white" style="width:1.5rem;height:1.5rem;min-width:unset"
-                                        :disabled="!r.installs?.at(-1)?.path || $store.proxy.connecting"
-                                        @click="$store.fileOps.mountFile(r.installs.at(-1).path + '/_autoswap.lst')"
+                                        :disabled="!$store.release.mountFilePath(r.meta.id) || $store.proxy.connecting"
+                                        @click="$store.release.mountInstall(r.meta.id)"
                                         title="Mount">
                                     <span class="icon is-small"><i class="fas fa-play"></i></span>
                                 </button>
