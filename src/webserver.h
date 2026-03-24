@@ -22,9 +22,10 @@
 
 #include <circle/net/httpdaemon.h>
 #include <circle-mbedtls/httpclient.h>
+#include <circle/net/ipaddress.h>
 #include <circle/actled.h>
 #include <string>
-
+#include <unordered_map>
 class CWebServer : public CHTTPDaemon
 {
 public:
@@ -56,6 +57,7 @@ private:
 	CNetSubSystem &m_NetSubSystem;
 	char m_proxyHeader[8*1024];
 	u8 m_respHeader[8*1024];
+	static std::unordered_map<std::string, CIPAddress> dns_cache;
 };
 
 #endif

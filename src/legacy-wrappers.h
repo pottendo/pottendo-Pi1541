@@ -46,7 +46,7 @@ void setNM(const char *nm);
 void setGW(const char *gw);
 void setDNS(const char *dns);
 void mem_stat(const char *func, std::string &mem, bool verb = false);
-
+bool parse_netaddr(const char* s, u8 *ip);
 extern "C" {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
 	void UpdateScreen(void);

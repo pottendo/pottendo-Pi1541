@@ -918,49 +918,12 @@ static bool file_ops(const char *f, string &buttons, bool is_dir, string &img)
 	return res;
 }
 
-static bool parse_ipv4(const char* s, u8 *ip)
-{
-    int octet = 0;
-    int value = 0;
-    int digits = 0;
-
-    while (true)
-    {
-        char c = *s++;
-
-        if (std::isdigit(static_cast<unsigned char>(c)))
-        {
-            value = value * 10 + (c - '0');
-            if (value > 255) return false;
-
-            ++digits;
-            if (digits > 3) return false;
-        }
-        else if (c == '.' || c == '\0')
-        {
-            if (digits == 0) return false;
-            if (octet >= 4) return false;
-
-            ip[octet++] = static_cast<unsigned char>(value);
-
-            value = 0;
-            digits = 0;
-
-            if (c == '\0')
-                break;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    return octet == 4;
-}
-
+std::unordered_map<std::string, CIPAddress> CWebServer::dns_cache;
 CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, unsigned *pLength, u8 *pRespHeader, unsigned *pRespHLen)
 {
 	CDNSClient dnsClient(&m_NetSubSystem);
 	CIPAddress srvip;
+	u8 ipa[4];
 	size_t urlst = url.find("//");
 	if (urlst == string::npos)
 	{
@@ -970,11 +933,16 @@ CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, uns
 	size_t docst = url.substr(urlst + 2).find_first_of('/');
 	string hn = url.substr(urlst + 2, ((docst == string::npos) ? string::npos : docst));
 
-	u8 ipa[4];
-	if (parse_ipv4(hn.c_str(), ipa))
+	if (dns_cache[hn].IsSet())
+	{
+		DEBUG_LOG("%s: DNS cache hit for hostname %s", __FUNCTION__, hn.c_str());
+		srvip = dns_cache[hn];
+	} 
+	else if (parse_netaddr(hn.c_str(), ipa))
 	{
 		DEBUG_LOG("%s: Hostname %s is a valid IPv4 address", __FUNCTION__, hn.c_str());
 		srvip = CIPAddress(ipa);
+		dns_cache[hn] = srvip;
 	}
 	else if (!dnsClient.Resolve(hn.c_str(), &srvip))
 	{
@@ -985,6 +953,7 @@ CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, uns
 	{
 		CString ipstr;
 		srvip.Format(&ipstr);
+		dns_cache[hn] = srvip;
 		DEBUG_LOG("%s: DNS resolution succeeded for host %s: %s", __FUNCTION__, hn.c_str(), ipstr.c_str());
 	}
 

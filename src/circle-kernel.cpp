@@ -52,37 +52,72 @@ static u8 IPAddress[]      = {192, 168, 188, 31};
 static u8 NetMask[]        = {255, 255, 255, 0};
 static u8 DefaultGateway[] = {192, 168, 188, 1};
 static u8 DNSServer[]      = {192, 168, 188, 1};
-void parse_netaddr(const char *ip, u8 &a1, u8 &b1, u8 &c1, u8 &d1)
+
+bool parse_netaddr(const char* s, u8 *ip)
 {
-	std::stringstream s(ip);
-	char ch; //to temporarily store the '.'
-	int a, b, c, d;
-	s >> a >> ch >> b >> ch >> c >> ch >> d;
-	a1 = a; b1 = b; c1 = c; d1 = d;
+    int octet = 0;
+    int value = 0;
+    int digits = 0;
+
+    while (true)
+    {
+        char c = *s++;
+
+        if (std::isdigit(static_cast<unsigned char>(c)))
+        {
+            value = value * 10 + (c - '0');
+            if (value > 255) return false;
+
+            ++digits;
+            if (digits > 3) return false;
+        }
+        else if (c == '.' || c == '\0')
+        {
+            if (digits == 0) return false;
+            if (octet >= 4) return false;
+
+            ip[octet++] = static_cast<unsigned char>(value);
+
+            value = 0;
+            digits = 0;
+
+            if (c == '\0')
+                break;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return octet == 4;
 }
 
 void setIP(const char *ip)
 {
 	DEBUG_LOG("%s: static IP = %s", __FUNCTION__, ip);
-	parse_netaddr(ip, IPAddress[0], IPAddress[1], IPAddress[2], IPAddress[3]);
+	if (!parse_netaddr(ip, IPAddress))
+		DEBUG_LOG("%s: invalid IP address", __FUNCTION__);
 }
 
 void setNM(const char *nm)
 {
 	DEBUG_LOG("%s: static NetMask = %s", __FUNCTION__, nm);
-	parse_netaddr(nm, NetMask[0], NetMask[1], NetMask[2], NetMask[3]);
+	if (!parse_netaddr(nm, NetMask))
+		DEBUG_LOG("%s: invalid NetMask", __FUNCTION__);
 }
 
 void setGW(const char *gw)
 {
 	DEBUG_LOG("%s: static DefaultGateway = %s", __FUNCTION__, gw);
-	parse_netaddr(gw, DefaultGateway[0], DefaultGateway[1], DefaultGateway[2], DefaultGateway[3]);
+	if (!parse_netaddr(gw, DefaultGateway))
+		DEBUG_LOG("%s: invalid DefaultGateway", __FUNCTION__);
 }
 
 void setDNS(const char *dns)
 {
 	DEBUG_LOG("%s: static DNSServer = %s", __FUNCTION__, dns);
-	parse_netaddr(dns, DNSServer[0], DNSServer[1], DNSServer[2], DNSServer[3]);
+	if (!parse_netaddr(dns, DNSServer))
+		DEBUG_LOG("%s: invalid DNSServer", __FUNCTION__);
 }
 
 void mem_stat(const char *func, std::string &mem, bool verb)
