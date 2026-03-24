@@ -24,6 +24,7 @@
 #include <circle/memory.h>
 #include <circle/timer.h>
 #include <circle/net/dnsclient.h>
+#include <circle/net/httpclient.h>
 #include <circle-mbedtls/httpclient.h>
 #include <circle-mbedtls/http.h>
 #include <assert.h>
@@ -958,8 +959,6 @@ CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, uns
 	}
 
 	u16 pt = url.substr(0, url.find_first_of(':')) == "https" ? HTTPS_PORT : HTTP_PORT;
-	CircleMbedTLS::CTLSSimpleSupport tlsSupport(&m_NetSubSystem);
-	CircleMbedTLS::CHTTPClient httpClient(&tlsSupport, srvip, pt, hn.c_str(), true);
 	string doc;
 	if (docst == string::npos)
 		doc = "/";
@@ -972,7 +971,16 @@ CircleMbedTLS::THTTPStatus CWebServer::proxy_fetch(string &url, u8 *pBuffer, uns
 	if (*pRespHLen == 0)
 		*pRespHLen = sizeof(u8) * 8 * 1024;
 	unsigned respHdrCap = *pRespHLen;
-	CircleMbedTLS::THTTPStatus status = httpClient.Get(doc.c_str(), pBuffer, pLength, pRespHeader, pRespHLen);
+	CircleMbedTLS::THTTPStatus status;
+	if (pt == HTTPS_PORT)
+	{
+		CircleMbedTLS::CTLSSimpleSupport tlsSupport(&m_NetSubSystem);
+		CircleMbedTLS::CHTTPClient httpClient(&tlsSupport, srvip, pt, hn.c_str(), true);
+		status = httpClient.Get(doc.c_str(), pBuffer, pLength, pRespHeader, pRespHLen);
+	} else {
+		CHTTPClient httpClient(&m_NetSubSystem, srvip, pt, hn.c_str());
+		status = (CircleMbedTLS::THTTPStatus)httpClient.Get(doc.c_str(), pBuffer, pLength, pRespHeader, pRespHLen);
+	}
 	// Ensure null-termination for safe strstr usage downstream
 	if (*pRespHLen < respHdrCap)
 		pRespHeader[*pRespHLen] = '\0';

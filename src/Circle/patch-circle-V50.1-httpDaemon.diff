@@ -20,6 +20,33 @@ index bd65f4c2..be8806d5 100644
  /* FF_STR_VOLUME_ID switches support for volume ID in arbitrary strings.
  /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
  /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
+diff --git a/include/circle/net/httpclient.h b/include/circle/net/httpclient.h
+index 571a7752..60bace3b 100644
+--- a/include/circle/net/httpclient.h
++++ b/include/circle/net/httpclient.h
+@@ -38,7 +38,9 @@ public:
+ 
+ 	THTTPStatus Get (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			 u8	    *pBuffer,			// content will be returned here
+-			 unsigned   *pLength);			// in: buffer size, out: content length
++			 unsigned   *pLength,                   // in: buffer size, out: content length
++			 u8* pHeader = 0,
++			 unsigned *pHLen = 0);
+ 
+ 	THTTPStatus Post (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			  u8	     *pBuffer,			// content will be returned here
+@@ -50,8 +52,9 @@ private:
+ 			     const char		*pPath,		// may include URL parameters
+ 			     u8			*pBuffer,	// content will be returned here
+ 			     unsigned		*pLength,	// in: buffer size, out: content length
+-			     const char		*pFormData = 0);// form data for POST or 0
+-
++			     const char		*pFormData = 0, // form data for POST or 0
++			     u8* pHeader = 0, // header content will be returned here
++			     unsigned *pHLen = 0); // len allocated for header content
+ private:
+ 	CNetSubSystem *m_pNetSubSystem;
+ 	CIPAddress     m_ServerIP;
 diff --git a/include/circle/net/httpdaemon.h b/include/circle/net/httpdaemon.h
 index f41b62e8..f4c8f9be 100644
 --- a/include/circle/net/httpdaemon.h
@@ -89,6 +116,99 @@ index 566e6eb7..ee692de0 100644
  #endif
  
  // NO_BUSY_WAIT deactivates busy waiting in the EMMC, SDHOST and USB
+diff --git a/lib/net/httpclient.cpp b/lib/net/httpclient.cpp
+index 29aec901..12345eed 100644
+--- a/lib/net/httpclient.cpp
++++ b/lib/net/httpclient.cpp
+@@ -46,9 +46,10 @@ CHTTPClient::~CHTTPClient (void)
+ 	m_pNetSubSystem = 0;
+ }
+ 
+-THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength)
++extern "C" void  mylog(const char *str, ...);
++THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength, u8 *pHeader, unsigned *pHLen)
+ {
+-	return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength);
++    return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength, 0, pHeader, pHLen);
+ }
+ 
+ THTTPStatus CHTTPClient::Post (const char *pPath, u8 *pBuffer, unsigned *pLength, const char *pFormData)
+@@ -61,7 +62,9 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				  const char	     *pPath,
+ 				  u8		     *pBuffer,
+ 				  unsigned	     *pLength,
+-				  const char	     *pFormData)
++				  const char	     *pFormData,
++				  u8* pHeader,
++				  unsigned *pHLen)
+ {
+ 	// connect to server
+ 	assert (m_pNetSubSystem != 0);
+@@ -134,9 +137,12 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 	unsigned nLength = 0;
+ 	boolean bChunked = FALSE;
+ 	unsigned long ulBytes = 0;
++	unsigned ulHLen = 0;
+ 
+ 	char Buffer[FRAME_BUFFER_SIZE];
+ 	char Line[HTTP_MAX_REQUEST_LINE];
++	char Line0[HTTP_MAX_REQUEST_LINE];
++	Line0[0] = '\0';
+ 	int nResult;
+ 	char *pSavePtr;
+ 
+@@ -159,12 +165,43 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				{
+ 					if (nChar == 0)		// empty line is end of header
+ 					{
++					    char *pToken;
+ 						nState = bChunked ? 2 : 1;
+ 						nChar = 0;
++						*pHLen = strlen((const char *)pHeader);
++						//mylog("%s: first line = '%s'", __FUNCTION__, Line0);
++						if (   (pToken = strtok_r ((char *) Line0, "/", &pSavePtr)) == 0
++						    || strcmp (pToken, "HTTP") != 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || strcmp (pToken, "200") != 0)
++						{
++						    char *pEnd;
++						    unsigned long ulStatus;
++						    ulStatus = strtoul (pToken, &pEnd, 10);
++						    if (   pEnd != 0
++							   && *pEnd != '\0')
++						    {
++							ulStatus = HTTPInvalidResponseCode;
++						    }
++						    
++						    delete m_pSocket;
++						    m_pSocket = 0;
++						    //mylog("%s: sending back %d", __FUNCTION__, ulStatus);
++						    return (THTTPStatus) ulStatus;
++						}
+ 					}
+ 					else
+ 					{
++					    ulHLen += strlen(Line) + 2;
++					    if ((*pHLen) > ulHLen)
++					    {
++						strcat((char *)pHeader, Line);
++						strcat((char *)pHeader, "\r\n");
++					    }
+ 						if (nLine++ == 0)	// first line?
++						    strcat(Line0, Line); // save first Line
++#if 0						
+ 						{
+ 							// "HTTP/1.x 200 OK" expected
+ 							char *pToken;
+@@ -190,6 +227,7 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 							}
+ 						}
+ 						else
++#endif						    
+ 						{
+ 							// check for transfer encoding option
+ 							char *pToken = strtok_r (Line, ": ", &pSavePtr);
 diff --git a/lib/net/httpdaemon.cpp b/lib/net/httpdaemon.cpp
 index e9a5a458..d19d2607 100644
 --- a/lib/net/httpdaemon.cpp
