@@ -1526,7 +1526,7 @@ void IEC_Commands::User(void)
 		// U9 (UI)
 		case 'I':
 		case '9':
-			DEBUG_LOG("ui c=%d, '%c'(%d)\r\n", channel.cursor, channel.buffer[2], channel.buffer[2]);
+			//DEBUG_LOG("IEC_COMMAND::%s: ui c=%d, '%c'(0x%02x)\r\n", __FUNCTION__, channel.cursor, isprint(channel.buffer[2]) ? channel.buffer[2] : '.', channel.buffer[2]);
 			if (channel.cursor == 2)
 			{
 				// Soft reset

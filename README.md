@@ -6,8 +6,11 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 - Builds, emulation starts, host computer hangs when accessing D71 files.
 
 V2.2Beta1
+- allow 32kB 1541 Roms, should fix SJD
+- Support to extract/preview .zip archives
 - webserver now hands out files from /web
 - stats show current mounted image
+- Fixed 'CD' command to exit emulation
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:

@@ -93,6 +93,7 @@ unsigned versionMinor = 25;
 #define COLOUR_MAGENTA RGBA(0xff, 0, 0xff, 0xff)
 #define COLOUR_YELLOW RGBA(0xff, 0xff, 0x00, 0xff)
 
+// Hash Jiffy: 0x533845a9, 1541-II: 0x9eef0d97, 1541: 0x64a2ddd6
 // To exit a mounted disk image we need to watch(snoop) what the emulated CPU is doing when it executes code at some critical ROM addresses.
 #define SNOOP_CD_CBM 0xEA2D
 #define SNOOP_CD_CBM1571 0xEA2D
@@ -775,6 +776,7 @@ static bool Snoop(u8 a, int max)
 			// Exit full emulation back to IEC commands level simulation.
 			snoopIndex = 0;
 			snoopPC = 0;
+			//DEBUG_LOG("%s: CD detected, exiting emulation\n", __FUNCTION__);
 			return true;
 		}
 		else
@@ -1026,12 +1028,10 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 			if (pc == snoopPC)
 			{
-
 				if (Snoop(pi1541.m6502.GetA(), sizeof(snoopBackCommand)))
 					exitCyclesRemaining = 40000;
 			}
 		}
-
 		if (exitCyclesRemaining > 0)
 		{
 			exitCyclesRemaining--;
@@ -1041,7 +1041,6 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 				exitReason = EXIT_CD;
 			}
 		}
-
 		pi1541.m6502.Step();	// If the CPU reads or writes to the VIA then clk and data can change
 
 		//To artificialy delay the outputs later into the phi2's cycle (do this on future Pis that will be faster and perhaps too fast)
@@ -2130,14 +2129,23 @@ static bool AttemptToLoadROM(const char* ROMName, int index)
 
 		SetACTLed(true);
 		f_read(&fp, roms.ROMImages[index], ROMs::ROM_SIZE, &bytesRead);
-		hash = HashBuffer(roms.ROMImages[index], ROMs::ROM_SIZE);
+		if ((bytesRead == 0x4000) || (bytesRead == 0x8000))
+		 	roms.ROMMask[index] = bytesRead - 1;
+		else
+		{
+			roms.ROMMask[index] = ROMs::ROM_SIZE - 1;
+			DEBUG_LOG("%s: ROM size read %d may not be valid for 1541 ROMs!", __FUNCTION__, bytesRead);
+		}
+
+		DEBUG_LOG("%s: ROM size %d, mask set to 0x%04x", __FUNCTION__, bytesRead, roms.ROMMask[index]);
+		hash = HashBuffer(roms.ROMImages[index], (roms.ROMMask[index] + 1));
 		roms.ROMHash[index] = hash;
 
 		strncpy(roms.ROMNames[index], ROMName, 255);
 		roms.ROMValid[index] = true;
 		SetACTLed(false);
 		f_close(&fp);
-		DEBUG_LOG("Opened ROM %s %d %d %d %08x\r\n", ROMName, ROMs::ROM_SIZE, bytesRead, bytesRead == ROMs::ROM_SIZE, hash);
+		DEBUG_LOG("Opened ROM %s %d %d %d 0x%08x\r\n", ROMName, ROMs::ROM_SIZE, bytesRead, bytesRead == ROMs::ROM_SIZE, hash);
 		return true;
 	}
 	else
