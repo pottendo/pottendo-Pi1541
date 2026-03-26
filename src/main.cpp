@@ -1012,14 +1012,9 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			if (pc == snoopPC)
 			{
 				if (Snoop(pi1541.m6502.GetA(), sizeof(snoopBackCommand)))
-				{
-				//	exitCyclesRemaining = 40000;
-					emulating = IEC_COMMANDS;
-					exitReason = EXIT_CD;				
-				}
+					exitCyclesRemaining = 40000;
 			}
 		}
-#if 0
 		if (exitCyclesRemaining > 0)
 		{
 			exitCyclesRemaining--;
@@ -1029,7 +1024,6 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 				exitReason = EXIT_CD;
 			}
 		}
-#endif
 		pi1541.m6502.Step();	// If the CPU reads or writes to the VIA then clk and data can change
 
 		//To artificialy delay the outputs later into the phi2's cycle (do this on future Pis that will be faster and perhaps too fast)
