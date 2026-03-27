@@ -1012,7 +1012,10 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			if (pc == snoopPC)
 			{
 				if (Snoop(pi1541.m6502.GetA(), sizeof(snoopBackCommand)))
+				{
 					exitCyclesRemaining = 40000;
+					DEBUG_LOG("%s: Snoop command detected, exiting in %d cycles.", __FUNCTION__, exitCyclesRemaining);
+				}
 			}
 		}
 		if (exitCyclesRemaining > 0)
