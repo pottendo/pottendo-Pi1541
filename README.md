@@ -7,6 +7,8 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 - Added /web/web-upload.html to support upload of the new UI components.
 
 ## News vs 2.1
+V2.2Beta2
+- Fixed 'CD' command for dos1541
 V2.2Beta1
 - allow 32kB 1541 Roms, should fix SJD
 - Support to extract/preview .zip archives
