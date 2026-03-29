@@ -100,10 +100,6 @@ unsigned versionMinor = 25;
 #define SNOOP_CD_JIFFY_BOTH 0xFC07
 #define SNOOP_CD_JIFFY_BOTH_V6_00 0xFC12
 #define SNOOP_CD_JIFFY_DRIVEONLY 0xEA16
-static const u8 snoopBackCommand[] = {
-	'C', 'D', ':', '_', '?'	//0x43, 0x44, 0x3a, 0x5f, 3f
-};
-static int snoopIndex = 0;
 
 volatile EmulatingMode emulating;
 
@@ -749,31 +745,28 @@ void UpdateScreen()
 
 #endif /* !defined(__PICO2__) && !defined(ESP32) */
 
+static const u8 snoopBackCommand[] = {
+	'C', 'D', ':', '_', '?'	//0x43, 0x44, 0x3a, 0x5f, 3f
+};
+static int snoopIndex = 0;
 static bool Snoop(u8 a, int max)
 {
-	static int flag = 0; // this is not reentrant, DualDrive may fail (superunlikely, though)
-	if (a == snoopBackCommand[0])
-		snoopIndex = 0;
-	if (a && // dos1541 gives 0s along the collection of the command, so ignore 0s
-		(a == snoopBackCommand[snoopIndex] || (snoopIndex == 2 && (a == snoopBackCommand[3]))))
+	bool ret = false;
+	if (a == 0 && snoopIndex == 0)	// dos1541 gives 0s along the collection of the command, so ignore 0s
+		return ret;
+	if ((a == snoopBackCommand[snoopIndex]) ||
+		((snoopIndex++ == 2) && (a == snoopBackCommand[3])))		// The CD_ without the : case
 	{
-		if (snoopIndex == 2 && (a == snoopBackCommand[3]))		// The CD_ without the : case
-			snoopIndex++;
-		flag++;
-		//DEBUG_LOG("%s: snoopIndex=%d, a=%02x, flag=%d", __FUNCTION__, snoopIndex, a, flag);
-		if ((snoopIndex + 1) == max)
-		{
-			// Exit full emulation back to IEC commands level simulation.
-			flag = snoopIndex = 0;
-			return true;
-		}
 		snoopIndex++;
+		if (snoopIndex == max)
+		{
+			snoopIndex = 0;
+			ret = true;
+		}
 	}
-	else if (!flag)//we're in the middle of collecting, but 0 can happen in dos1541, keep searching if we found the initial 'C'
-	{
+	else
 		snoopIndex = 0;
-	}
-	return false;
+	return ret;
 }
 
 //--------------------------------------------------------------------------------------
