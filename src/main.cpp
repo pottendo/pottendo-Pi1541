@@ -102,12 +102,6 @@ unsigned versionMinor = 25;
 #define SNOOP_CD_JIFFY_BOTH 0xFC07
 #define SNOOP_CD_JIFFY_BOTH_V6_00 0xFC12
 #define SNOOP_CD_JIFFY_DRIVEONLY 0xEA16
-static const u8 snoopBackCommand[] = {
-	'C', 'D', ':', '_', '?'	//0x43, 0x44, 0x3a, 0x5f, 3f
-};
-
-static int snoopIndex = 0;
-static int snoopPC = 0;
 
 volatile EmulatingMode emulating;
 
@@ -760,36 +754,28 @@ void UpdateScreen()
 
 #endif /* !defined(__PICO2__) && !defined(ESP32) */
 
+static const u8 snoopBackCommand[] = {
+	'C', 'D', ':', '_', '?'	//0x43, 0x44, 0x3a, 0x5f, 3f
+};
+static int snoopIndex = 0;
 static bool Snoop(u8 a, int max)
 {
-	if (a == snoopBackCommand[0])
+	bool ret = false;
+	if (a == 0 && snoopIndex == 0)	// dos1541 gives 0s along the collection of the command, so ignore 0s
+		return ret;
+	if ((a == snoopBackCommand[snoopIndex]) ||
+		((snoopIndex++ == 2) && (a == snoopBackCommand[3])))		// The CD_ without the : case
 	{
-		snoopIndex = 0;
-	}
-	if (a == snoopBackCommand[snoopIndex] || (snoopIndex == 2 && (a == snoopBackCommand[3])))
-	{
-		if (snoopIndex == 2 && (a == snoopBackCommand[3]))		// The CD_ without the : case
-			snoopIndex++;
-
-		if ((snoopIndex + 1) == max)
+		snoopIndex++;
+		if (snoopIndex == max)
 		{
-			// Exit full emulation back to IEC commands level simulation.
 			snoopIndex = 0;
-			snoopPC = 0;
-			//DEBUG_LOG("%s: CD detected, exiting emulation\n", __FUNCTION__);
-			return true;
-		}
-		else
-		{
-			snoopIndex++;
+			ret = true;
 		}
 	}
 	else
-	{
 		snoopIndex = 0;
-		snoopPC = 0;
-	}
-	return false;
+	return ret;
 }
 
 //--------------------------------------------------------------------------------------
@@ -1024,12 +1010,18 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 		{
 			pc = pi1541.m6502.GetPC();
 			// See if the emulated cpu is executing CD:_ (ie back out of emulated image)
-			if (pc == SNOOP_CD_CBM || pc == SNOOP_CD_JIFFY_BOTH || pc == SNOOP_CD_JIFFY_BOTH_V6_00 || (pc == SNOOP_CD_JIFFY_DRIVEONLY && (roms.GetHash() != 0x9eef0d97))) snoopPC = pc;
-
-			if (pc == snoopPC)
+			if (pc == SNOOP_CD_CBM || 
+				pc == SNOOP_CD_JIFFY_BOTH || 
+				pc == SNOOP_CD_JIFFY_BOTH_V6_00 || 
+				(pc == SNOOP_CD_JIFFY_DRIVEONLY && 
+					(roms.GetHash() != 0x9eef0d97) && // don't know which rom this is but it doesn't have the CD_ code at the same place as the other roms so we need to ignore it otherwise we get false positives when running this rom. dos1541 needs a workaround for this.
+					(roms.GetHash() != 0x64a2ddd6))) // dos1541 needs a workaround as Acc show 0's inbetween collecting the CD:_ commmand
 			{
 				if (Snoop(pi1541.m6502.GetA(), sizeof(snoopBackCommand)))
+				{
 					exitCyclesRemaining = 40000;
+					DEBUG_LOG("%s: Snoop command detected, exiting in %d cycles.", __FUNCTION__, exitCyclesRemaining);
+				}
 			}
 		}
 		if (exitCyclesRemaining > 0)
@@ -1293,9 +1285,8 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			{
 				pc = pi1581.m6502.GetPC();
 				// See if the emulated cpu is executing CD:_ (ie back out of emulated image)
-				if (pc == SNOOP_CD_CBM1581 || pc == SNOOP_CD_CBM1581_JIFFY) snoopPC = pc;
-
-				if (pc == snoopPC)
+				if (pc == SNOOP_CD_CBM1581 || 
+					pc == SNOOP_CD_CBM1581_JIFFY)
 				{
 					if (Snoop(pi1581.m6502.GetA(), sizeof(snoopBackCommand) - 1))
 						exitCyclesRemaining = 40000;
