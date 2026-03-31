@@ -815,6 +815,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 			pi1571.Insert(diskImage);
 			fileBrowser->DisplayDiskInfo(diskImage, filenameForIcon);
 			fileBrowser->ShowDeviceAndROM( roms.ROMName1571 );
+			DEBUG_LOG("%s: using 1571 rom %s\n", __FUNCTION__, roms.ROMName1571);
 			return EMULATING_1571;
 		}		
 		else
@@ -1493,9 +1494,13 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 	if (numberOfImagesMax > 10)
 		numberOfImagesMax = 10;
 
+#if not defined(EXPERIMENTALZERO)		
 	core0RefreshingScreen.Acquire();
+#endif	
 	diskCaddy.Display();
+#if not defined(EXPERIMENTALZERO)	
 	core0RefreshingScreen.Release();
+#endif	
 
 	inputMappings->directDiskSwapRequest = 0;
 	// Force an update on all the buttons now before we start emulation mode. 
@@ -1509,7 +1514,8 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 	//IEC_Bus::port = pi1571.CIA.GetPortB();
 
 	pi1571.drive.SetVIA(&pi1571.VIA[1]);					// move this inside reset?
-
+	IEC_Bus::port = pi1571.VIA[0].GetPortB();	
+	IEC_Bus::VIA = &pi1571.VIA[0];
 	pi1571.Reset();	// will call IEC_Bus::Reset();
 
 	ctBefore = read32(ARM_SYSTIMER_CLO);
@@ -1527,9 +1533,7 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 				pc = pi1571.m6502.GetPC();
 
 				// See if the emulated cpu is executing CD:_ (ie back out of emulated image)
-				if (snoopIndex == 0 && (pc == SNOOP_CD_CBM1571)) snoopPC = pc;
-
-				if (pc == snoopPC)
+				if (snoopIndex == 0 && (pc == SNOOP_CD_CBM1571)) 
 				{
 					if (Snoop(pi1571.m6502.GetA(), sizeof(snoopBackCommand) - 1))
 					{
@@ -1662,7 +1666,9 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 				}
 				else
 				{
+#if not defined(EXPERIMENTALZERO)					
 					PlaySoundDMA(playsound);
+#endif					
 				}
 			}
 		}
