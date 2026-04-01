@@ -1474,7 +1474,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 
 EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 {
-	DEBUG_LOG("%s: Emulate1571\r\n", __FUNCTION__);
+	DEBUG_LOG("%s: Emulate1571 - %dMhz\r\n", __FUNCTION__, pi1571.GetMhz());
 
 	EXIT_TYPE exitReason = EXIT_UNKNOWN;
 	bool oldLED = false;
@@ -1518,20 +1518,19 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 	IEC_Bus::VIA = &pi1571.VIA[0];
 	pi1571.Reset();	// will call IEC_Bus::Reset();
 
-#if defined(RPI2)
-	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
-#else
-#if defined (__CIRCLE__)
-	ctBefore = Kernel.get_clock_ticks();
-#else
-	ctBefore = read32(ARM_SYSTIMER_CLO);
-#endif	
-#endif
-
 	selectedViaIECCommands = false;
 
 	while (exitReason == EXIT_UNKNOWN)
 	{
+#if defined(RPI2)
+		asm volatile("mrc p15,0,%0,c9,c13,0" : "=r"(ctBefore));
+#else
+#if defined(__CIRCLE__)
+		ctBefore = Kernel.get_clock_ticks();
+#else
+		ctBefore = read32(ARM_SYSTIMER_CLO);
+#endif
+#endif
 		for (int cycle2MHz = 0; cycle2MHz < pi1571.GetMhz(); ++cycle2MHz)
 		{
 			IEC_Bus::ReadEmulationMode1571();
@@ -1728,13 +1727,13 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 				{
 					// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 					// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-					//DEBUG_LOG("!");
+					DEBUG_LOG("ct = %d", ct);
 				}
 			} while (ctAfter == ctBefore);
 #if 0			
 		}
 #endif		
-		ctBefore = ctAfter;
+		//ctBefore = ctAfter;
 
 		IEC_Bus::ReadEmulationMode1571();
 		// if (cycleCount >= FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap. During this time we don't need to set outputs.
