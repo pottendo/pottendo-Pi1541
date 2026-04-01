@@ -1518,7 +1518,15 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 	IEC_Bus::VIA = &pi1571.VIA[0];
 	pi1571.Reset();	// will call IEC_Bus::Reset();
 
+#if defined(RPI2)
+	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
+#else
+#if defined (__CIRCLE__)
+	ctBefore = Kernel.get_clock_ticks();
+#else
 	ctBefore = read32(ARM_SYSTIMER_CLO);
+#endif	
+#endif
 
 	selectedViaIECCommands = false;
 
@@ -1699,7 +1707,7 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 			if (exitDoAutoLoad)
 				exitReason = EXIT_AUTOLOAD;
 		}
-
+#if 0
 		if (cycleCount < FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap.
 		{
 			cycleCount++;
@@ -1707,9 +1715,14 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 		}
 		else
 		{
+#endif			
 			do	// Sync to the 1MHz clock
 			{
+#if defined (__CIRCLE__)
+				ctAfter = Kernel.get_clock_ticks();
+#else
 				ctAfter = read32(ARM_SYSTIMER_CLO);
+#endif			
 				unsigned ct = ctAfter - ctBefore;
 				if (ct > 1)
 				{
@@ -1718,11 +1731,13 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 					//DEBUG_LOG("!");
 				}
 			} while (ctAfter == ctBefore);
+#if 0			
 		}
+#endif		
 		ctBefore = ctAfter;
 
 		IEC_Bus::ReadEmulationMode1571();
-		if (cycleCount >= FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap. During this time we don't need to set outputs.
+		// if (cycleCount >= FAST_BOOT_CYCLES)	// cycleCount is used so we can quickly get through 1541's self test code. This will make the emulated 1541 responsive to commands asap. During this time we don't need to set outputs.
 			IEC_Bus::RefreshOuts1581_1571();	// Now output all outputs.
 
 		if (options.SoundOnGPIO() && headSoundCounter > 0)
