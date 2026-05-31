@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News vs 2.1
 V2.2Beta2
+- Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
 - Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
 - Fixed 'CD' command for dos1541
 V2.2Beta1

@@ -21,12 +21,15 @@
 #define _webserver_h
 
 #include <circle/net/httpdaemon.h>
+#include <circle-mbedtls/httpclient.h>
+#include <circle/net/ipaddress.h>
 #include <circle/actled.h>
-
+#include <string>
+#include <unordered_map>
 class CWebServer : public CHTTPDaemon
 {
 public:
-	CWebServer (CNetSubSystem *pNetSubSystem,
+	CWebServer (CNetSubSystem *pNetSubSystem, 
 		    CActLED	  *pActLED,			// the LED to be controlled
 		    CSocket	  *pSocket = 0,		// is 0 for 1st created instance (listener)
 			unsigned max_content_size = 1000 * 1024, unsigned max_multipart_size = 20000 * 1024);		
@@ -41,12 +44,20 @@ public:
 				const char  *pFormData, 	// form data from POST ("" for none)
 		    	u8	    	*pBuffer,		// copy your content here
 				unsigned    *pLength,		// in: buffer size, out: content length
-				const char **ppContentType);	// set this if not "text/html"
+				const char **ppContentType, // set this if not "text/html"
+				const char **pHeader);	
+
+	THTTPStatus pi1541_proxy_html(std::string &url, u8 *pBuffer, unsigned *pLength, const char **ppContentType, const char **pHeader);
+	CircleMbedTLS::THTTPStatus proxy_fetch(std::string &url, u8 *pBuffer, unsigned *pLength, u8 *pRespHeader, unsigned *pRespHLen);
 
 private:
 	const size_t m_nMaxContentSize;
 	const size_t m_nMaxMultipartSize;
 	CActLED *m_pActLED;
+	CNetSubSystem &m_NetSubSystem;
+	char m_proxyHeader[8*1024];
+	u8 m_respHeader[8*1024];
+	static std::unordered_map<std::string, CIPAddress> dns_cache;
 };
 
 #endif

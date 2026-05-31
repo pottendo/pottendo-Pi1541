@@ -154,8 +154,10 @@ if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
     rm -rf ${CIRCLE}
     git clone --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    cd ${CIRCLE}
+    patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-httpDaemon.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make
@@ -213,6 +215,7 @@ EOF
 fi
 
 echo "building pottendo-Pi1541 for ${archs}"
+addopts="--opt-tls --kernel-max-size 8"
 for a in ${archs} ; do
     cd ${CIRCLE}
     case "$a" in
@@ -236,9 +239,10 @@ for a in ${archs} ; do
 	    exit 1
 	    ;;
     esac
+    opts="${opts} ${addopts}"
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
-    ./configure $opts --kernel-max-size 8 2>&1 >make-${a}.log
+    ./configure $opts 2>&1 >make-${a}.log
     sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
     sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
     echo "building circle-stdlib, may take a while..."
