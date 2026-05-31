@@ -153,7 +153,7 @@ fi
 if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
     rm -rf ${CIRCLE}
-    git clone --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    git clone --branch v20 --depth 1 --recursive https://codeberg.org/larchcone/circle-stdlib.git
     cd ${CIRCLE}
     patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
