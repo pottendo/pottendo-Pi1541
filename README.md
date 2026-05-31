@@ -1,9 +1,10 @@
 # pottendo-Pi1541 V2.2 WIP
 
-This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of February 2026, Step 50.1).
+This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
 ## News vs 2.1
 V2.2Beta2
+- Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
 - Fixed 'CD' command for dos1541
 V2.2Beta1
 - allow 32kB 1541 Roms, should fix SJD
@@ -266,8 +267,8 @@ The following compiler suites were used for development:
 
 | Compiler | Package name                                     | Link                                                                                                                                          | Arch               |
 | -------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| GCC      | AArch32 bare-metal target (arm-none-eabi)        | [download](https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi.tar.xz)    | 32 bit             |
-| GCC      | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/arm-gnu-toolchain-14.3.rel1-x86_64-aarch64-none-elf.tar.xz) | 64 bit |
+| GCC      | AArch32 bare-metal target (arm-none-eabi)        | [download](https://developer.arm.com/-/media/Files/downloads/gnu/15.2.rel1/binrel/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi.tar.xz)    | 32 bit             |
+| GCC      | AArch64 ELF bare-metal target (aarch64-none-elf) | [download](https://developer.arm.com/-/media/Files/downloads/gnu/15.2.rel1/binrel/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-elf.tar.xz) | 64 bit |
 
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
