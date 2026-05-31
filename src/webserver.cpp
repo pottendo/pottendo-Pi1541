@@ -600,6 +600,7 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 		}
 		//DEBUG_LOG("%s: need to create '%s'", __FUNCTION__, ndir.c_str());
 		if (f_stat(ndir.c_str(), &fi) != FR_OK)
+		{
 			if ((ret = f_mkdir(ndir.c_str())) != FR_OK)
 			{
 				msg += (string("failed to mkdir <i>") + ndir + "</i><br />");
@@ -607,6 +608,7 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 			}
 			else
 				msg += (string("created <i>") + ndir + "</i><br />");
+		}
 
 	} while (!done);
 	return ret;

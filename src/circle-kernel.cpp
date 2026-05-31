@@ -222,7 +222,7 @@ static void monitorhandler(TSystemThrottledState CurrentState, void *pParam)
 boolean CKernel::Initialize (void) 
 {
 	boolean bOK;
-	if (bOK = mInterrupt.Initialize ())
+	bOK = mInterrupt.Initialize ();
 	mLogger.Write ("pottendo-kern", LogNotice, "Interrupt %s", bOK ? "ok" : "failed");
 	if (bOK) bOK = mTimer.Initialize ();
 	mLogger.Write ("pottendo-kern", LogNotice, "mTimer %s", bOK ? "ok" : "failed");

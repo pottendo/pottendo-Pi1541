@@ -662,7 +662,7 @@ public:
 				FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3),
 				FS_OUTPUT << ((PIGPIO_DATA - 10) * 3) |
 					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
-			register unsigned sel =
+			unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
 				(ClockSetToOut << 1);
 
@@ -700,7 +700,7 @@ public:
 				1 << PIGPIO_OUT_CLOCK,
 				1 << PIGPIO_OUT_DATA,
 				0};
-			register unsigned sel =
+			unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
 				(ClockSetToOut << 1);
 

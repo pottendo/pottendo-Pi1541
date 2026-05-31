@@ -69,7 +69,7 @@ while [ ! x"${opts}" = x"break" ] ; do
         shift
         ;;
 	-h)
-	    echo "Usage: $0 [-t <release-tag>] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
+	    echo "Usage: $0 [-t <release-tag>] [-l build only legacy] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
 	    shift
 	    exit 0
 	    ;;
@@ -155,7 +155,7 @@ if [ x${checkout} = "xyes" ] ; then
     rm -rf ${CIRCLE}
     git clone --recursive https://codeberg.org/larchcone/circle-stdlib.git
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V50.1.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make
@@ -238,7 +238,7 @@ for a in ${archs} ; do
     esac
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
-    ./configure $opts 2>&1 >make-${a}.log
+    ./configure $opts --kernel-max-size 8 2>&1 >make-${a}.log
     sed -i 's/CFLAGS_FOR_TARGET =/CFLAGS_FOR_TARGET = -O3/g' Config.mk
     sed -i 's/CPPFLAGS_FOR_TARGET =/CPPFLAGS_FOR_TARGET = -O3/g' Config.mk
     echo "building circle-stdlib, may take a while..."
