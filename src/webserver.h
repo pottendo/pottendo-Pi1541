@@ -60,4 +60,6 @@ private:
 	static std::unordered_map<std::string, CIPAddress> dns_cache;
 };
 
+void init_webserver();
+
 #endif

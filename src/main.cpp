@@ -2261,8 +2261,8 @@ extern "C"
 		disk_setEMM(&m_EMMC);
 		f_mount(&fileSystemSD, "SD:", 1);
 #endif
-#if defined(ESP32)
 		initDiskImage();
+#if defined(ESP32)
 		if (esp32_initSD() != 0)
 			return;
 		plfio_showstat();
@@ -2271,7 +2271,6 @@ extern "C"
 	_m_IEC_Commands = new IEC_Commands;
 
 #if defined(__PICO2__)
-		initDiskImage();
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
         	DEBUG_LOG("f_mount error: (%d)\n", fr);

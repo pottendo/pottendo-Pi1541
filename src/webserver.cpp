@@ -53,6 +53,7 @@ extern IEC_Commands *_m_IEC_Commands;
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
+static unsigned char *img_buf;
 
 // our content
 static const char s_Index[] =
@@ -106,6 +107,14 @@ static const u8 s_font[] =
 
 static const char FromWebServer[] = "webserver";
 
+// needed to ensure that certain memory locations are allocated on the heap
+// Pi4 in combination with USB sticks needs that, as read() into BSS allocated buffers causes an assertion in the circle code
+// see: https://github.com/rsta2/circle/issues/532
+void init_webserver() 
+{
+	img_buf = new unsigned char[READBUFFER_SIZE];
+}
+
 CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket *pSocket, 
 	unsigned max_content_size, unsigned max_multipart_size)
 :	CHTTPDaemon (pNetSubSystem, pSocket, max_content_size, 80, max_multipart_size),
@@ -114,7 +123,7 @@ CWebServer::CWebServer (CNetSubSystem *pNetSubSystem, CActLED *pActLED, CSocket 
 	m_pActLED (pActLED),
 	m_NetSubSystem (*pNetSubSystem)
 {
-	
+	//DEBUG_LOG("%s: starting webserver, img_buf = %p", __FUNCTION__);
 }
 
 CWebServer::~CWebServer (void)
@@ -661,7 +670,6 @@ static FRESULT f_unlink_full(string path, string &msg)
 	return res;
 }
 
-static unsigned char img_buf[READBUFFER_SIZE];
 extern FileBrowser *fileBrowser;
 extern DiskCaddy diskCaddy;
 

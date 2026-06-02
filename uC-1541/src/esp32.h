@@ -31,7 +31,6 @@ void Reboot_Pi(void);
 void InitialiseLCD(void);
 void not_implemented(const char *fn);
 uint64_t get_ticks(void);
-void initDiskImage(void);
 void plfio_showstat(void);
 
 #define f_open _f_open

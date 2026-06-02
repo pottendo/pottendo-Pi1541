@@ -537,6 +537,7 @@ void CKernel::run_webserver(bool isWifi)
 			DEBUG_LOG("%s: overruled maxMultipartSize to %d", __FUNCTION__, max_mps);
 		}
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
+		init_webserver();
 		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
 		int temp_period = 0;
 		logger.finished_booting("network core");

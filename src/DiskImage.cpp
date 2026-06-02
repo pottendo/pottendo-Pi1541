@@ -66,7 +66,8 @@ static const u8 blankD64DIRBAM[] =
 	//	0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 #if !defined(__PICO2__) && !defined(ESP32)
-unsigned char DiskImage::readBuffer[READBUFFER_SIZE];
+//unsigned char DiskImage::readBuffer[READBUFFER_SIZE];
+unsigned char *DiskImage::readBuffer;
 static unsigned char compressionBuffer[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #else
 unsigned char *DiskImage::readBuffer;
@@ -146,9 +147,12 @@ unsigned DiskImage::SectorsPerTrackD64(unsigned track)
 
 int gap_match_length = 7;	// Used by gcr.cpp
 
-#if defined(__PICO2__) || defined(ESP32)
+// needed to ensure that certain memory locations are allocated on the heap
+// Pi4 in combination with USB sticks needs that, as read() into BSS allocated buffers causes an assertion in the circle code
+// see: https://github.com/rsta2/circle/issues/532
 void initDiskImage(void)
 {
+#if defined(__PICO2__) || defined(ESP32)
 #if defined(HAS_PSRAM)
 	DiskImage::readBuffer = static_cast<unsigned char *>(pmalloc(READBUFFER_SIZE * sizeof(unsigned char)));
 	//compressionBuffer = static_cast<unsigned char *>(ps_malloc(HALF_TRACK_COUNT * MAX_TRACK_LENGTH * sizeof(unsigned char)));
@@ -158,8 +162,10 @@ void initDiskImage(void)
 	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
 	//compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #endif
-}
+#else
+	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
 #endif
+}
 
 DiskImage::DiskImage()
 	: readOnly(false)
