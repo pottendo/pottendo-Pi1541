@@ -355,6 +355,7 @@ void __not_in_flash_func(IEC_Bus::ReadEmulationMode1541)(void)
 #else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
+	//DEBUG_LOG("%s: - gplev0 = %04x\n", __FUNCTION__, gplev0);
 #else	
 	gplev0 = CGPIOPin::ReadAll();
 #endif	

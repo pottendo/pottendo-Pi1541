@@ -163,7 +163,8 @@ void initDiskImage(void)
 	//compressionBuffer = new unsigned char[HALF_TRACK_COUNT * MAX_TRACK_LENGTH];
 #endif
 #else
-	DiskImage::readBuffer = new unsigned char[READBUFFER_SIZE]();
+	DiskImage::readBuffer = (unsigned char *)malloc(READBUFFER_SIZE * sizeof(unsigned char));
+	//new unsigned char[READBUFFER_SIZE]();
 #endif
 }
 
