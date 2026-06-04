@@ -872,10 +872,14 @@ bool extract_zip(string zipfile, list<string> *extracted_files = nullptr)
 		}
 		if (mz_zip_reader_is_file_a_directory(&zip_archive, i))
 		{
+			string msg;
+			f_unlink_full(file_stat.m_filename, msg);
 			if (f_mkdir(file_stat.m_filename) != FR_OK)
 				DEBUG_LOG("%s: mkdir() failed for '%s'", __FUNCTION__, file_stat.m_filename);
+			continue;
 		}
-		else if (!mz_zip_reader_extract_to_file(&zip_archive, i, file_stat.m_filename, 0))
+		f_unlink(file_stat.m_filename);
+		if (!mz_zip_reader_extract_to_file(&zip_archive, i, file_stat.m_filename, 0))
 		{
 			DEBUG_LOG("%s: mz_zip_reader_extract to file () failed for '%s'", __FUNCTION__, file_stat.m_filename);
 		}
