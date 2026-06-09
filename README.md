@@ -60,13 +60,14 @@ Some discussions, announcements one can find in the Forum64 thread, [here](https
 
 # Installation
 
-For your convencience a fully populated Pi1541 is prepared for easy setup. 
-Copy the content of the release bundle to your boot partition of your Pi1541 SDCard. Make sure you adapt `options.txt` to your Pi1541 hardware setup (_Option A_ or _Option B_). Option B hardware is default. If you want to use networking (Wifi or Ethernet), see below how to activate.
+For your convencience a fully populated Pi1541 is prepared for easy setup.
+Copy the content of the release bundle to your boot partition of your Pi1541 SDCard. Make sure you adapt `options.txt` to your Pi1541 hardware setup (_Option A_ or _Option B_). Option B hardware is default. If you want to use networking (Wifi or Ethernet), see below how to activate.  You may check `config.txt` and adapt if needed. Especially if you want to use the orig-build kernels (Pi0/pi1/pi2).
 
 # Status
 ------
 The following is supposed to work on the circle based _V1.25c_, as I've tested those functions a bit:
 - Pi1541 on Raspberry models 3A+ ***), 3B+, PiZero 2W, 4: successful load (JiffyDOS) of some games with fastloaders and GEOS
+- Original builds tested with Pi0, P1BPlus
 - Option A HW Support 
 - Option B HW Support *)
 - LCD Display SSD1306, SH1107 (128x128 pixel resolution) **)
