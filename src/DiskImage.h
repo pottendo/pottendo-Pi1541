@@ -28,7 +28,7 @@
 #include "ff-local.h"
 #endif
 #endif
-
+void initDiskImage(void);
 #if defined(__PICO2__) || defined(ESP32)
 #define READBUFFER_SIZE 1024 * 512 * 1 // Now need over 800K for D81s
 #else
@@ -202,7 +202,8 @@ public:
 	bool IsDirty() const { return dirty; }
 
 #if !defined(__PICO2__) && !defined(ESP32)
-	static unsigned char readBuffer[READBUFFER_SIZE];
+	//	static unsigned char readBuffer[READBUFFER_SIZE];
+	static unsigned char *readBuffer;
 	union
 	{
 #if defined(EXPERIMENTALZERO)

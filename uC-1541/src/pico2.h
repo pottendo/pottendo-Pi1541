@@ -21,7 +21,6 @@ void reboot_now(void);
 void Reboot_Pi(void);
 void InitialiseLCD(void);
 void not_implemented(const char *fn);
-void initDiskImage(void);
 void plfio_showstat(void);
 //#define printf Serial.printf
 //#define __not_in_flash_func(a) a

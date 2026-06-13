@@ -69,7 +69,7 @@ while [ ! x"${opts}" = x"break" ] ; do
         shift
         ;;
 	-h)
-	    echo "Usage: $0 [-t <release-tag>] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
+	    echo "Usage: $0 [-t <release-tag>] [-l build only legacy] [-a pi3-32|pi3-64|pi4-32|pi4-64|pi5-64] [-c checkout circle-stdlib]" 
 	    shift
 	    exit 0
 	    ;;
@@ -153,9 +153,11 @@ fi
 if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
     rm -rf ${CIRCLE}
-    git clone --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    git clone --branch v20 --depth 1 --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    cd ${CIRCLE}
+    patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V50.1.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-httpDaemon.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make
@@ -213,6 +215,7 @@ EOF
 fi
 
 echo "building pottendo-Pi1541 for ${archs}"
+addopts="--opt-tls --kernel-max-size 8"
 for a in ${archs} ; do
     cd ${CIRCLE}
     case "$a" in
@@ -236,6 +239,7 @@ for a in ${archs} ; do
 	    exit 1
 	    ;;
     esac
+    opts="${opts} ${addopts}"
     make mrproper 2>&1 > /dev/null
     echo "configuring circle-stdlib: ${opts}..."
     ./configure $opts 2>&1 >make-${a}.log

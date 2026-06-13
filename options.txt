@@ -136,14 +136,14 @@ DisplayTrack = 0
 // If you rather it create a G64 then use this option.
 //NewDiskType = g64
 
-//QuickBoot = 0		// faster startup
-//ShowOptions = 0	// display some options on startup screen 
-//IgnoreReset = 0
+QuickBoot = 0		// faster startup
+ShowOptions = 0	// display some options on startup screen 
+IgnoreReset = 0
 
 // This option will display the temperature of the Pi's CPU.
 // It should be about 52C anything above 75C is bad and there is something wrong with your hardware
 DisplayTemperature = 0  // may impact compatibility / timing of emulation
-DisableHDMI = 0         // same as headLess, compatibility with recent Pi1541 (>V1.24)
+DisableHDMI = 0         // same as headLess, compatibility with recent Pi1541 (>V1.24), better set to 1 on Pi0s and small mem Pis (Pi3A+)
 // This option displays the IEC bus activity on the bottom of the Pi's screen
 HDMIGraphIEC = 1        // only if HDMI is enabled, don't use on on PiZero2
 HDMIDisplayIECActivity = 1    // only if HDMI is enabled
@@ -156,6 +156,11 @@ HDMIDisplayIECActivity = 1    // only if HDMI is enabled
 TZ = 2.0    // 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
 netWifi = 0
 netEthernet = 0
+
+// webserver static memory profile in kB, use smaller value (4000) for Pis < 1GB memory.
+maxContentSize = 1000     // == 1MB (min 256, max 4000)
+maxMultipartSize = 20000  // == 20MB for directory upload (min 1000, max 20000)
+
 // Static network config, to avoid slow DHCP - not much sanity is done, so write properly
 useDHCP = 1 // get network config automatically, else set to '0' and define static network config below
 //IPAdress = 192.168.1.31
