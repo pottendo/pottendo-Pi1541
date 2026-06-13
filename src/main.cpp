@@ -936,16 +936,18 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 	selectedViaIECCommands = false;
 
 	u32 hash = pi1541.drive.GetDiskImage()->GetHash();
+	if (hash != 0)
+		DEBUG_LOG("%s: Disk image hash = 0x%x\n", __FUNCTION__, hash);
 	// 0x42c02586 = maniac_mansion_s1[lucasfilm_1989](ntsc).g64
 	// 0x18651422 = aliens[electric_dreams_1987].g64
 	// 0x2a7f4b77 = zak_mckracken_boot[activision_1988](manual)(!).g64, 0x778fecda, 0x6ab92e00 (german version)
 	// 0x97732c3e = maniac_mansion_s1[activision_1987](!).g64
 	// 0x63f809d2 = 4x4_offroad_racing_s1[epyx_1988](ntsc)(!).g64
-	if (hash == 0x42c02586 || hash == 0x18651422 || hash == 0x2a7f4b77 || hash == 0x97732c3e || 
+	if (hash == 0x42c02586 || hash == 0x18651422 || hash == 0x2a7f4b77 || hash == 0x97732c3e || hash == 0xf1390bb4 ||
 		hash == 0x63f809d2 || hash == 0x778fecda || hash == 0x6ab92e00 || hash == 0x3adb56b7)
 	{
 		refreshOutsAfterCPUStep = false;
-		DEBUG_LOG("%s: .g64 hash = %x, refreshOutsAfterCPUStep = false", __FUNCTION__, hash);
+		DEBUG_LOG("%s: .g64 hash = 0x%x, refreshOutsAfterCPUStep = false", __FUNCTION__, hash);
 	}
 
 	// Quickly get through 1541's self test code.
