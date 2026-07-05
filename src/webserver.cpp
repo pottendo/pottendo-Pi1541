@@ -453,8 +453,8 @@ static bool read_file(string &dfn, string &msg, string &fcontent, UINT *nLength 
 	return ret;
 }
 
-#if 0
-static void hexdump(const unsigned char *buf, int len)
+#if 1
+void hexdump(const unsigned char *buf, int len)
 {
     int i;
     int idx = 0;
@@ -491,6 +491,7 @@ static void hexdump(const unsigned char *buf, int len)
         }
         strcat(linestr, "|");
         DEBUG_LOG("%s", linestr);
+		linestr[0] = '\0';
         idx += 16;
         len -= 16;
     }
