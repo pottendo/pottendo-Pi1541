@@ -143,6 +143,7 @@ protected:
 
 	bool CheckATN(void);
 	bool WriteIECSerialPort(u8 data, bool eoi);
+	bool WriteIECSerialPortJiffy(u8 data, bool eoi);
 	bool ReadIECSerialPort(u8& byte);
 
 	void Listen();
@@ -151,7 +152,7 @@ protected:
 	void SaveFile();
 
 	void AddDirectoryEntry(Channel& channel, const char* name, u16 blocks, int fileType);
-	void LoadDirectory();
+	void LoadDirectory(bool is_jiffy = false);
 	void OpenFile();
 	void CloseFile(u8 secondary);
 	void CloseAllChannels();
@@ -178,7 +179,7 @@ protected:
 	//void ProcessCommandFolderOnly(bool early);
 	void ProcessCommand(void);
 
-	bool SendBuffer(Channel& channel, bool eoi);
+	bool SendBuffer(Channel& channel, bool eoi, bool is_jiffy = false);
 
 	u8 GetFilenameCharacter(u8 value);
 

@@ -360,6 +360,50 @@ bool IEC_Commands::WriteIECSerialPort(u8 data, bool eoi)
 	return false;
 }
 
+
+bool IEC_Commands::WriteIECSerialPortJiffy(u8 data, bool eoi)
+{
+	IEC_Bus::ReleaseClock();
+	WaitWhile(IEC_Bus::IsDataAsserted());
+
+	IEC_Bus::AssertData();
+	IEC_Bus::AssertClock();
+	IEC_Bus::WaitMicroSeconds(3);
+	u16 w[10] = { 100, 100, 200, 200, 310, 310, 410, 410 };
+	for (u8 i = 0; i < 8;)
+	{
+		if (data & 1 << i)
+			IEC_Bus::ReleaseData();
+		else 
+			IEC_Bus::AssertData();
+		nsDelay(w[i]);
+		i++;
+		if (data & 1 << i) 
+		{
+			IEC_Bus::ReleaseClock();
+			//WaitWhile(IEC_Bus::IsClockReleased());
+		}
+		else 
+		{
+			IEC_Bus::AssertClock();
+			//WaitWhile(IEC_Bus::IsClockAsserted());
+		}
+		nsDelay(w[i]);
+		i++;
+	}
+	if (eoi) // End Or Identify
+	{
+		IEC_Bus::AssertClock();
+		IEC_Bus::ReleaseData();
+		nsDelay(520);
+		//WaitWhile(IEC_Bus::IsClockReleased());
+	}
+	// After the eighth bit has been sent, it's the listener's turn to acknowledge. At this moment, the Clock line is asserted and the Data line is released.
+	IEC_Bus::WaitMicroSeconds(3 + 10);
+	WaitWhile(IEC_Bus::IsDataReleased());
+	return false;
+}
+
 bool IEC_Commands::ReadIECSerialPort(u8& byte)
 {
 	byte = 0;
@@ -1641,7 +1685,7 @@ void IEC_Commands::ProcessCommand(void)
 			FolderCommand();
 			return;
 		}
-		//DEBUG_LOG("%s: ProcessCommand %s %c%c\r\n", __FUNCTION__, channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
+		DEBUG_LOG("%s: ProcessCommand %s %c%c\r\n", __FUNCTION__, channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
 
 		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
 		{
@@ -1781,11 +1825,11 @@ void IEC_Commands::Talk()
 	else
 	{
 		Channel& channelCommand = channels[15];
-		//DEBUG_LOG("cmd = %s\r\n", channelCommand.buffer);
+		//DEBUG_LOG("%s: cmd = '%s'\r\n", __FUNCTION__, channelCommand.buffer);
 
 		if (channelCommand.buffer[0] == '$')
 		{
-			LoadDirectory();
+			LoadDirectory(channelCommand.buffer[1] == ':');
 		}
 		else
 		{
@@ -1842,14 +1886,25 @@ bool IEC_Commands::FindFirst(DIR& dir, const char* matchstr, FILINFO& filInfo)
 	}
 }
 
-bool IEC_Commands::SendBuffer(Channel& channel, bool eoi)
+bool IEC_Commands::SendBuffer(Channel& channel, bool eoi, bool is_jiffy)
 {
 	for (u32 i = 0; i < channel.cursor; ++i)
 	{
 		u8 finalbyte = eoi && (channel.bytesSent == (channel.fileSize - 1));
-		if (WriteIECSerialPort(channel.buffer[i], finalbyte))
+		if (is_jiffy)
 		{
-			return true;
+			//DEBUG_LOG("%s: Jiffy sending 0x%02x", __FUNCTION__, channel.buffer[i]);
+			if (WriteIECSerialPortJiffy(channel.buffer[i], finalbyte))
+			{
+				return true;
+			}
+		}
+		else
+		{
+			if (WriteIECSerialPort(channel.buffer[i], finalbyte))
+			{
+				return true;
+			}
 		}
 		channel.bytesSent++;
 	}
@@ -2097,18 +2152,20 @@ struct greater
 	}
 };
 
-void IEC_Commands::LoadDirectory()
+extern void hexdump(const unsigned char *buf, int len);
+
+void IEC_Commands::LoadDirectory(bool is_jiffy)
 {
 	DIR dir;
 	char* ext;
 	FRESULT res;
-
+	char tmp[256];
 	Channel& channel = channels[0];
 
 	memcpy(channel.buffer, DirectoryHeader, sizeof(DirectoryHeader));
 	channel.cursor = sizeof(DirectoryHeader);
-
-	//DEBUG_LOG("%s: $\r\n", __FUNCTION__);
+	f_getcwd(tmp, 256);
+	//DEBUG_LOG("%s: %s, %s\r\n", __FUNCTION__, tmp, is_jiffy ? "jiffy" : "normal");
 
 	FileBrowser::BrowsableList::Entry entry;
 	std::vector<FileBrowser::BrowsableList::Entry> entries;
@@ -2138,14 +2195,16 @@ void IEC_Commands::LoadDirectory()
 	{
 		FILINFO* filInfo = &entries[i].filImage;
 		const char* fileName = filInfo->fname;
-
+		//DEBUG_LOG("%s: filename = '%s'", __FUNCTION__, fileName);
 		if (!channel.CanFit(DIRECTORY_ENTRY_SIZE))
 			SendBuffer(channel, false);
 
 		if (filInfo->fattrib & AM_DIR) AddDirectoryEntry(channel, fileName, 0, 6);
 		else AddDirectoryEntry(channel, fileName, filInfo->fsize / 256 + 1, 2);
 	}
-	SendBuffer(channel, false);
+	//DEBUG_LOG("%s: cursor = %d", __FUNCTION__, channel.cursor);
+	//hexdump(channel.buffer, channel.cursor);
+	SendBuffer(channel, false, is_jiffy);
 
 	memcpy(channel.buffer, DirectoryBlocksFree, sizeof(DirectoryBlocksFree));
 
@@ -2177,7 +2236,7 @@ void IEC_Commands::LoadDirectory()
 	
 	channel.filInfo.fsize = channel.bytesSent + channel.cursor;
 	channel.fileSize = (u32)channel.filInfo.fsize;
-	SendBuffer(channel, true);
+	SendBuffer(channel, true, is_jiffy);
 }
 
 void IEC_Commands::OpenFile()
