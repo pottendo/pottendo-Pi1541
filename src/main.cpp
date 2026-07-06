@@ -1598,12 +1598,15 @@ void __not_in_flash_func(emulator)(void)
 							fileBrowser->FolderChanged();
 							break;
 						case IEC_Commands::DEVICEID_CHANGED:
+							//DEBUG_LOG("DECIVEID_CHANGED\r\n");
 							GlobalSetDeviceID( _m_IEC_Commands->GetDeviceId() );
 							fileBrowser->ShowDeviceAndROM();
+							continue;
 							break;
 						case IEC_Commands::DEVICE_SWITCHED:
-							DEBUG_LOG("DECIVE_SWITCHED\r\n");
+							//DEBUG_LOG("DECIVE_SWITCHED\r\n");
 							fileBrowser->DeviceSwitched();
+							continue;
 							break;
 						default:
 							break;
@@ -2057,7 +2060,7 @@ bool SwitchDrive(const char* drive)
 	FRESULT res;
 
 	res = f_chdrive(drive);
-	//DEBUG_LOG("%s: %s res %d\r\n", __FUNCTION__, drive, res);
+	//DEBUG_LOG("%s: to drive '%s' res %d\r\n", __FUNCTION__, drive, res);
 	return res == FR_OK;
 }
 

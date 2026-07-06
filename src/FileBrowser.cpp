@@ -721,8 +721,12 @@ void FileBrowser::RefreshFolderEntries()
 
 void FileBrowser::FolderChanged()
 {
+	//unsigned long a, b;
+	//b = Kernel.get_clock_ticks();
 	RefreshFolderEntries();
 	RefeshDisplay();
+	//a = Kernel.get_clock_ticks();
+	//DEBUG_LOG("FolderChanged took %ld ticks\n", a - b);
 }
 
 void FileBrowser::DisplayRoot()

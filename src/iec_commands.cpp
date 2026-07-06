@@ -478,6 +478,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			// TODO: should set a timer here and if it times out (before the clock is released) go back to IDLE?
 			while (IEC_Bus::IsClockReleased())
 			{
+				//DEBUG_LOG("%s: ATN_SEQUENCE_ATN waiting for clock release\r\n", __FUNCTION__);
 				IEC_Bus::ReadBrowseMode();
 			}
 		break;
@@ -656,7 +657,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				Channel& channelCommand = channels[15];
 
-				//DEBUG_LOG("%s sa = %d\n", channelCommand.buffer, secondaryAddress);
+				//DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
@@ -677,6 +678,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 				// Command has been processed so reset it now.
 				receivedCommand = false;
 			}
+			//DEBUG_LOG("%s: ATN_SEQUENCE_COMPLETE -> setting to ATN_SEQUENCE_IDLE", __FUNCTION__);
 			atnSequence = ATN_SEQUENCE_IDLE;
 		break;
 	}
@@ -870,6 +872,7 @@ void IEC_Commands::CD(int partition, char* filename)
 	char filenameEdited[256];
 
 	//DEBUG_LOG("%d CD1 %s ss=%d\r\n", early, filename, cdSlashSlashToRoot);
+	//DEBUG_LOG("%s: partition=%d filename=%s", __FUNCTION__, partition, filename);
 	Error(ERROR_00_OK);
 
 	if (displayingDevices)
@@ -1623,9 +1626,8 @@ void IEC_Commands::Extended(void)
 // http://www.n2dvm.com/UIEC.pdf
 void IEC_Commands::ProcessCommand(void)
 {
-	//DEBUG_LOG("PC\r\n");
-
 	Channel& channel = channels[15];
+	//DEBUG_LOG("%s: cursor = %d\r\n", __FUNCTION__, channel.cursor);
 
 	if (channel.cursor > 0 && channel.buffer[channel.cursor - 1] == 0x0d)
 		channel.cursor--;
@@ -1636,25 +1638,14 @@ void IEC_Commands::ProcessCommand(void)
 	}
 	else
 	{
+		//DEBUG_LOG("%s: %s %c%c\r\n", __FUNCTION__, channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
 		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
 		{
 			FolderCommand();
 			return;
 		}
-		//DEBUG_LOG("%s: ProcessCommand %s %c%c\r\n", __FUNCTION__, channel.buffer, toupper(channel.buffer[0]), toupper(channel.buffer[1]));
-
-		if (toupper(channel.buffer[0]) != 'X' && toupper(channel.buffer[1]) == 'D')
-		{
-			//ProcessCommandEarly();
-
-			//Error(errorCodeEarly);
-			//FolderCommand(false);
-
-			return;
-		}
 
 		Error(ERROR_00_OK);
- 
 		switch (toupper(channel.buffer[0]))
 		{
 			case 'B':
