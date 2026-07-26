@@ -360,18 +360,88 @@ bool IEC_Commands::WriteIECSerialPort(u8 data, bool eoi)
 	return false;
 }
 
-
+static unsigned bs = 0;
 bool IEC_Commands::WriteIECSerialPortJiffy(u8 data, bool eoi)
 {
-	IEC_Bus::ReleaseClock();
-	WaitWhile(IEC_Bus::IsDataAsserted());
 
+	// inspired by https://github.com/dhansel/IECDevice/blob/d1c4cd296dd9dffaed4d132a79b3f5ad3bee6cbb/src/IECBusHandler.cpp#L1514
+	// doesn't work though
+	unsigned ct;
+	IEC_Bus::ReleaseClock();
+	ct = get_tick();
+	do
+	{
+		IEC_Bus::ReadBrowseMode();
+		if (get_tick() - ct > 5000)
+		{
+			DEBUG_LOG("%s: Timeout waiting for Data to be sent, %d", __FUNCTION__, bs);
+			return true;
+		}
+	}
+	while(IEC_Bus::IsDataAsserted());
+
+	ct = get_tick();
+	if (IEC_Bus::IsAtnAsserted())
+	{
+		DEBUG_LOG("%s: ATN asserted, aborting write 1", __FUNCTION__);
+		return true;
+	}
+	// 4x 2bit transfer
+	IEC_Bus::setJiffyClkDat(data & 1, data & 2);
+	unsigned to1 = ct + 17;
+	while (get_tick() < to1);
+	IEC_Bus::setJiffyClkDat(data & 4, data & 8);
+	unsigned to2 = ct + 28;
+	while (get_tick() < to2);
+	IEC_Bus::setJiffyClkDat(data & 16, data & 32);
+	unsigned to3 = ct + 39;
+	while (get_tick() < to3);
+	IEC_Bus::setJiffyClkDat(data & 64, data & 128);
+	unsigned to4 = ct + 50;
+	while (get_tick() < to4);
+
+	// last byte?
+	if (eoi) 
+	{
+		IEC_Bus::setJiffyClkDat(false, true);
+		//DEBUG_LOG("%s: EOI, 0x%02x, sent = %d\r\n", __FUNCTION__, data, bs);
+	}
+	else
+	{
+		bs++;
+		IEC_Bus::setJiffyClkDat(true, false);
+	}
+	unsigned to5 = ct + 61;
+	while (get_tick() < to5);
+
+	IEC_Bus::ReleaseData();
+	unsigned to6 = ct + 63;
+	while (get_tick() < to6);
+
+	do
+	{
+		IEC_Bus::ReadBrowseMode();
+		if (get_tick() - ct > 500000)
+		{
+			DEBUG_LOG("%s: Timeout waiting for Data to be released, %d", __FUNCTION__, bs);
+			return true;
+		}
+		if (IEC_Bus::IsAtnAsserted())
+		{
+			DEBUG_LOG("%s: ATN asserted, aborting write 2", __FUNCTION__);
+			return true;
+		}
+	}
+	while(IEC_Bus::IsDataReleased());
+
+	return false;
+
+#if 0
 	IEC_Bus::AssertData();
 	IEC_Bus::AssertClock();
 	IEC_Bus::WaitMicroSeconds(3);
 	u16 w[10] = { 100, 100, 200, 200, 310, 310, 410, 410 };
 	for (u8 i = 0; i < 8;)
-	{
 		if (data & 1 << i)
 			IEC_Bus::ReleaseData();
 		else 
@@ -402,6 +472,7 @@ bool IEC_Commands::WriteIECSerialPortJiffy(u8 data, bool eoi)
 	IEC_Bus::WaitMicroSeconds(3 + 10);
 	WaitWhile(IEC_Bus::IsDataReleased());
 	return false;
+#endif
 }
 
 bool IEC_Commands::ReadIECSerialPort(u8& byte)
@@ -1894,10 +1965,12 @@ bool IEC_Commands::SendBuffer(Channel& channel, bool eoi, bool is_jiffy)
 		if (is_jiffy)
 		{
 			//DEBUG_LOG("%s: Jiffy sending 0x%02x", __FUNCTION__, channel.buffer[i]);
+			unsigned b = get_tick();
 			if (WriteIECSerialPortJiffy(channel.buffer[i], finalbyte))
 			{
 				return true;
 			}
+			//DEBUG_LOG("%s: Jiffy sent 0x%02x in %u ticks", __FUNCTION__, channel.buffer[i], get_tick() - b);
 		}
 		else
 		{
@@ -2190,21 +2263,21 @@ void IEC_Commands::LoadDirectory(bool is_jiffy)
 			std::sort(entries.begin(), entries.end(), greater());
 		}
 	}
-
+bs = 0;
 	for (u32 i = 0; i < entries.size(); ++i)
 	{
 		FILINFO* filInfo = &entries[i].filImage;
 		const char* fileName = filInfo->fname;
 		//DEBUG_LOG("%s: filename = '%s'", __FUNCTION__, fileName);
 		if (!channel.CanFit(DIRECTORY_ENTRY_SIZE))
-			SendBuffer(channel, false);
+			SendBuffer(channel, false, is_jiffy);
 
 		if (filInfo->fattrib & AM_DIR) AddDirectoryEntry(channel, fileName, 0, 6);
 		else AddDirectoryEntry(channel, fileName, filInfo->fsize / 256 + 1, 2);
 	}
 	//DEBUG_LOG("%s: cursor = %d", __FUNCTION__, channel.cursor);
 	//hexdump(channel.buffer, channel.cursor);
-	SendBuffer(channel, false, is_jiffy);
+	SendBuffer(channel, true, is_jiffy);
 
 	memcpy(channel.buffer, DirectoryBlocksFree, sizeof(DirectoryBlocksFree));
 

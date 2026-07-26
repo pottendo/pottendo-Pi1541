@@ -867,7 +867,7 @@ public:
 	// Manual methods used by IEC_Commands
 	static inline void AssertData()
 	{
-		if (!DataSetToOut)
+		//if (!DataSetToOut)
 		{
 			DataSetToOut = true;
 			RefreshOuts1541();
@@ -875,7 +875,7 @@ public:
 	}
 	static inline void ReleaseData()
 	{
-		if (DataSetToOut)
+		//if (DataSetToOut)
 		{
 			DataSetToOut = false;
 			RefreshOuts1541();
@@ -884,7 +884,7 @@ public:
 
 	static inline void AssertClock()
 	{
-		if (!ClockSetToOut)
+		//if (!ClockSetToOut)
 		{
 			ClockSetToOut = true;
 			RefreshOuts1541();
@@ -892,7 +892,7 @@ public:
 	}
 	static inline void ReleaseClock()
 	{
-		if (ClockSetToOut)
+		//if (ClockSetToOut)
 		{
 			ClockSetToOut = false;
 			RefreshOuts1541();
@@ -914,6 +914,13 @@ public:
 	//static inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
 	static inline bool IsClockSetToOut() { return ClockSetToOut; }
 	static inline bool IsReset() { return Resetting; }
+
+	static inline void setJiffyClkDat(bool clk, bool data)
+	{
+		ClockSetToOut = clk;
+		DataSetToOut = data;
+		RefreshOuts1541();
+	}
 
 	static inline void WaitWhileAtnAsserted()
 	{

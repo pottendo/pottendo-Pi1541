@@ -303,7 +303,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 		PI_Atn = ATNIn;
 	}
 
-	if (!AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	if (1 || !AtnaDataSetToOut && !DataSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 		bool DATAIn = (gplev0 & PIGPIO_MASK_IN_DATA) == (invertIECInputs ? PIGPIO_MASK_IN_DATA : 0);
 		if (PI_Data != DATAIn)
@@ -317,7 +317,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 		PI_Data = true;
 	}
 
-	if (!ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
+	if (1 || !ClockSetToOut)	// only sense if we have not brought the line low (because we can't as we have the pin set to output but we can simulate in software)
 	{
 		bool CLOCKIn = (gplev0 & PIGPIO_MASK_IN_CLOCK) == (invertIECInputs ? PIGPIO_MASK_IN_CLOCK  : 0);
 		if (PI_Clock != CLOCKIn)
