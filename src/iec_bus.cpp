@@ -610,7 +610,7 @@ void IEC_Bus::Reset(void)
 
 	DataSetToOut = false;
 	ClockSetToOut = false;
-	SRQSetToOut = false;
+	//SRQSetToOut = false;
 
 	PI_Atn = false;
 	PI_Data = false;

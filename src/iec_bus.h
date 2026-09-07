@@ -809,7 +809,7 @@ public:
 
 			if (SRQSetToOut) set |= 1 << PIGPIO_OUT_SRQ;	// fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
 			else clear |= 1 << PIGPIO_OUT_SRQ;
-
+			DEBUG_LOG("%s: SRQ = %d", __FUNCTION__, SRQSetToOut);
 			if (!invertIECOutputs) {
 				tmp = set;
 				set = clear;
@@ -993,6 +993,7 @@ public:
 
 	static bool OutputLED;
 	static bool OutputSound;
+	static bool SRQSetToOut;
 
 private:
 	static u32 oldClears;
@@ -1028,7 +1029,6 @@ private:
 	static bool DataSetToOut;
 	static bool AtnaDataSetToOut;
 	static bool ClockSetToOut;
-	static bool SRQSetToOut;
 	static bool Resetting;
 
 	static int buttonCount;

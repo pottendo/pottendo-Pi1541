@@ -930,7 +930,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 	IEC_Bus::port = pi1541.VIA[0].GetPortB();
 	pi1541.Reset();	// will call IEC_Bus::Reset();
 
-	IEC_Bus::LetSRQBePulledHigh();
+	//IEC_Bus::LetSRQBePulledHigh();
 
 	//resetWhileEmulating = false;
 	selectedViaIECCommands = false;
@@ -1638,6 +1638,11 @@ extern int mount_new;
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
 						{
+							static bool firstTime = true;
+							DEBUG_LOG("%s: SRQ = %d, toggling %d", __FUNCTION__, IEC_Bus::SRQSetToOut, firstTime);
+							firstTime = !firstTime;
+							IEC_Bus::SRQSetToOut = firstTime;
+							//IEC_Bus::SetFastSerialSRQ(firstTime);							
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
@@ -1690,6 +1695,11 @@ extern int mount_new;
 							DEBUG_LOG("%s: chdir to '%s' failed", __FUNCTION__, mount_path);
 						else if (mount_new == 1)
 						{
+							static bool firstTime = true;
+							DEBUG_LOG("%s: SRQ = %d, toggling %d", __FUNCTION__, IEC_Bus::SRQSetToOut, firstTime);
+							firstTime = !firstTime;
+							IEC_Bus::SRQSetToOut = firstTime;
+							//IEC_Bus::SetFastSerialSRQ(firstTime);
 
 							fileBrowser->FolderChanged();
 							strncpy(fi.fname, mount_img, 255);
