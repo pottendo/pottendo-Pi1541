@@ -20,7 +20,9 @@
 #define M8520_H
 
 #include "IOPort.h"
+#if !defined (CMDBUILD)
 #include "m6502.h"
+#endif
 #include "debug.h"
 
 // PA0 SIDE0

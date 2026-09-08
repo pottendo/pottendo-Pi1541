@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
-#include "options.h"
+#include "Options.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

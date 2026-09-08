@@ -19,7 +19,7 @@
 #include "defs.h"
 #include "Pi1581.h"
 #include "iec_bus.h"
-#include "options.h"
+#include "Options.h"
 #include "ROMs.h"
 #include "debug.h"
 

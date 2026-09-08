@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <ctype.h>
 #include "debug.h"
-#include "options.h"
+#include "Options.h"
 #include "InputMappings.h"
 #include "stb_image.h"
 #include "Petscii.h"

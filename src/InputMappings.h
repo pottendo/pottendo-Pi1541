@@ -135,6 +135,10 @@ public:
 		return KeyboardFlag(PREV_FLAG) | /*UartFlag(PREV_FLAG) |*/ ButtonFlag(PREV_FLAG);
 	}
 #endif
+	// Keyboard only escape. Used by the CMD HD emulation, which handles its own
+	// buttons so that they can act as the drive's front panel.
+	inline bool KeyboardEscape() { return KeyboardFlag(ESC_FLAG); }
+	
 	inline bool AutoLoad() { return KeyboardFlag(AUTOLOAD_FLAG); }
 
 	inline bool FakeReset() { return KeyboardFlag(FAKERESET_FLAG); }

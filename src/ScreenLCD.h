@@ -25,7 +25,7 @@
 #else
 #include "SSD1306.h"
 #endif
-#include "options.h"
+#include "Options.h"
 
 class ScreenLCD : public ScreenBase
 {

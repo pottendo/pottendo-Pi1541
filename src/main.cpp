@@ -56,7 +56,7 @@ extern "C"
 #include "rpi-mailbox.h"
 }
 #include "InputMappings.h"
-#include "options.h"
+#include "Options.h"
 #include "iec_commands.h"
 #include "diskio.h"
 #include "Pi1541.h"

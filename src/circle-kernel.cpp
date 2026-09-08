@@ -32,7 +32,7 @@
 #include <iostream>
 #include <sstream>
 #include <circle/usb/usbmassdevice.h>
-#include "options.h"
+#include "Options.h"
 #include "webserver.h"
 #include "version.h"
 #include <list>

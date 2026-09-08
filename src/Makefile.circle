@@ -47,6 +47,6 @@ LIBS := $(CIRCLEBASE)/src/circle-mbedtls/libcircle-mbedtls.a \
 		$(CIRCLEHOME)/lib/sound/libsound.a \
 		$(CIRCLE_STDLIB_LIBS)
 
-EXTRACLEAN = ${OBJS:.o=.d} ${SKVIC20OBJS:.o=.d} $(SKVIC20OBJS) $(RADOBJS) $(OLED) *.img *.lst *.map *.elf version.h
+EXTRACLEAN = ${OBJS:.o=.d} ${SKVIC20OBJS:.o=.d} $(SKVIC20OBJS) $(RADOBJS) $(OLED) *.img *.lst *.map *.elf version.h 
 
 -include $(DEPS)

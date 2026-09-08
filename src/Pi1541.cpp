@@ -18,7 +18,7 @@
 
 #include "Pi1541.h"
 #include "debug.h"
-#include "options.h"
+#include "Options.h"
 #include "ROMs.h"
 
 extern Options options;

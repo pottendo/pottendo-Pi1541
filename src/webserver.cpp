@@ -29,7 +29,7 @@
 #include <circle-mbedtls/http.h>
 #include <assert.h>
 #include "circle-kernel.h"
-#include "options.h"
+#include "Options.h"
 #include <cstring>
 #include <string>
 #include <vector>

@@ -51,6 +51,14 @@ public:
 	inline unsigned int GetOnResetChangeToStartingFolder() const { return onResetChangeToStartingFolder; }
 	inline const char* GetAutoMountImageName() const { return autoMountImageName; }
 	inline const char* GetRomFontName() const { return ROMFontName; }
+	inline const char* GetRomNameCMDHD() const { return ROMNameCMDHD; }
+	inline unsigned int GetCMDHDDeviceID() const { return CMDHDDeviceID; }
+	inline unsigned int GetCMDHDCacheMB() const { return CMDHDCacheMB; }
+	// GPIO used to pull the IEC ATN line low (0 = the drive cannot drive ATN).
+	// 24 on a Pi1541io: its ATN level shifter is bidirectional, so the pin that
+	// reads ATN can drive it too.
+	inline unsigned int GetCMDHDAtnOutGPIO() const { return CMDHDAtnOutGPIO; }
+	inline unsigned int GetCMDHDLcdLamps() const { return CMDHDLcdLamps; }
 	const char* GetRomName(int index) const;
 	const char* GetRomName1581() const;
 	inline const char* GetStarFileName() const { return starFileName; }
@@ -105,11 +113,42 @@ public:
 
 	inline float ScrollHighlightRate() const { return scrollHighlightRate; }
 
+	// options.txt numbers the buttons 1-5; the arrays behind them are indexed
+	// from 0, hence the -1. An out of range value used to sail straight
+	// through: "buttonEnter = 0" gave 0u - 1 = 0xFFFFFFFF, truncated to 255
+	// when stored in a u8, and inputmappings then read 250 elements past the
+	// end of IEC_Bus's five element arrays.
+	//
+	// The two families need different handling. The CMD HD buttons are always
+	// tested with "< 5" before use, so out of range can map to a sentinel that
+	// disables the function - which is what options.txt already documents 0 to
+	// mean. The browser buttons are stored as u8 and indexed unguarded, so
+	// there is no disabled state available: they fall back to their default
+	// instead, which at least leaves the browser usable.
+	static const unsigned int BUTTON_DISABLED = 0xFFFFFFFF;
+
+	static inline unsigned int ButtonIndex(unsigned int n)
+	{
+		return (n >= 1 && n <= 5) ? n - 1 : BUTTON_DISABLED;
+	}
+
+	static inline unsigned int BrowserButtonIndex(unsigned int n, unsigned int fallback)
+	{
+		return (n >= 1 && n <= 5) ? n - 1 : fallback - 1;
+	}
+
 	inline unsigned int GetButtonEnter() const { return buttonEnter - 1; }
 	inline unsigned int GetButtonUp() const { return buttonUp - 1; }
 	inline unsigned int GetButtonDown() const { return buttonDown - 1; }
 	inline unsigned int GetButtonBack() const { return buttonBack - 1; }
 	inline unsigned int GetButtonInsert() const { return buttonInsert - 1; }
+
+	// CMD HD front panel buttons (1-5 in options.txt, 0 = function disabled)
+	inline unsigned int GetCMDHDButtonSwap8() const { return ButtonIndex(CMDHDButtonSwap8); }
+	inline unsigned int GetCMDHDButtonSwap9() const { return ButtonIndex(CMDHDButtonSwap9); }
+	inline unsigned int GetCMDHDButtonWP() const { return ButtonIndex(CMDHDButtonWP); }
+	inline unsigned int GetCMDHDButtonReset() const { return ButtonIndex(CMDHDButtonReset); }
+	inline unsigned int GetCMDHDButtonExit() const { return ButtonIndex(CMDHDButtonExit); }
 
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 	inline unsigned int RotaryEncoderEnable() const { return rotaryEncoderEnable; }
@@ -140,6 +179,10 @@ public:
 	static float GetFloat(char* pString);
 
 private:
+	unsigned int CMDHDDeviceID;
+	unsigned int CMDHDCacheMB;
+	unsigned int CMDHDAtnOutGPIO;
+	unsigned int CMDHDLcdLamps;
 	unsigned int deviceID;
 	unsigned int onResetChangeToStartingFolder;
 	unsigned int extraRAM;
@@ -190,6 +233,11 @@ private:
         u8 buttonDown;
         u8 buttonBack;
         u8 buttonInsert;
+	u8 CMDHDButtonSwap8;
+	u8 CMDHDButtonSwap9;
+	u8 CMDHDButtonWP;
+	u8 CMDHDButtonReset;
+	u8 CMDHDButtonExit;
 
 	char starFileName[256];
 	char C128BootSectorName[256];
@@ -199,6 +247,7 @@ private:
 
 	char autoMountImageName[256];
 	char ROMFontName[256];
+	char ROMNameCMDHD[256];
 	char ROMName[256];
 	char ROMNameSlot2[256];
 	char ROMNameSlot3[256];
