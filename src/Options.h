@@ -51,6 +51,7 @@ public:
 	inline unsigned int GetOnResetChangeToStartingFolder() const { return onResetChangeToStartingFolder; }
 	inline const char* GetAutoMountImageName() const { return autoMountImageName; }
 	inline const char* GetRomFontName() const { return ROMFontName; }
+#if defined(CMDHD_SUPPORT)	
 	inline const char* GetRomNameCMDHD() const { return ROMNameCMDHD; }
 	inline unsigned int GetCMDHDDeviceID() const { return CMDHDDeviceID; }
 	inline unsigned int GetCMDHDCacheMB() const { return CMDHDCacheMB; }
@@ -59,6 +60,7 @@ public:
 	// reads ATN can drive it too.
 	inline unsigned int GetCMDHDAtnOutGPIO() const { return CMDHDAtnOutGPIO; }
 	inline unsigned int GetCMDHDLcdLamps() const { return CMDHDLcdLamps; }
+#endif	
 	const char* GetRomName(int index) const;
 	const char* GetRomName1581() const;
 	inline const char* GetStarFileName() const { return starFileName; }
@@ -143,12 +145,14 @@ public:
 	inline unsigned int GetButtonBack() const { return buttonBack - 1; }
 	inline unsigned int GetButtonInsert() const { return buttonInsert - 1; }
 
+#if defined(CMDHD_SUPPORT)	
 	// CMD HD front panel buttons (1-5 in options.txt, 0 = function disabled)
 	inline unsigned int GetCMDHDButtonSwap8() const { return ButtonIndex(CMDHDButtonSwap8); }
 	inline unsigned int GetCMDHDButtonSwap9() const { return ButtonIndex(CMDHDButtonSwap9); }
 	inline unsigned int GetCMDHDButtonWP() const { return ButtonIndex(CMDHDButtonWP); }
 	inline unsigned int GetCMDHDButtonReset() const { return ButtonIndex(CMDHDButtonReset); }
 	inline unsigned int GetCMDHDButtonExit() const { return ButtonIndex(CMDHDButtonExit); }
+#endif
 
 	//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
 	inline unsigned int RotaryEncoderEnable() const { return rotaryEncoderEnable; }
@@ -179,10 +183,6 @@ public:
 	static float GetFloat(char* pString);
 
 private:
-	unsigned int CMDHDDeviceID;
-	unsigned int CMDHDCacheMB;
-	unsigned int CMDHDAtnOutGPIO;
-	unsigned int CMDHDLcdLamps;
 	unsigned int deviceID;
 	unsigned int onResetChangeToStartingFolder;
 	unsigned int extraRAM;
@@ -233,12 +233,18 @@ private:
         u8 buttonDown;
         u8 buttonBack;
         u8 buttonInsert;
+#if defined (CMDHD_SUPPORT)		
+	unsigned int CMDHDDeviceID;
+	unsigned int CMDHDCacheMB;
+	unsigned int CMDHDAtnOutGPIO;
+	unsigned int CMDHDLcdLamps;
 	u8 CMDHDButtonSwap8;
 	u8 CMDHDButtonSwap9;
 	u8 CMDHDButtonWP;
 	u8 CMDHDButtonReset;
 	u8 CMDHDButtonExit;
-
+	char ROMNameCMDHD[256];
+#endif 
 	char starFileName[256];
 	char C128BootSectorName[256];
 	char autoBaseName[256];
@@ -247,7 +253,6 @@ private:
 
 	char autoMountImageName[256];
 	char ROMFontName[256];
-	char ROMNameCMDHD[256];
 	char ROMName[256];
 	char ROMNameSlot2[256];
 	char ROMNameSlot3[256];

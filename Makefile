@@ -43,7 +43,7 @@ LEGACY_OBJS = 	armc-start.o armc-cstartup.o armc-cstubs.o armc-cppstubs.o emmc.o
 			interrupt.o rpi-aux.o  rpi-i2c.o rpi-mailbox-interface.o rpi-mailbox.o rpi-gpio.o
 
 CIRCLE_OBJS = 	circle-main.o circle-kernel.o webserver.o legacy-wrappers.o logger.o miniz.o #circle-hmi.o 
-CMD_OBJS = i8255a.o m65c02.o picmdhd.o rtc72421.o scsi.o iec_bus.o
+CMD_OBJS = i8255a.o m65c02.o m6522.o picmdhd.o rtc72421.o scsi.o iec_bus.o 
 
 COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 		gcr.o prot.o lz.o Options.o Screen.o ScreenLCD.o \
@@ -51,7 +51,7 @@ COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m650
 		m8520.o wd177x.o Pi1581.o Keyboard.o SSD1306.o
 SRCDIR   = src
 CMDSRC = $(abspath ../pottendo-PiCMD/src/emulation)
-
+XFLAGS += -I$(CMDSRC)
 OBJS_CIRCLE  := $(addprefix $(SRCDIR)/, $(CIRCLE_OBJS) $(COMMON_OBJS))
 OBJS_LEGACY  := $(addprefix $(SRCDIR)/, $(LEGACY_OBJS) $(COMMON_OBJS))
 OBJS_CMD     := $(addprefix $(CMDSRC)/, $(CMD_OBJS)) $(CMDSRC)/../main.o

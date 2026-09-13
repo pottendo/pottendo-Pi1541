@@ -60,9 +60,15 @@ extern "C"
 #include "iec_commands.h"
 #include "diskio.h"
 #include "Pi1541.h"
-#include "Pi1581.h"
-
 #include "FileBrowser.h"
+#if defined(PI1581SUPPORT)
+#include "Pi1581.h"
+#endif
+#if defined(CMDHD_SUPPORT)
+EXIT_TYPE EmulateCMDHD(FileBrowser* fileBrowser);
+#define PI1541BUILD 1
+#include "picmdhd.h"
+#endif
 #include "ScreenLCD.h"
 #include "ScreenHeadless.h"
 
@@ -123,6 +129,12 @@ DiskCaddy diskCaddy;
 Pi1541 pi1541;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
+#endif
+#if defined(CMDHD_SUPPORT)
+extern PiCMDHD piCMDHD;
+// Filename the CMD HD boot ROM was loaded from, shown by the browser next to
+// the device number. The ROM itself lives in PiCMDHD.
+char cmdhdRomName[256] = { 0 };
 #endif
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
@@ -438,6 +450,136 @@ void UpdateLCD(const char* track, unsigned temperature)
 	}
 }
 
+#if defined(CMDHD_SUPPORT)
+static u32 lcdTrackRow = 0;
+
+// Show the CMD HD's front panel indicator lamps on the LCD.
+//
+// The panel is monochrome, so a lit lamp cannot be a different colour - it is
+// drawn as an inverse video block instead, which reads clearly at a glance.
+// (ScreenLCD::PrintText treats any non zero background colour as inverse.)
+// Only redrawn when a lamp actually changes, to keep I2C traffic off core 0.
+static void UpdateLCDLamps(void)
+{
+#if not defined(EXPERIMENTALZERO)
+	static u8 oldLamps = 0xff;
+	static bool oldPower = false;
+
+	if (!screenLCD || !options.GetCMDHDLcdLamps())
+		return;
+
+	if (emulating != EMULATING_CMDHD)
+	{
+		oldPower = false;
+		oldLamps = 0xff;		// force a redraw when emulation next starts
+		return;
+	}
+
+	u8 lamps = piCMDHD.LEDs;
+	if (lamps == oldLamps && oldPower)
+		return;
+	oldLamps = lamps;
+	oldPower = true;
+
+	u32 fontHeight = screenLCD->GetFontHeight();
+	u32 rows = screenLCD->Height() / fontHeight;
+	if (rows == 0)
+		return;
+
+	// The first four lamps get a full width field; the last three share the
+	// bottom row as short tags, because three names will not fit across
+	// sixteen characters. Only the first four therefore have a wide form.
+	static const u32 WIDE_LAMPS = 4;
+
+	bool on[7];
+	const char* wide[WIDE_LAMPS];
+	const char* narrow[7];
+
+	on[0] = true;								// POWER - the drive is running
+	on[1] = piCMDHD.IsActivityLEDOn();
+	on[2] = piCMDHD.IsErrorLEDOn();
+	on[3] = piCMDHD.IsWriteProtectLEDOn();
+	on[4] = piCMDHD.IsSwap8LEDOn();
+	on[5] = piCMDHD.IsSwap9LEDOn();
+	on[6] = piCMDHD.IsGeosLEDOn();
+
+	wide[0] = "POWER";   narrow[0] = "PWR";
+	wide[1] = "ACTIVE";  narrow[1] = "ACT";
+	wide[2] = "ERROR";   narrow[2] = "ERR";
+	wide[3] = "WR PROT"; narrow[3] = "WP";
+	                     narrow[4] = "D8";
+	                     narrow[5] = "D9";
+	                     narrow[6] = "GEOS";
+
+	core0RefreshingScreen.Acquire();
+	IEC_Bus::WaitMicroSeconds(100);
+
+	u32 lampRows;
+	if (rows >= 4)
+	{
+		// 16 characters across. Use two wide fields on the first rows, then a
+		// compact final row so GEOS still fits on 128x64 panels.
+		lampRows = 3;
+		for (int i = 0; i < 4; ++i)
+		{
+			snprintf(tempBuffer, tempBufferSize, "%-8s", wide[i]);
+			screenLCD->PrintText(false, (i & 1) ? 8 * 8 : 0, (i >> 1) * fontHeight,
+				tempBuffer, 0, on[i] ? RGBA(0xff, 0xff, 0xff, 0xff) : 0);
+		}
+
+		// Three four character tags cover columns 0-11 of a sixteen column
+		// row, so blank the row first - otherwise columns 12-15 keep the
+		// browser or logo pixels that were there when emulation started,
+		// and nothing ever clears them because this function returns early
+		// whenever the lamp state is unchanged.
+		snprintf(tempBuffer, tempBufferSize, "%-16s", "");
+		screenLCD->PrintText(false, 0, 2 * fontHeight, tempBuffer, 0, 0);
+
+		for (int i = 4; i < 7; ++i)
+		{
+			snprintf(tempBuffer, tempBufferSize, "%-4s", narrow[i]);
+			screenLCD->PrintText(false, (i - 4) * 4 * 8, 2 * fontHeight,
+				tempBuffer, 0, on[i] ? RGBA(0xff, 0xff, 0xff, 0xff) : 0);
+		}
+	}
+	else
+	{
+		// Only room for a couple of rows: four short tags each, with GEOS on
+		// the second row so 128x32 panels can still show it.
+		lampRows = 2;
+		for (int i = 0; i < 4; ++i)
+		{
+			snprintf(tempBuffer, tempBufferSize, "%-4s", narrow[i]);
+			screenLCD->PrintText(false, i * 4 * 8, 0,
+				tempBuffer, 0, on[i] ? RGBA(0xff, 0xff, 0xff, 0xff) : 0);
+		}
+
+		// Three four character tags cover columns 0-11 of a sixteen column
+		// row, so blank the row first - otherwise columns 12-15 keep the
+		// browser or logo pixels that were there when emulation started,
+		// and nothing ever clears them because this function returns early
+		// whenever the lamp state is unchanged.
+		snprintf(tempBuffer, tempBufferSize, "%-16s", "");
+		screenLCD->PrintText(false, 0, fontHeight, tempBuffer, 0, 0);
+
+		for (int i = 4; i < 7; ++i)
+		{
+			snprintf(tempBuffer, tempBufferSize, "%-4s", narrow[i]);
+			screenLCD->PrintText(false, (i - 4) * 4 * 8, fontHeight,
+				tempBuffer, 0, on[i] ? RGBA(0xff, 0xff, 0xff, 0xff) : 0);
+		}
+	}
+	screenLCD->RefreshRows(0, lampRows);
+
+	// Keep the track/temperature line below the lamps if there is room for it.
+	lcdTrackRow = (rows > lampRows) ? lampRows : 0;
+
+	IEC_Bus::WaitMicroSeconds(100);
+	core0RefreshingScreen.Release();
+#endif
+}
+#endif /* CMDHD_SUPPORT */
+
 // This runs on core0 and frees up core1 to just run the emulator.
 // Care must be taken not to crowd out the shared cache with core1 as this could slow down core1 so that it no longer can perform its duties in the 1us timings it requires.
 void UpdateScreen()
@@ -456,6 +598,10 @@ void UpdateScreen()
 	u32 bgColour = COLOUR_WHITE;
 	u32 oldTemperature = 0;
 	u32 caddyIndexChangedTimer = 0;
+#if defined(CMDHD_SUPPORT)	
+	u8 oldLamps = 0xff;
+	u32 oldWriteErrors = 0;
+#endif	
 
 	RGBA atnColour = COLOUR_YELLOW;
 	RGBA dataColour = COLOUR_GREEN;
@@ -466,7 +612,7 @@ void UpdateScreen()
 	int height = screen->ScaleY(60);
 	int screenHeight = screen->Height();
 	int screenWidthM1 = screen->Width() - 1;
-	int top, top2, top3;
+	int top, top2, top3, top4;
 	int bottom;
 	int graphX = 0;
   //bool refreshUartStatusDisplay;
@@ -480,6 +626,7 @@ void UpdateScreen()
 
 	top2 = top - (bottom - top);
 	top3 = top2 - (bottom - top);
+	top4 = top3 - (bottom - top);
 
 	while (1)
 	{
@@ -493,7 +640,13 @@ void UpdateScreen()
 		bool motor = false;
 
 		refreshLCDStatusDisplay = false;
-
+#if defined(CMDHD_SUPPORT)		
+		if (emulating == EMULATING_CMDHD)
+		{
+			led = piCMDHD.IsActivityLEDOn();
+			motor = piCMDHD.IsErrorLEDOn();	// The CMD HD has no motor; show the error LED here instead.
+		}
+#endif		
 		if (emulating == EMULATING_1541)
 		{
 			led = pi1541.drive.IsLEDOn();
@@ -551,6 +704,37 @@ void UpdateScreen()
 			}
 		}
 #endif
+#if defined(CMDHD_SUPPORT)
+		// The CMD HD's front panel indicator lamps. The board only has one LED
+		// but the drive signals a lot through these six (configuration mode,
+		// FPPS partition digits, write protect state, errors), so show them.
+		if (emulating == EMULATING_CMDHD)
+		{
+			u8 lamps = piCMDHD.LEDs;
+			// The write error count belongs on this line too. A failed flush
+			// means data the computer was told had landed did not, and until
+			// now the only trace of that was a debug log nobody reads - the
+			// count existed and was displayed nowhere. It is sticky on
+			// purpose: this is the one number worth noticing after the fact.
+			u32 writeErrors = ScsiImage::WriteErrorCount();
+
+			if (lamps != oldLamps || writeErrors != oldWriteErrors)
+			{
+				oldLamps = lamps;
+				oldWriteErrors = writeErrors;
+				snprintf(tempBuffer, tempBufferSize, "%s %s %s %s %s %s %s",
+					piCMDHD.IsActivityLEDOn() ? "ACT" : "   ",
+					piCMDHD.IsErrorLEDOn() ? "ERR" : "   ",
+					piCMDHD.IsSwap8LEDOn() ? "SW8" : "   ",
+					piCMDHD.IsSwap9LEDOn() ? "SW9" : "   ",
+					piCMDHD.IsWriteProtectLEDOn() ? "WP" : "  ",
+					piCMDHD.IsGeosLEDOn() ? "GEOS" : "    ",
+					writeErrors ? "WRITE FAIL" : "          ");
+				screen->PrintText(false, 0, y - screen->GetFontHeight(), tempBuffer, textColour, bgColour);
+			}
+		}
+#endif
+
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top3, bottom, BkColour);
 
@@ -621,6 +805,29 @@ void UpdateScreen()
 				else screen->PlotPixel(graphX, bottom, clockColour);
 			}
 		}
+#if defined(CMDHD_SUPPORT)		
+		value = IEC_Bus::GetPI_SRQ();
+		if (options.HDMIGraphIEC())
+		{
+			if (value ^ oldSRQ)
+			{
+				screen->DrawLineV(graphX, top4, bottom, SRQColour);
+			}
+			else
+			{
+				if (value) screen->PlotPixel(graphX, top4, SRQColour);
+				else screen->PlotPixel(graphX, bottom, SRQColour);
+			}
+		}
+		if (value != oldSRQ)
+		{
+			oldSRQ = value;
+			snprintf(tempBuffer, tempBufferSize, "%d", value);
+			screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
+			//refreshUartStatusDisplay = true;
+		}
+#endif
+
 		if (options.HDMIDisplayIECActivity())
 		{
 			if (value != oldCLOCK)
@@ -720,6 +927,11 @@ void UpdateScreen()
 
 			if (caddyIndexChangedTimer == 0)
 			{
+#if defined(CMDHD_SUPPORT)				
+				// The lamps go first: they own the rows above the track line
+				// and set which row that line uses.
+				UpdateLCDLamps();				
+#endif				
 				if (refreshLCDStatusDisplay)
 				{
 					UpdateLCD(tempBufferTrack, temperature);
@@ -789,6 +1001,22 @@ u32 HashBuffer(const void* pBuffer, u32 length)
 
 EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIcon)
 {
+#if defined(CMDHD_SUPPORT)
+	const char *imagePath = fileBrowser->SelectedDHDPath();
+	if (imagePath != 0 && imagePath[0] != 0)
+	{
+		bool readOnly = fileBrowser->SelectedDHDReadOnly();
+		if (piCMDHD.Insert(imagePath, readOnly))
+		{
+			fileBrowser->DisplayDHDInfo(imagePath, piCMDHD.imagesize, filenameForIcon);
+			// fileBrowser->ShowRomName();
+			DEBUG_LOG("%s: Attached DHD Image '%s'", __FUNCTION__, imagePath);
+			MsDelay(30);
+			return EMULATING_CMDHD;
+		}
+		DEBUG_LOG("%s: Failed to attach %s", __FUNCTION__, imagePath);
+	}
+#endif
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
 	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
 	if (diskImage)
@@ -1721,10 +1949,13 @@ extern int mount_new;
 			if (emulating == EMULATING_1541)
 				exitReason = Emulate1541(fileBrowser);
 #if defined(PI1581SUPPORT)
-			else
+			else if (emulating == EMULATING_1581)
 				exitReason = Emulate1581(fileBrowser);
 #endif
-
+#if defined(CMDHD_SUPPORT)
+			else if (emulating == EMULATING_CMDHD)
+				exitReason = EmulateCMDHD(fileBrowser);
+#endif
 			DEBUG_LOG("Exited emulation %d\r\n", exitReason);
 #ifdef HEAP_DEBUG
 			CMemorySystem::DumpStatus();
@@ -1776,6 +2007,47 @@ static void start_core(int core, func_ptr func)
 {
 	write32(0x4000008C + 0x10 * core, (unsigned int)func);
 	__asm ("SEV");	// and wake it up.
+}
+#endif
+
+#if defined(CMDHD_SUPPORT)
+// Load the CMD HD boot ROM. Accepts 16K images and 32K dumps (which contain
+// the 16K image twice).
+static bool AttemptToLoadROMCMDHD(const char* ROMName)
+{
+	FIL fp;
+	static unsigned char bootROM[0x8000];
+
+	char ROMName2[256] = "/roms/";
+
+	if (ROMName[0] != '/')	// not a full path, prepend /roms/
+		strncat (ROMName2, ROMName, 240);
+	else
+		ROMName2[0] = 0;
+
+	if ( (FR_OK == f_open(&fp, ROMName, FA_READ))
+		|| (FR_OK == f_open(&fp, ROMName2, FA_READ)) )
+	{
+		u32 bytesRead;
+		SetACTLed(true);
+		f_read(&fp, bootROM, sizeof(bootROM), &bytesRead);
+		SetACTLed(false);
+		f_close(&fp);
+
+		if (piCMDHD.SetROM(bootROM, bytesRead))
+		{
+			strncpy(cmdhdRomName, ROMName, sizeof(cmdhdRomName) - 1);
+			DEBUG_LOG("Opened CMD HD boot ROM %s (%d bytes)\r\n", ROMName, bytesRead);
+			return true;
+		}
+		DEBUG_LOG("CMD HD boot ROM %s has the wrong size (%d bytes; expected 16384 or 32768)\r\n", ROMName, bytesRead);
+		return false;
+	}
+	else
+	{
+		DEBUG_LOG("COULD NOT OPEN ROM FILE;- %s!\r\n", ROMName);
+		return false;
+	}
 }
 #endif
 
@@ -2007,6 +2279,35 @@ static void CheckOptions()
 		}
 	}
 #endif
+#if defined(CMDHD_SUPPORT)
+	// Load the CMD HD boot ROM. Try the name from options.txt first, then
+	// some common names.
+	const char* ROMNameCMDHD = options.GetRomNameCMDHD();
+
+	if (!(ROMNameCMDHD && ROMNameCMDHD[0] && AttemptToLoadROMCMDHD(ROMNameCMDHD))
+		&& !AttemptToLoadROMCMDHD("cmdhd-bootrom.bin")
+		&& !AttemptToLoadROMCMDHD("bootromCMDHD-v2-80.bin")
+		&& !AttemptToLoadROMCMDHD("cmd_hd_bootrom_v2.80.bin")
+		&& !AttemptToLoadROMCMDHD("cmdhd.rom"))
+	{
+		snprintf(tempBuffer, tempBufferSize, "No CMD HD boot ROM found!\r\nPlease copy a CMD HD boot ROM (16K or 32K, eg v2.80) into the root folder\r\nof the SD card and name it 'cmdhd-bootrom.bin'\r\n(or set CMDHDRomName in options.txt).");
+		screen->MeasureText(false, tempBuffer, &widthText, &heightText);
+		xpos = (widthScreen - widthText) >> 1;
+		ypos = (heightScreen - heightText) >> 1;
+		do
+		{
+			screen->Clear(COLOUR_RED);
+			IEC_Bus::WaitMicroSeconds(20000);
+			screen->PrintText(false, xpos, ypos, tempBuffer, COLOUR_WHITE, COLOUR_RED);
+			IEC_Bus::WaitMicroSeconds(100000);
+		}
+		while (1);
+	}
+	DEBUG_LOG("%s: CMD HD boot ROM loaded from %s", __FUNCTION__, cmdhdRomName);
+#endif
+	// Options for the CMD HD emulation itself.
+	piCMDHD.SetForcedDeviceID((u8)options.GetCMDHDDeviceID());
+	ScsiImage::InitCache(options.GetCMDHDCacheMB() * 1024 * 1024);
 
 	int ROMIndex;
 

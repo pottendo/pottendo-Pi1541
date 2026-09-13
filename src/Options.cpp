@@ -161,6 +161,17 @@ Options::Options(void)
         , buttonDown(3)
         , buttonBack(4)
         , buttonInsert(5)
+#if defined(CMDHD_SUPPORT)	
+	, CMDHDDeviceID(0)
+	, CMDHDCacheMB(32)
+	, CMDHDAtnOutGPIO(0)
+	, CMDHDLcdLamps(1)	
+	, CMDHDButtonSwap8(1)
+	, CMDHDButtonSwap9(2)
+	, CMDHDButtonWP(3)
+	, CMDHDButtonReset(4)
+	, CMDHDButtonExit(5)
+#endif			
 	, rotaryEncoderEnable(0) //ROTARY:
 	, rotaryEncoderInvert(0) //ROTARY:
 	, headLess(0)
@@ -191,6 +202,10 @@ Options::Options(void)
 	ROMName1581[0] = 0;
 	newDiskType[0] = 0;
 	i2cLcdModelName = "LCD_UNKNOWN";
+#if defined(CMDHD_SUPPORT)	
+	ROMNameCMDHD[0] = 0;
+#endif
+
 }
 
 #define ELSE_CHECK_DECIMAL_OPTION(Name) \

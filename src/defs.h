@@ -10,6 +10,7 @@
 
 #if !defined(__PICO2__) && !defined(ESP32)
 #define PI1581SUPPORT 1
+#define CMDHD_SUPPORT 1
 
 #define __not_in_flash_func(a) a
 // Pi 2/3 Multicore options

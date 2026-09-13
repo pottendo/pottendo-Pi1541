@@ -69,7 +69,8 @@ public:
 		D81,
 		T64,
 		PRG,
-		RAW
+		RAW,
+		DHD
 	};
 
 	DiskImage();
@@ -193,7 +194,8 @@ public:
 	static bool IsTextFileExtention(const char* diskImageName);
 	static bool IsEditableExtention(const char* name);
 	static bool IsPicFileExtention(const char* diskImageName);
-
+	static bool IsDiskImageCMDHDExtention(const char* diskImageName);
+	
 	bool GetReadOnly() const { return readOnly; }
 	void SetReadOnly(bool readOnly) { this->readOnly = readOnly; }
 

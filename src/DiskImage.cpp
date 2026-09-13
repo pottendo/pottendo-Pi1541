@@ -1476,6 +1476,8 @@ DiskImage::DiskType DiskImage::GetDiskImageTypeViaExtention(const char* diskImag
 			return D81;
 		else if (IsDiskImageD71Extention(diskImageName))
 			return D71;
+		else if (IsDiskImageCMDHDExtention(diskImageName))
+			return DHD;
 		else if (toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'R' && toupper((char)ext[3]) == 'G')
 			return PRG;
 	}
@@ -1539,6 +1541,18 @@ bool DiskImage::IsTextFileExtention(const char *name)
 			)
 		)
 		return true;
+	return false;
+}
+
+bool DiskImage::IsDiskImageCMDHDExtention(const char* diskImageName)
+{
+	char* ext = strrchr((char*)diskImageName, '.');
+
+	if (ext)
+	{
+		if (strncasecmp(ext, ".dhd", 4) == 0)
+			return true;
+	}
 	return false;
 }
 

@@ -545,6 +545,10 @@ FileBrowser::FileBrowser(InputMappings* inputMappings, DiskCaddy* diskCaddy, ROM
 	, scrollHighlightRate(scrollHighlightRate)
 	, displayingDevices(false)
 {
+#if defined (CMDHD_SUPPORT)
+	selectedDHDPath[0] = 0;
+	selectedDHDReadOnly = false;
+#endif	
 	folder.scrollHighlightRate = scrollHighlightRate;
 
 #if not defined(EXPERIMENTALZERO)
@@ -1067,6 +1071,14 @@ bool FileBrowser::FillCaddyWithSelections()
 		for (auto it = caddySelections.entries.begin(); it != caddySelections.entries.end();)
 		{
 			bool readOnly = ((*it).filImage.fattrib & AM_RDO) != 0;
+#if defined(CMDHD_SUPPORT)			
+			if (IsDHDImage((*it).filImage.fname))
+			{
+				bool ok = SetSelectedDHD((*it).filImage.fname, readOnly);
+				caddySelections.Clear();
+				return ok;
+			}
+#endif			
 			if (diskCaddy->Insert(&(*it).filImage, readOnly) == false)
 				caddySelections.entries.erase(it);
 			else
@@ -1077,6 +1089,79 @@ bool FileBrowser::FillCaddyWithSelections()
 	}
 	return false;
 }
+
+#if defined(CMDHD_SUPPORT)
+bool FileBrowser::IsDHDImage(const char* filename)
+{
+	if (filename == 0 || filename[0] == 0)
+		return false;
+
+	const char* ext = strrchr(filename, '.');
+	if (ext && strcasecmp(ext, ".dhd") == 0)
+		return true;
+
+	return false;
+}
+
+// Record the full path of the DHD image about to be mounted. filename is
+// relative to the current directory.
+bool FileBrowser::SetSelectedDHD(const char* filename, bool readOnly)
+{
+	char cwd[512];
+
+	selectedDHDPath[0] = 0;
+
+	if (filename == 0 || filename[0] == 0)
+		return false;
+
+	if (filename[0] == '/' || filename[0] == 0x5c)
+	{
+		strncpy(selectedDHDPath, filename, sizeof(selectedDHDPath) - 1);
+		selectedDHDPath[sizeof(selectedDHDPath) - 1] = 0;
+	}
+	else
+	{
+		if (f_getcwd(cwd, sizeof(cwd)) != FR_OK)
+			cwd[0] = 0;
+		int len = strlen(cwd);
+		if (len && cwd[len - 1] != '/' && cwd[len - 1] != 0x5c)
+			snprintf(selectedDHDPath, sizeof(selectedDHDPath), "%s/%s", cwd, filename);
+		else
+			snprintf(selectedDHDPath, sizeof(selectedDHDPath), "%s%s", cwd, filename);
+	}
+	selectedDHDReadOnly = readOnly;
+	return true;
+}
+
+void FileBrowser::DisplayDHDInfo(const char* imagePath, u32 sizeInSectors, const char* filenameForIcon)
+{
+#if not defined(EXPERIMENTALZERO)
+	char buffer[512];
+	u32 y = 0;
+	RGBA BkColour = RGBA(0, 0, 0, 0xFF);
+
+	screenMain->Clear(BkColour);
+	snprintf(buffer, sizeof(buffer), "CMD HD image");
+	screenMain->PrintText(false, 0, y, buffer, Colour(VIC2_COLOUR_INDEX_LGREEN), BkColour);
+	y += screenMain->GetFontHeight();
+	snprintf(buffer, sizeof(buffer), "%s", imagePath);
+	screenMain->PrintText(false, 0, y, buffer, Colour(VIC2_COLOUR_INDEX_WHITE), BkColour);
+	y += screenMain->GetFontHeight();
+	snprintf(buffer, sizeof(buffer), "%u sectors (%u MB)", sizeInSectors, sizeInSectors >> 11);
+	screenMain->PrintText(false, 0, y, buffer, Colour(VIC2_COLOUR_INDEX_WHITE), BkColour);
+#endif
+	if (screenLCD)
+	{
+		RGBA BkColour = RGBA(0, 0, 0, 0xFF);
+		screenLCD->Clear(BkColour);
+		// Belt and braces: callers should always pass a name, but this is the
+		// one place a stray pointer would be walked as a string.
+		if (filenameForIcon)
+			screenLCD->PrintText(false, 0, 0, (char*)filenameForIcon, RGBA(0xff, 0xff, 0xff, 0xff), BkColour);
+		screenLCD->SwapBuffers();
+	}
+}
+#endif
 
 bool FileBrowser::AddToCaddy(FileBrowser::BrowsableList::Entry* current)
 {

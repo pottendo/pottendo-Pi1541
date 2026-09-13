@@ -199,6 +199,16 @@ public:
 	const char* LastSelectionName() { return lastSelectionName; }
 	void ClearSelections();
 
+#if defined(CMDHD_SUPPORT)	
+	// DHD images are streamed from the SD card rather than loaded into RAM,
+	// so a selection just records the full path of the chosen image.
+	const char* SelectedDHDPath() { return selectedDHDPath; }
+	bool IsDHDImage(const char* filename);
+	bool SelectedDHDReadOnly() { return selectedDHDReadOnly; }
+	bool SetSelectedDHD(const char* filename, bool readOnly);
+	void DisplayDHDInfo(const char* imagePath, u32 sizeInSectors, const char* filenameForIcon);
+#endif
+
 	void ShowDeviceAndROM();
 	void ShowDeviceAndROM( const char* ROMName );
 	
@@ -251,6 +261,10 @@ private:
 	} state;
 
 	BrowsableList folder;
+#if defined(CMDHD_SUPPORT)	
+	char selectedDHDPath[512];
+	bool selectedDHDReadOnly;
+#endif
 	DiskCaddy* diskCaddy;
 	bool selectionsMade;
 	const char* lastSelectionName;
