@@ -50,6 +50,11 @@ char mount_img[256] = { 0 };
 char mount_path[256] = { 0 };
 int mount_new = 0;
 extern IEC_Commands *_m_IEC_Commands;
+#if defined(CMDHD_SUPPORT)
+#define PI1541BUILD 1
+#include "picmdhd.h"
+extern PiCMDHD piCMDHD;
+#endif
 static string def_prefix = "SD:/1541";
 #define MAX_ICON_SIZE (512 * 1024)
 static char icon_buf[MAX_ICON_SIZE];
@@ -1412,8 +1417,17 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		DiskImage *di;
 		char din[256], cwd[256];
 		di = diskCaddy.GetCurrentDisk();
-		f_getcwd(cwd, sizeof(cwd));
-		snprintf(din, 256, "%s/%s", cwd, (di ? di->GetName() : "None"));
+#if defined (CMDHD_SUPPORT)		
+		if (!di)
+		{
+			snprintf(din, 256, "%s", piCMDHD.IsImageAttached() ? piCMDHD.GetImageName() : "None");
+		}
+		else
+#endif		
+		{
+			f_getcwd(cwd, sizeof(cwd));
+			snprintf(din, 256, "%s/%s", cwd, (di ? di->GetName() : "None"));
+		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
 		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",

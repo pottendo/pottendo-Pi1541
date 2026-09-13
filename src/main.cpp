@@ -145,6 +145,7 @@ Screen *screen;
 Screen *screen_hdmi; 
 ScreenHeadLess *screen_headless;
 ScreenLCD* screenLCD = 0;
+static u32 lcdTrackRow = 0;
 Options options;
 const char* fileBrowserSelectedName;
 u8 deviceID = 8;
@@ -435,13 +436,50 @@ void UpdateLCD(const char* track, unsigned temperature)
 
 		IEC_Bus::WaitMicroSeconds(100);
 
+#if defined(CMDHD_SUPPORT)		
+		// A whole-disk scan blocks the emulated CPU, so the lamps and the track
+		// number cannot change while one runs. Show its progress instead, or the
+		// drive looks hung for as long as it takes.
+		if (piCMDHD.IsScanning())
+		{
+			snprintf(tempBuffer, tempBufferSize, "SCANNING %2d%%", piCMDHD.ScanPercent());
+		}
+		else if (piCMDHD.IsBootRomAnswering())
+		{
+			// Device 30: the boot ROM has the bus rather than HDOS. Which of
+			// the three that is depends on what the front panel asked for at
+			// reset, not on the device number.
+			switch (piCMDHD.GetFrontPanelMode())
+			{
+				case PiCMDHD::PANEL_INSTALL:
+					snprintf(tempBuffer, tempBufferSize, "INSTALL MODE"); break;
+				case PiCMDHD::PANEL_CONFIG:
+					snprintf(tempBuffer, tempBufferSize, "CONFIG MODE"); break;
+				default:
+					snprintf(tempBuffer, tempBufferSize, "NO INSTALL"); break;
+			}
+			DEBUG_LOG("%s: CMD HD boot ROM answering, front panel mode %d\n", __FUNCTION__, piCMDHD.GetFrontPanelMode());
+		}
+		else 
+#endif		
 		if (options.DisplayTemperature())
 			snprintf(tempBuffer, tempBufferSize, "%s %02dC", track, temperature);
 		else
 			snprintf(tempBuffer, tempBufferSize, "%s", track);
 
-		screenLCD->PrintText(false, 0, 0, tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
-		screenLCD->RefreshRows(0, 1);
+		// Pad to the full row. These strings are different lengths - "NO INSTALL"
+		// is shorter than "SCANNING 97%" - and PrintText only paints the
+		// characters it is given, so without this the tail of the longer one
+		// survives underneath the shorter.
+		u32 cols = screenLCD->Width() / screenLCD->GetFontWidth();
+		if (cols > tempBufferSize - 1)
+			cols = tempBufferSize - 1;
+		for (u32 pad = strlen(tempBuffer); pad < cols; ++pad)
+			tempBuffer[pad] = ' ';
+		tempBuffer[cols] = 0;
+
+		screenLCD->PrintText(false, 0, lcdTrackRow * screenLCD->GetFontHeight(), tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
+		screenLCD->RefreshRows(lcdTrackRow, 1);
 
 		IEC_Bus::WaitMicroSeconds(100);
 #if not defined(EXPERIMENTALZERO)
@@ -451,7 +489,6 @@ void UpdateLCD(const char* track, unsigned temperature)
 }
 
 #if defined(CMDHD_SUPPORT)
-static u32 lcdTrackRow = 0;
 
 // Show the CMD HD's front panel indicator lamps on the LCD.
 //
@@ -592,7 +629,7 @@ void UpdateScreen()
 	bool oldCLOCK = false;
 	bool oldSRQ = false;
 	bool refreshLCDStatusDisplay;
-
+	bool atn, clock, data, srq; 
 	u32 oldTrack = 0;
 	u32 textColour = COLOUR_BLACK;
 	u32 bgColour = COLOUR_WHITE;
@@ -645,8 +682,19 @@ void UpdateScreen()
 		{
 			led = piCMDHD.IsActivityLEDOn();
 			motor = piCMDHD.IsErrorLEDOn();	// The CMD HD has no motor; show the error LED here instead.
+			atn = piCMDHD.GetPI_Atn();
+			clock = piCMDHD.GetPI_Clock();
+			data = piCMDHD.GetPI_Data();
+			srq = piCMDHD.GetPI_SRQ();
 		}
-#endif		
+		else
+#endif
+		{	
+			atn = IEC_Bus::GetPI_Atn();
+			clock = IEC_Bus::GetPI_Clock();
+			data = IEC_Bus::GetPI_Data();
+			srq = IEC_Bus::GetPI_SRQ();
+		}
 		if (emulating == EMULATING_1541)
 		{
 			led = pi1541.drive.IsLEDOn();
@@ -738,7 +786,7 @@ void UpdateScreen()
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top3, bottom, BkColour);
 
-		value = IEC_Bus::GetPI_Atn();
+		value = atn;
 		if (options.HDMIGraphIEC())
 		{
 			bottom = top2 - 2;
@@ -766,7 +814,7 @@ void UpdateScreen()
 			}
 		}
 
-		value = IEC_Bus::GetPI_Data();
+		value = data;
 		if (options.HDMIGraphIEC())
 		{
 			bottom = top - 2;
@@ -791,7 +839,7 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-		value = IEC_Bus::GetPI_Clock();
+		value = clock;
 		if (options.HDMIGraphIEC())
 		{
 			bottom = screenHeight - 1;
@@ -806,7 +854,7 @@ void UpdateScreen()
 			}
 		}
 #if defined(CMDHD_SUPPORT)		
-		value = IEC_Bus::GetPI_SRQ();
+		value = srq;
 		if (options.HDMIGraphIEC())
 		{
 			if (value ^ oldSRQ)
@@ -838,29 +886,6 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-		// value = IEC_Bus::GetPI_SRQ();
-		// if (options.HDMIGraphIEC())
-		//{
-		//	if (value ^ oldSRQ)
-		//	{
-		//		screen->DrawLineV(graphX, 0, 100, SRQColour);
-		//	}
-		//	else
-		//	{
-		//		if (value) screen->PlotPixel(graphX, 0, SRQColour);
-		//		else screen->PlotPixel(graphX, 100, SRQColour);
-		//	}
-		// }
-		//if (options.HDMIDisplayIECActivity())
-		//{
-		// if (value != oldSRQ)
-		//{
-		//	oldSRQ = value;
-		////	snprintf(tempBuffer, tempBufferSize, "%d", value);
-		////	screen->PrintText(false, 41 * 8, y, tempBuffer, textColour, bgColour);
-		////	//refreshUartStatusDisplay = true;
-		//}
-		//}
 
 		if (graphX++ > screenWidthM1) graphX = 0;
 // black vertical line ahead of graph
@@ -924,13 +949,83 @@ void UpdateScreen()
 					}
 				}
 			}
+#if defined(CMDHD_SUPPORT)			
+			// Nothing else changes while a whole-disk scan runs - that is the
+			// point of showing it - so ask for the refresh ourselves.
+			static u8 oldDeviceNumber = 0xff;
+			u8 deviceNumber = piCMDHD.GetDeviceNumber();
+			if (deviceNumber != oldDeviceNumber)
+			{
+				oldDeviceNumber = deviceNumber;
+				refreshLCDStatusDisplay = true;
+				if (deviceNumber == 30)
+				{
+					const char* what;
+					switch (piCMDHD.GetFrontPanelMode())
+					{
+						case PiCMDHD::PANEL_INSTALL: what = "INSTALL MODE - ready for HD-TOOLS   "; break;
+						case PiCMDHD::PANEL_CONFIG:  what = "CONFIG MODE                         "; break;
+						default:                     what = "NO INSTALL - no HDOS on this image  "; break;
+					}
+					snprintf(tempBuffer, tempBufferSize, "device 30: %s", what);
+				}
+				else if (deviceNumber)
+					snprintf(tempBuffer, tempBufferSize, "device %-2d                      ", deviceNumber);
+				else
+					snprintf(tempBuffer, tempBufferSize, "                               ");
+				screen->PrintText(false, 0, y - 32, tempBuffer, textColour, bgColour);
+			}
 
+			// Longest the emulated CPU has been stuck inside one SD access.
+			// The drive cannot answer ATN while that happens, so if this creeps
+			// into the milliseconds the computer will start seeing the drive
+			// disappear mid-transfer.
+			static u32 oldWorstStall = 0xffffffff;
+			u32 worstStall = ScsiImage::WorstStallMicros();
+			if (worstStall != oldWorstStall)
+			{
+				oldWorstStall = worstStall;
+				snprintf(tempBuffer, tempBufferSize, "worst SD stall %u.%03u ms   ",
+					worstStall / 1000, worstStall % 1000);
+				screen->PrintText(false, 0, y - 48, tempBuffer, textColour, bgColour);
+			}
+
+			static u32 oldScanPercent = 0xffffffff;
+			if (piCMDHD.IsScanning())
+			{
+				u32 pc = piCMDHD.ScanPercent();
+				if (pc != oldScanPercent)
+				{
+					oldScanPercent = pc;
+					refreshLCDStatusDisplay = true;
+					snprintf(tempBuffer, tempBufferSize, "scanning disk %3d%% ", pc);
+					screen->PrintText(false, 0, y - 16, tempBuffer, textColour, bgColour);
+				}
+			}
+			else if (oldScanPercent != 0xffffffff)
+			{
+				oldScanPercent = 0xffffffff;
+				refreshLCDStatusDisplay = true;
+				snprintf(tempBuffer, tempBufferSize, "                    ");
+				screen->PrintText(false, 0, y - 16, tempBuffer, textColour, bgColour);
+			}
+
+			// The lamps go first: they own the rows above the track line
+			// and set which row that line uses.
+			UpdateLCDLamps();
+#endif
 			if (caddyIndexChangedTimer == 0)
 			{
 #if defined(CMDHD_SUPPORT)				
 				// The lamps go first: they own the rows above the track line
 				// and set which row that line uses.
-				UpdateLCDLamps();				
+				UpdateLCDLamps();
+				static PiCMDHD::FrontPanelMode oldFrontPanelMode = PiCMDHD::PANEL_NONE;
+				if (piCMDHD.GetFrontPanelMode() != oldFrontPanelMode)
+				{
+					oldFrontPanelMode = piCMDHD.GetFrontPanelMode();
+					refreshLCDStatusDisplay = true;
+				}
 #endif				
 				if (refreshLCDStatusDisplay)
 				{
@@ -1954,7 +2049,11 @@ extern int mount_new;
 #endif
 #if defined(CMDHD_SUPPORT)
 			else if (emulating == EMULATING_CMDHD)
+			{
 				exitReason = EmulateCMDHD(fileBrowser);
+				piCMDHD.Eject();
+				fileBrowser->SetSelectedDHD(nullptr, false);
+			}
 #endif
 			DEBUG_LOG("Exited emulation %d\r\n", exitReason);
 #ifdef HEAP_DEBUG
