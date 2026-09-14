@@ -737,11 +737,11 @@ void UpdateScreen()
 			Kernel.get_ip(&p);
 			if (strcmp(p, op) != 0) {
 				snprintf(tempBuffer, tempBufferSize, "IP address: %s", p);
-				screen->PrintText(false, 0, y + 20, tempBuffer, textColour, bgColour);
+				screen->PrintText(false, 0, y + screen->GetFontHeight(), tempBuffer, textColour, bgColour);
 				strncpy(op, p, 32);
 				snprintf(tempBuffer, tempBufferSize,
 					"pottendo-Pi1541 (%s) Pi1541 V%d.%02d", PPI1541VERSION, versionMajor, versionMinor);
-				screen->PrintText(false, 0, y + 40, tempBuffer, textColour, bgColour);
+				screen->PrintText(false, 0, y + screen->GetFontHeight() * 2, tempBuffer, textColour, bgColour);
 			}
 			if (Kernel.usb_updatepnp())
 			{
@@ -784,7 +784,7 @@ void UpdateScreen()
 #endif
 
 		if (options.HDMIGraphIEC())
-			screen->DrawLineV(graphX, top3, bottom, BkColour);
+			screen->DrawLineV(graphX, top4, bottom, BkColour);
 
 		value = atn;
 		if (options.HDMIGraphIEC())
@@ -853,6 +853,16 @@ void UpdateScreen()
 				else screen->PlotPixel(graphX, bottom, clockColour);
 			}
 		}
+		if (options.HDMIDisplayIECActivity())
+		{
+			if (value != oldCLOCK)
+			{
+				oldCLOCK = value;
+				snprintf(tempBuffer, tempBufferSize, "%d", value);
+				screen->PrintText(false, 41 * 8, y, tempBuffer, textColour, bgColour);
+				// refreshUartStatusDisplay = true;
+			}
+		}
 #if defined(CMDHD_SUPPORT)		
 		value = srq;
 		if (options.HDMIGraphIEC())
@@ -876,23 +886,29 @@ void UpdateScreen()
 		}
 #endif
 
-		if (options.HDMIDisplayIECActivity())
-		{
-			if (value != oldCLOCK)
-			{
-				oldCLOCK = value;
-				snprintf(tempBuffer, tempBufferSize, "%d", value);
-				screen->PrintText(false, 41 * 8, y, tempBuffer, textColour, bgColour);
-				// refreshUartStatusDisplay = true;
-			}
-		}
 
 		if (graphX++ > screenWidthM1) graphX = 0;
 // black vertical line ahead of graph
 		if (options.HDMIGraphIEC())
-			screen->DrawLineV(graphX, top3, bottom, COLOUR_BLACK);
+			screen->DrawLineV(graphX, top4, bottom, COLOUR_BLACK);
 
 		u32 track;
+#if defined(CMDHD_SUPPORT)		
+		if (emulating == EMULATING_CMDHD)
+		{
+			// Show the rough head position (0-199) like VICE's track indicator.
+			track = piCMDHD.GetHeadPosition();
+			if (track != oldTrack)
+			{
+				oldTrack = track;
+				snprintf(tempBufferTrack, tempBufferTrackSize, "%03d ", oldTrack);
+				screen->PrintText(false, 20 * 8, y, tempBufferTrack, textColour, bgColour);
+				//refreshUartStatusDisplay = true;
+				refreshLCDStatusDisplay = true;
+			}
+		} 
+		else 
+#endif		
 		if (emulating == EMULATING_1541)
 		{
 			track = pi1541.drive.Track();
