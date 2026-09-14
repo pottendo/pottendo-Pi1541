@@ -185,6 +185,10 @@ network={
     key_mgmt=WPA-PSK
 }
 EOF
+    echo "fetching CMD-HD emulator..."
+    cd ${base}/..
+    rm -rf pottendo-PiCMD
+    git clone --branch wip1 https://github.com/pottendo/pottendo-PiCMD.git
     echo "fetching roms..."
     cd ${RELEASE}
     rm dos*.bin
