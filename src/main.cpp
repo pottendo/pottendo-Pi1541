@@ -2406,23 +2406,21 @@ static void CheckOptions()
 		&& !AttemptToLoadROMCMDHD("cmdhd.rom"))
 	{
 		snprintf(tempBuffer, tempBufferSize, "No CMD HD boot ROM found!\r\nPlease copy a CMD HD boot ROM (16K or 32K, eg v2.80) into the root folder\r\nof the SD card and name it 'cmdhd-bootrom.bin'\r\n(or set CMDHDRomName in options.txt).");
-		screen->MeasureText(false, tempBuffer, &widthText, &heightText);
-		xpos = (widthScreen - widthText) >> 1;
-		ypos = (heightScreen - heightText) >> 1;
-		do
+		if (screen)
 		{
-			screen->Clear(COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(20000);
+			screen->MeasureText(false, tempBuffer, &widthText, &heightText);
+			xpos = (widthScreen - widthText) >> 1;
+			ypos = (heightScreen - heightText) >> 1;
 			screen->PrintText(false, xpos, ypos, tempBuffer, COLOUR_WHITE, COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(100000);
 		}
-		while (1);
+		DEBUG_LOG("%s: %s", __FUNCTION__, tempBuffer);
 	}
-	DEBUG_LOG("%s: CMD HD boot ROM loaded from %s", __FUNCTION__, cmdhdRomName);
-#endif
+	else
+		DEBUG_LOG("%s: CMD HD boot ROM loaded from %s", __FUNCTION__, cmdhdRomName);
 	// Options for the CMD HD emulation itself.
 	piCMDHD.SetForcedDeviceID((u8)options.GetCMDHDDeviceID());
 	ScsiImage::InitCache(options.GetCMDHDCacheMB() * 1024 * 1024);
+#endif
 
 	int ROMIndex;
 
@@ -2459,7 +2457,7 @@ static void CheckOptions()
 	inputMappings->INPUT_BUTTON_BACK = options.GetButtonBack();
 	inputMappings->INPUT_BUTTON_INSERT = options.GetButtonInsert();
 
-	DEBUG_LOG("%s: done", __FUNCTION__);
+	//DEBUG_LOG("%s: done", __FUNCTION__);
 }
 
 void Reboot_Pi()
