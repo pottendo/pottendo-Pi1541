@@ -190,6 +190,14 @@ As the original source builds are provided in `orig-build`, the version using ci
 Follow the toplevel readme on my fork of the great PiCMD project: [pottendo-PiCMD](https://github.com/pottendo/pottendo-PiCMD).
 Future releases will add some specifics to support the HD emulation also from the webserver. Currently the controls follows the original design and must use the buttons as described.
 
+Limitations: 
+- HD images can't be uploaded via web-interface - the 16MB limit makes it anyway not very useful.
+- Automount of HD images is not yet supported
+
+Know Bugs/Observations:
+- The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
+- GEOS - see here: https://github.com/xlar54/PiCMD/issues/20 (may be caused by my Pi1541 setup)
+
 ## Compatibility
 
 The emulation is quite demanding for Pis (reaction time in <1us). Empirically I've found the following rules which may increase the compatibility:
