@@ -496,7 +496,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 // drawn as an inverse video block instead, which reads clearly at a glance.
 // (ScreenLCD::PrintText treats any non zero background colour as inverse.)
 // Only redrawn when a lamp actually changes, to keep I2C traffic off core 0.
-static void UpdateLCDLamps(void)
+void UpdateLCDLamps(void)
 {
 #if not defined(EXPERIMENTALZERO)
 	static u8 oldLamps = 0xff;

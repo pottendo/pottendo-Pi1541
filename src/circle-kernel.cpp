@@ -543,7 +543,15 @@ void CKernel::run_webserver(bool isWifi)
 		logger.finished_booting("network core");
 		while (1)
 		{
-			mScheduler.MsSleep(100);
+			extern EmulatingMode emulating;
+			extern void UpdateLCDLamps(void);
+			if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
+			{
+				UpdateLCDLamps();
+				mScheduler.MsSleep(10);
+			}
+			else
+				mScheduler.MsSleep(100);
 			if (options.DisplayTemperature() &&
 				options.GetHeadLess() &&
 				!(temp_period++ % 50)) // every 5 sec, display temp on LCD

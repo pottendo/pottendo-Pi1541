@@ -1,11 +1,11 @@
 # pottendo-Pi1541 V2.3 WIP
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
-## News vs 2.3
+## News vs 2.2
 V2.3Beta1
 - Merge CMD-HD support, see https://github.com/xlar54/PiCMD
 
-## News vs 2.3
+## News vs 2.1
 V2.2Beta2
 - Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
 - Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
@@ -79,12 +79,15 @@ The following is supposed to work on the circle based _V1.25c_, as I've tested t
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
+- PiCMDHD Emulator ****), tested on Pi1541 I/O Rev 4 hat in combination with Pi3B+/Pi4 with 32bit and 64bit kernels
 
 *) Credits to @znarF who kindly donated and tested on Option B HW and @ILAH on F64, who tested Option B HW.
 
 **) The display may have some pull-up resistors installed on its I2C data/clock lines (SDA/SCL lines). These won't work on I2C-1 of Raspberry PIs, as I2C-1 there already features 1.8kOhm pull-ups, which probably conflict with other pull-ups on this I2C-1 bus. Pi1541 HW hats often default to I2C-1. If your display isn't working, try to move it to I2C-0. Your Pi1541-hat may support this with solder bridges.
 
-***) thans to @SvOlli on F64, who kindly donated a Pi3A+
+***) thanks to @SvOlli on F64, who kindly donated a Pi3A+
+
+****) credits to Scott Hutter et al, see original project: [PiCMD](https://github.com/xlar54/PiCMD)
 
 <br />
 
@@ -181,6 +184,11 @@ Still the legacy code can be built with support for all supported hardware varia
 The floppy emulation is entirely untouched, so it's as good as it was/is in V1.25 - which is pretty good, IMHO! **Credits to Steve!**
 As the original source builds are provided in `orig-build`, the version using circle appends 'C', e.g. when displayed on the LCD.
 <br />
+
+## PiCMD Emulation
+
+Follow the toplevel readme on my fork of the great PiCMD project: [pottendo-PiCMD](https://github.com/pottendo/pottendo-PiCMD).
+Future releases will add some specifics to support the HD emulation also from the webserver. Currently the controls follows the original design and must use the buttons as described.
 
 ## Compatibility
 
