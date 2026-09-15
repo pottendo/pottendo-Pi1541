@@ -592,7 +592,7 @@ void DiskImage::CloseD71()
 	attachedImageSize = 0;
 }
 
-#if defined (PI1581SUPPORT)
+#if defined(PI1581SUPPORT)
 bool DiskImage::OpenD81(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size)
 {
 	const unsigned physicalSectors = 10;
@@ -895,6 +895,7 @@ void DiskImage::CloseD81()
 	attachedImageSize = 0;
 }
 #endif /* PI1581SUPPORT */
+
 bool DiskImage::OpenG64(const FILINFO* fileInfo, unsigned char* diskImage, unsigned size)
 {
 	Close();
@@ -1476,8 +1477,10 @@ DiskImage::DiskType DiskImage::GetDiskImageTypeViaExtention(const char* diskImag
 			return D81;
 		else if (IsDiskImageD71Extention(diskImageName))
 			return D71;
+#if defined (CMDHD_SUPPORT)			
 		else if (IsDiskImageCMDHDExtention(diskImageName))
 			return DHD;
+#endif			
 		else if (toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'R' && toupper((char)ext[3]) == 'G')
 			return PRG;
 	}
@@ -1543,7 +1546,7 @@ bool DiskImage::IsTextFileExtention(const char *name)
 		return true;
 	return false;
 }
-
+#if defined (CMDHD_SUPPORT)
 bool DiskImage::IsDiskImageCMDHDExtention(const char* diskImageName)
 {
 	char* ext = strrchr((char*)diskImageName, '.');
@@ -1555,6 +1558,7 @@ bool DiskImage::IsDiskImageCMDHDExtention(const char* diskImageName)
 	}
 	return false;
 }
+#endif
 
 bool DiskImage::IsEditableExtention(const char *name)
 {

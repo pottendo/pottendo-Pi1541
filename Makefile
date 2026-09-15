@@ -51,7 +51,6 @@ COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m650
 		m8520.o wd177x.o Pi1581.o Keyboard.o SSD1306.o
 SRCDIR   = src
 CMDSRC = $(abspath ../pottendo-PiCMD/src/emulation)
-XFLAGS += -I$(CMDSRC)
 OBJS_CIRCLE  := $(addprefix $(SRCDIR)/, $(CIRCLE_OBJS) $(COMMON_OBJS))
 OBJS_LEGACY  := $(addprefix $(SRCDIR)/, $(LEGACY_OBJS) $(COMMON_OBJS))
 OBJS_CMD     := $(addprefix $(CMDSRC)/, $(CMD_OBJS)) $(CMDSRC)/../main.o
@@ -112,7 +111,7 @@ version:
 	@cmp -s /tmp/__version_cmp $(SRCDIR)/version.h || echo "#define PPI1541VERSION \"`git describe --tags`\"" > $(SRCDIR)/version.h 
 
 $(TARGET_CIRCLE): version
-	$(Q)$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS)" COMMON_OBJS="$(COMMON_OBJS) $(OBJS_CMD)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
+	$(Q)$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS) -I$(CMDSRC)" COMMON_OBJS="$(COMMON_OBJS) $(OBJS_CMD)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
 	$(Q)cp $(SRCDIR)/$@ ./`basename $@ .img`$(TARGET_PZ2).img
 
 $(TARGET): version $(OBJS_LEGACY) $(LIBS)

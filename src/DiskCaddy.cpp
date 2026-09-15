@@ -282,6 +282,7 @@ bool DiskCaddy::InsertNBZ(const FILINFO* fileInfo, unsigned char* diskImageData,
 	return false;
 }
 
+#if defined (PI1581SUPPORT)	
 bool DiskCaddy::InsertD81(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly)
 {
 	DiskImage* diskImage = new DiskImage();
@@ -295,6 +296,7 @@ bool DiskCaddy::InsertD81(const FILINFO* fileInfo, unsigned char* diskImageData,
 	delete diskImage;
 	return false;
 }
+#endif 
 
 bool DiskCaddy::InsertD71(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly)
 {
@@ -418,7 +420,11 @@ void DiskCaddy::ShowSelectedImage(u32 index)
 			, index + 1
 			, numberOfImages
 			, GetImage(index)->GetReadOnly() ? 'R' : ' '
+#if defined(PI1581SUPPORT)			
 			, roms ? (image->IsD81() ? roms->ROMName1581 : roms->GetSelectedROMName()) : ""
+#else
+			, roms ? roms->GetSelectedROMName() : ""
+#endif
 			);
 		screenLCD->PrintText(false, x, y, buffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
 		y += screenLCD->GetFontHeight();

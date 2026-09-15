@@ -436,7 +436,13 @@ void UpdateLCD(const char* track, unsigned temperature)
 
 		IEC_Bus::WaitMicroSeconds(100);
 
-#if defined(CMDHD_SUPPORT)		
+#if defined(CMDHD_SUPPORT)
+		char trstr[16];
+		if (!track)
+		{
+			snprintf(trstr, 16, "%d", piCMDHD.GetHeadPosition());
+			track = trstr;
+		}
 		// A whole-disk scan blocks the emulated CPU, so the lamps and the track
 		// number cannot change while one runs. Show its progress instead, or the
 		// drive looks hung for as long as it takes.
@@ -458,7 +464,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 				default:
 					snprintf(tempBuffer, tempBufferSize, "NO INSTALL"); break;
 			}
-			DEBUG_LOG("%s: CMD HD boot ROM answering, front panel mode %d\n", __FUNCTION__, piCMDHD.GetFrontPanelMode());
+			//DEBUG_LOG("%s: CMD HD boot ROM answering, front panel mode %d\n", __FUNCTION__, piCMDHD.GetFrontPanelMode());
 		}
 		else 
 #endif		
@@ -1114,6 +1120,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 {
 #if defined(CMDHD_SUPPORT)
 	const char *imagePath = fileBrowser->SelectedDHDPath();
+	DEBUG_LOG("%s: imagePath = '%s', filenameForIcon='%s'\n", __FUNCTION__, imagePath, filenameForIcon);
 	if (imagePath != 0 && imagePath[0] != 0)
 	{
 		bool readOnly = fileBrowser->SelectedDHDReadOnly();
@@ -1979,11 +1986,20 @@ extern int mount_new;
 						{
 
 							fileBrowser->FolderChanged();
-							strncpy(fi.fname, mount_img, 255);
-							if (diskCaddy.Insert(&fi, false)) 
+							if (DiskImage::IsDiskImageCMDHDExtention(mount_img))
 							{
+								fileBrowser->SetSelectedDHD(mount_img, false);
 								fileBrowser->Update();
 								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
+							else
+							{
+								strncpy(fi.fname, mount_img, 255);
+								if (diskCaddy.Insert(&fi, false))
+								{
+									fileBrowser->Update();
+									emulating = BeginEmulating(fileBrowser, mount_img);
+								}
 							}
 						}
 						else if (mount_new == 2)/* .LST */
@@ -2031,11 +2047,20 @@ extern int mount_new;
 						{
 
 							fileBrowser->FolderChanged();
-							strncpy(fi.fname, mount_img, 255);
-							if (diskCaddy.Insert(&fi, false))
+							if (DiskImage::IsDiskImageCMDHDExtention(mount_img))
 							{
+								fileBrowser->SetSelectedDHD(mount_img, false);
 								fileBrowser->Update();
 								emulating = BeginEmulating(fileBrowser, mount_img);
+							}
+							else
+							{
+								strncpy(fi.fname, mount_img, 255);
+								if (diskCaddy.Insert(&fi, false))
+								{
+									fileBrowser->Update();
+									emulating = BeginEmulating(fileBrowser, mount_img);
+								}
 							}
 						}
 						else if (mount_new == 2)/* .LST */

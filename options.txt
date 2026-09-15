@@ -89,6 +89,36 @@ ROM1581 = dos1581
 
 ChargenFont = chargen		// 8 bit font file
 
+// ---------------------------------------------------------------------------
+// CMD HD
+// ---------------------------------------------------------------------------
+// Name of the CMD HD boot ROM file
+//CMDHDRomName = cmdhd-bootrom.bin
+
+// Force the drive's device number (0 = respect what is stored in the image).
+// Only works once the image HAS a stored number - see "Device numbers" below.
+//CMDHDDeviceID = 0
+
+// Size in MB of the RAM cache in front of the DHD image (default 32)
+//CMDHDCacheMB = 32
+
+// GPIO used to pull the IEC ATN line low (0 = off, 24 on a Pi1541io).
+// Needed only so the SWAP buttons can reprogram another drive - see
+// "Swapping device numbers" below.
+//CMDHDAtnOutGPIO = 24
+
+// Show the front panel lamps on the I2C LCD/OLED (1 = on, the default)
+CMDHDLcdLamps = 1
+
+// Front panel buttons. The real CMD HD has four: SWAP 8, SWAP 9,
+// WRITE PROTECT and RESET. Button 5 exits emulation (not a CMD HD function).
+// Set any to 0 to disable it.
+CMDHDButtonSwap8 = 1
+CMDHDButtonSwap9 = 2
+CMDHDButtonWP = 3
+CMDHDButtonReset = 4
+CMDHDButtonExit = 5
+
 ///////////////////////////////// Pi1541 Behavior
 // The rate (in seconds) a long selection is scrolled
 scrollHighlightRate = 0.07
@@ -97,7 +127,7 @@ scrollHighlightRate = 0.07
 OnResetChangeToStartingFolder = 1
 
 // If you use FB64 (CBMFileBrowser) and want to use a fast loader cartridge (AR6, EFL, FC3) to load it then use this option to automatically mount it. 
-AutoMountImage = fb.d64 // You MUST have a disk image in \1541 with this filename
+AutoMountImage = fb.d64 // You MUST have a disk image in /1541/... with this filename is tried first, then /1541/cmd-images/... 
 // If you use FB64 (CBMFileBrowser) and want Pi1541 to send all file names as lower case.
 LowercaseBrowseModeFilenames = 1
 

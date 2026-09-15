@@ -189,6 +189,7 @@ EOF
     cd ${base}/..
     rm -rf pottendo-PiCMD
     git clone --branch wip1 https://github.com/pottendo/pottendo-PiCMD.git
+    mkdir -p ${RELEASE}/1541/cmd-images
     echo "fetching roms..."
     cd ${RELEASE}
     rm dos*.bin
@@ -198,10 +199,18 @@ EOF
     rm chargen-906143-02.bin
     wget https://sourceforge.net/p/vice-emu/code/HEAD/tree/trunk/vice/data/C64/chargen-906143-02.bin?format=raw -O chargen
 
-    # finally populate options.txt and config.txt
+    # fetch CMD disks
+    wget https://commodore.software/downloads/send/94-cmd-hard-drive/8017-cmd-hard-drive-geos-utilities -O /tmp/_x.zip
+    unzip /tmp/_x.zip -d ${RELEASE}/1541
+    rm /tmp/_x.zip
+    wget https://commodore.software/downloads/send/94-cmd-hard-drive/8016-cmd-hard-drive-utilities -O /tmp/_x.zip
+    unzip /tmp/_x.zip -d ${RELEASE}/1541
+    rm /tmp/_x.zip
+
+    # finally populate options.txt, config.txt and other stuff
     cd ${base}
+    cp resources/hd0.zip ${RELEASE}/1541/cmd-images
     cp options.txt config.txt ${RELEASE}
-    mkdir ${RELEASE}/1541
     wget https://cbm-pi1541.firebaseapp.com/fb.d64 -O ${RELEASE}/1541/fb.d64
     cd CBM-FileBrowser_v1.6/sources
     make clean 2>&1 > /dev/null

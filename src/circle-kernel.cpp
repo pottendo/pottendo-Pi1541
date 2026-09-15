@@ -545,12 +545,33 @@ void CKernel::run_webserver(bool isWifi)
 		{
 			extern EmulatingMode emulating;
 			extern void UpdateLCDLamps(void);
+			extern void UpdateLCD(const char *track, unsigned temp);
+
+			if (reboot_req && reboot_req++ > 4)
+			{
+				log("%s: rebooting now...", __FUNCTION__);
+				DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
+				mScheduler.MsSleep(20);
+				reboot_now();
+			}
+#if defined (CMDHD_SUPPORT)
 			if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
 			{
+				static unsigned temp = 0;
+
 				UpdateLCDLamps();
-				mScheduler.MsSleep(10);
+				UpdateLCD(nullptr, temp);
+				mScheduler.MsSleep(100);
+				if (options.DisplayTemperature() &&
+					!(temp_period++ % 50)) // every 5 sec, display temp on LCD
+				{
+					CPUThrottle.Update();
+					GetTemperature(temp);
+				}
+				continue;
 			}
 			else
+#endif			
 				mScheduler.MsSleep(100);
 			if (options.DisplayTemperature() &&
 				options.GetHeadLess() &&
@@ -558,13 +579,6 @@ void CKernel::run_webserver(bool isWifi)
 			{
 				CPUThrottle.Update();
 				display_temp();
-			}
-			if (reboot_req && reboot_req++ > 4)
-			{
-				log("%s: rebooting now...", __FUNCTION__);
-				DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
-				mScheduler.MsSleep(20);
-				reboot_now();
 			}
 			//if (!m_Net->IsRunning())
 			//	break;

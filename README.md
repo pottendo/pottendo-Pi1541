@@ -57,7 +57,7 @@ Some further ideas:
 - Make some options changeable via a WebGUI controls: e.g. drive number, etc.
 - ...
 
-Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://codeberg.org/larchcone/circle-stdlib.git) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
+Credits to Steve (@pi1541) [Pi1541](https://cbm-pi1541.firebaseapp.com/) and [Pi1541-github](https://github.com/pi1541/Pi1541), Scott (@xlar54) [PiCMD](https://github.com/xlar54/PiCMD), Rene (@rsta2) [circle](https://github.com/rsta2/circle), Stephan (@smuehlst) [circle-stdlib](https://codeberg.org/larchcone/circle-stdlib.git) for the brilliant base packages! Also some credit goes to @hpingel, [Network SK64](sk64), where I got the inspiration how to implement the webserver.
 
 Some discussions, announcements one can find in the Forum64 thread, [here](https://www.forum64.de/index.php?thread/155126-new-release-pottendo-pi1541-webserver-for-upload-images-updates/&postID=2276999#post2276999).
 
@@ -65,6 +65,10 @@ Some discussions, announcements one can find in the Forum64 thread, [here](https
 
 For your convencience a fully populated Pi1541 is prepared for easy setup.
 Copy the content of the release bundle to your boot partition of your Pi1541 SDCard. Make sure you adapt `options.txt` to your Pi1541 hardware setup (_Option A_ or _Option B_). Option B hardware is default. If you want to use networking (Wifi or Ethernet), see below how to activate.  You may check `config.txt` and adapt if needed. Especially if you want to use the orig-build kernels (Pi0/pi1/pi2).
+
+Some disk-images are provided in `/1541', including a pre-populated cmd-hd image in /1541/cmd-images. This must be unziped in this directory before being usable.
+
+The CMDHD rom is _not_ provided but must be available in the toplevel directory: _/cmdhd-bootrom.bin_
 
 # Status
 ------
@@ -282,6 +286,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Plugging/Unplugging USB stick is in general not recommended and unstable.
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
+- Don't use DisableHDMI=1 and DisplayTemperature=1; network hangs
 
 # Checkout & Build
 

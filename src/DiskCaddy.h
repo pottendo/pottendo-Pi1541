@@ -105,7 +105,9 @@ private:
 	bool InsertG64(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
 	bool InsertNIB(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
 	bool InsertNBZ(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
+#if defined (PI1581SUPPORT)	
 	bool InsertD81(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
+#endif	
 	bool InsertD71(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
 	bool InsertT64(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);
 	bool InsertPRG(const FILINFO* fileInfo, unsigned char* diskImageData, unsigned size, bool readOnly);

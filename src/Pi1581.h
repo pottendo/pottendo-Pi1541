@@ -18,7 +18,7 @@
 
 #ifndef PI1581_H
 #define PI1581_H
-
+#if defined (PI1581SUPPORT)
 #include "Drive.h"
 #include "m6502.h"
 #include "iec_bus.h"
@@ -67,5 +67,5 @@ private:
 	//static void Write6502(u16 address, const u8 value, void* data);
 	//static void Write6502ExtraRAM(u16 address, const u8 value, void* data);
 };
-
+#endif /* PI1581SUPPORT */
 #endif

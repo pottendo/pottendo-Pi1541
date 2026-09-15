@@ -224,7 +224,10 @@ public:
 
 	bool WriteD64(char* name = 0);
 	bool WriteG64(char* name = 0);
+
+#if defined(PI1581SUPPORT)
 	bool WriteD81(char *name = 0);
+#endif	
 
 	unsigned GetHash() const { return hash; }
 
@@ -241,7 +244,9 @@ private:
 	void CloseNIB();
 	void CloseNBZ();
 	void CloseD71();
+#if defined (PI1581SUPPORT)
 	void CloseD81();
+#endif	
 	void CloseT64();
 
 	bool WriteNIB();

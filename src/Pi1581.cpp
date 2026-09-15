@@ -17,6 +17,7 @@
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
 #include "defs.h"
+#if defined (PI1581SUPPORT)
 #include "Pi1581.h"
 #include "iec_bus.h"
 #include "Options.h"
@@ -308,3 +309,4 @@ void Pi1581::Insert(DiskImage* diskImage)
 	this->diskImage = diskImage;
 }
 
+#endif /* PI1581 SUPPORT */
