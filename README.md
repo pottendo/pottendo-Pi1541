@@ -195,8 +195,9 @@ Follow the toplevel readme on my fork of the great PiCMD project: [pottendo-PiCM
 Future releases will add some specifics to support the HD emulation also from the webserver. Currently the controls follows the original design and must use the buttons as described.
 
 Limitations: 
-- HD images can't be uploaded via web-interface - the 16MB limit makes it anyway not very useful.
+- HD images can't be up/down-loaded via web-interface - the 16MB limit makes it anyway not very useful.
 - Automount of HD images is not yet supported
+- Webserver won't show image content of HD images
 
 Know Bugs/Observations:
 - The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
@@ -260,6 +261,8 @@ The following options control new functions available:
 | DefaultGateway   | a.b.c.d | Gatway Address, e.g. _192.168.1.1_          ||ignored when using DHCP |
 | DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          ||ignored when using DHCP |
 | headLess    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |0||
+
+Refer to PiCMDs documentation for CMD-HD specific options.
 
 Here a snippet one can add to his `options.txt`:
 ```
