@@ -198,6 +198,8 @@ public:
 	void SetSelectionsMade(bool s) { selectionsMade = s; }
 	const char* LastSelectionName() { return lastSelectionName; }
 	void ClearSelections();
+	void ShowRomName();
+
 
 #if defined(CMDHD_SUPPORT)	
 	// DHD images are streamed from the SD card rather than loaded into RAM,

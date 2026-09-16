@@ -488,10 +488,10 @@ static void display_temp(void)
 #if 1
 	char buf[128];
 	sprintf(buf, " %dC", temp / 1000);
-	core0RefreshingScreen.Acquire();
+	//core0RefreshingScreen.Acquire();
 	screenLCD->PrintText(false, 8 * 12, 0, buf, TextColour, BkColour);
 	screenLCD->SwapBuffers();
-	core0RefreshingScreen.Release();
+	//core0RefreshingScreen.Release();
 #endif	
 	//DEBUG_LOG("%s: temp = %d", __FUNCTION__, temp / 1000);
 }
@@ -539,14 +539,9 @@ void CKernel::run_webserver(bool isWifi)
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
 		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
-		int temp_period = 0;
 		logger.finished_booting("network core");
 		while (1)
 		{
-			extern EmulatingMode emulating;
-			extern void UpdateLCDLamps(void);
-			extern void UpdateLCD(const char *track, unsigned temp);
-
 			if (reboot_req && reboot_req++ > 4)
 			{
 				log("%s: rebooting now...", __FUNCTION__);
@@ -554,32 +549,7 @@ void CKernel::run_webserver(bool isWifi)
 				mScheduler.MsSleep(20);
 				reboot_now();
 			}
-#if defined (CMDHD_SUPPORT)
-			if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
-			{
-				static unsigned temp = 0;
-
-				UpdateLCDLamps();
-				UpdateLCD(nullptr, temp);
-				mScheduler.MsSleep(100);
-				if (options.DisplayTemperature() &&
-					!(temp_period++ % 50)) // every 5 sec, display temp on LCD
-				{
-					CPUThrottle.Update();
-					GetTemperature(temp);
-				}
-				continue;
-			}
-			else
-#endif			
-				mScheduler.MsSleep(100);
-			if (options.DisplayTemperature() &&
-				options.GetHeadLess() &&
-				!(temp_period++ % 50)) // every 5 sec, display temp on LCD
-			{
-				CPUThrottle.Update();
-				display_temp();
-			}
+			lcd_showheadless();
 			//if (!m_Net->IsRunning())
 			//	break;
 		}
@@ -724,6 +694,41 @@ char *CKernel::get_version(void)
 	return pPi1541Version;
 }
 
+void CKernel::lcd_showheadless(void)
+{
+	static int temp_period = 0;
+#if defined(CMDHD_SUPPORT)
+	extern EmulatingMode emulating;
+	extern void UpdateLCDLamps(void);
+	extern void UpdateLCD(const char *track, unsigned temp);
+
+	if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
+	{
+		static unsigned temp = 0;
+
+		UpdateLCDLamps();
+		UpdateLCD(nullptr, temp / 1000);
+		mScheduler.MsSleep(100);
+		if (options.DisplayTemperature() &&
+			!(temp_period++ % 50)) // every 5 sec, display temp on LCD
+		{
+			CPUThrottle.Update();
+			GetTemperature(temp);
+		}
+		return;
+	}
+	else
+#endif
+		mScheduler.MsSleep(100);
+	if (options.DisplayTemperature() &&
+		options.GetHeadLess() &&
+		!(temp_period++ % 50)) // every 5 sec, display temp on LCD
+	{
+		CPUThrottle.Update();
+		display_temp();
+	}
+}
+
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	int i = 0;
@@ -776,15 +781,8 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 #endif	
 		Kernel.log("disabling network support on core %d", core);
 		logger.finished_booting("network core - disabled");
-		if (options.DisplayTemperature())
-		{	
-			DEBUG_LOG("%s: displaying temperature on LCD", __FUNCTION__);
-			while (1)
-			{
-				display_temp();
-				MsDelay(5000);
-			}
-		}
+		while (1)
+			Kernel.lcd_showheadless();
 		break;
 	case 3:	/* health monitoring */
 		logger.finished_booting("system monitor core");

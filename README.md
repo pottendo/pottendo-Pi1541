@@ -289,7 +289,6 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Plugging/Unplugging USB stick is in general not recommended and unstable.
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
-- Don't use DisableHDMI=1 and DisplayTemperature=1; network hangs
 
 # Checkout & Build
 

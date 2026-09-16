@@ -440,7 +440,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 		char trstr[16];
 		if (!track)
 		{
-			snprintf(trstr, 16, "%d", piCMDHD.GetHeadPosition());
+			snprintf(trstr, 16, "%03d", piCMDHD.GetHeadPosition());
 			track = trstr;
 		}
 		// A whole-disk scan blocks the emulated CPU, so the lamps and the track
@@ -776,7 +776,7 @@ void UpdateScreen()
 			{
 				oldLamps = lamps;
 				oldWriteErrors = writeErrors;
-				snprintf(tempBuffer, tempBufferSize, "%s %s %s %s %s %s %s",
+				snprintf(tempBuffer, tempBufferSize, "%s %s %s %s %s %s %s             ",
 					piCMDHD.IsActivityLEDOn() ? "ACT" : "   ",
 					piCMDHD.IsErrorLEDOn() ? "ERR" : "   ",
 					piCMDHD.IsSwap8LEDOn() ? "SW8" : "   ",
@@ -992,10 +992,10 @@ void UpdateScreen()
 					snprintf(tempBuffer, tempBufferSize, "device 30: %s", what);
 				}
 				else if (deviceNumber)
-					snprintf(tempBuffer, tempBufferSize, "device %-2d                      ", deviceNumber);
+					snprintf(tempBuffer, tempBufferSize, "device %-2d                                    ", deviceNumber);
 				else
-					snprintf(tempBuffer, tempBufferSize, "                               ");
-				screen->PrintText(false, 0, y - 32, tempBuffer, textColour, bgColour);
+					snprintf(tempBuffer, tempBufferSize, "                                              ");
+				screen->PrintText(false, 0, y - 3*16, tempBuffer, textColour, bgColour);
 			}
 
 			// Longest the emulated CPU has been stuck inside one SD access.
@@ -1007,9 +1007,9 @@ void UpdateScreen()
 			if (worstStall != oldWorstStall)
 			{
 				oldWorstStall = worstStall;
-				snprintf(tempBuffer, tempBufferSize, "worst SD stall %u.%03u ms   ",
+				snprintf(tempBuffer, tempBufferSize, "worst SD stall %u.%03u ms                        ",
 					worstStall / 1000, worstStall % 1000);
-				screen->PrintText(false, 0, y - 48, tempBuffer, textColour, bgColour);
+				screen->PrintText(false, 0, y - 4*16, tempBuffer, textColour, bgColour);
 			}
 
 			static u32 oldScanPercent = 0xffffffff;
@@ -1127,7 +1127,8 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 		if (piCMDHD.Insert(imagePath, readOnly))
 		{
 			fileBrowser->DisplayDHDInfo(imagePath, piCMDHD.imagesize, filenameForIcon);
-			// fileBrowser->ShowRomName();
+			fileBrowser->ShowRomName();
+			fileBrowser->DisplayStatusBar();
 			DEBUG_LOG("%s: Attached DHD Image '%s'", __FUNCTION__, imagePath);
 			MsDelay(30);
 			return EMULATING_CMDHD;
@@ -2177,7 +2178,7 @@ static bool AttemptToLoadROMCMDHD(const char* ROMName)
 		if (piCMDHD.SetROM(bootROM, bytesRead))
 		{
 			strncpy(cmdhdRomName, ROMName, sizeof(cmdhdRomName) - 1);
-			DEBUG_LOG("Opened CMD HD boot ROM %s (%d bytes)\r\n", ROMName, bytesRead);
+			DEBUG_LOG("Opened CMD HD boot ROM %s (%d bytes)\r\n", cmdhdRomName, bytesRead);
 			return true;
 		}
 		DEBUG_LOG("CMD HD boot ROM %s has the wrong size (%d bytes; expected 16384 or 32768)\r\n", ROMName, bytesRead);

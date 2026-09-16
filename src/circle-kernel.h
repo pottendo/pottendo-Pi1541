@@ -111,6 +111,7 @@ public:
 	char *get_version(void);
 	void append2version(const char *a) { char tmp[512]; snprintf(tmp, 511, "%s/%s", version_extra, a); strcpy(version_extra, tmp); }
 	static CMachineInfo *get_machine_info(std::string &kernelname);
+	void lcd_showheadless(void);
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;

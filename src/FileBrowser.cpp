@@ -389,6 +389,35 @@ void FileBrowser::BrowsableList::ClearSelections()
 	}
 }
 
+#if defined(CMDHD_SUPPORT)
+void FileBrowser::ShowRomName()
+{
+	extern char cmdhdRomName[256];
+	char buffer[256];
+	u32 textColour = RGBA(0, 0, 0, 0xff);
+	u32 bgColour = RGBA(0xff, 0xff, 0xff, 0xff);
+	u32 x = 0; // 43 * 8
+	u32 y;
+
+#if not defined(EXPERIMENTALZERO)
+	y = 3 * screenMain->GetFontHeight();
+
+	snprintf(buffer, 256, "Rom: %s", cmdhdRomName);
+
+	screenMain->PrintText(false, x, y, buffer, textColour, bgColour);
+#endif
+	if (screenLCD)
+	{
+		x = 0;
+		y = 0;
+
+		snprintf(buffer, 256, "%s", cmdhdRomName);
+		screenLCD->PrintText(false, x, y, buffer, textColour, bgColour);
+		screenLCD->SwapBuffers();
+	}
+}
+#endif
+
 void FileBrowser::BrowsableList::RefreshViews()
 {
 	u32 index;
