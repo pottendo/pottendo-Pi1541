@@ -49,6 +49,9 @@
 #define FUNCTION_FLAG		(1 << 21)
 // dont exceed 32!!
 
+// Custom Pi1541-III convenience actions used by the browser.
+#define INPUT_FUNCTION_CYCLE_DEVICE 12
+#define INPUT_FUNCTION_CYCLE_ROM    13
 
 class InputMappings //: public Singleton<InputMappings>
 {
@@ -62,6 +65,11 @@ protected:
 
 	bool insertButtonPressedPrev;
 	bool insertButtonPressed;
+	bool insertLongActionTriggered;
+
+	bool backButtonPressedPrev;
+	bool backButtonPressed;
+	bool backLongActionTriggered;
 
 	bool enterButtonPressedPrev;
 	bool enterButtonPressed;

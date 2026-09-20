@@ -1256,7 +1256,33 @@ void FileBrowser::UpdateInputFolders()
 		// check for ROM and Drive Number changes
 		unsigned ROMOrDevice = inputMappings->getROMOrDevice();
 		if ( ROMOrDevice >= 1 && ROMOrDevice <= 11 )
+		{
 			SelectROMOrDevice(ROMOrDevice);
+		}
+		else if (ROMOrDevice == INPUT_FUNCTION_CYCLE_DEVICE)
+		{
+			// Cycle D08 -> D09 -> D10 -> D11 -> D08.
+			u8 nextDevice = (*deviceID >= 8 && *deviceID < 11) ? (*deviceID + 1) : 8;
+			GlobalSetDeviceID(nextDevice);
+			ShowDeviceAndROM();
+		}
+		else if (ROMOrDevice == INPUT_FUNCTION_CYCLE_ROM)
+		{
+			// Select the next valid configured 1541 ROM, wrapping at the end.
+			unsigned start = roms->currentROMIndex;
+			for (unsigned offset = 1; offset <= ROMs::MAX_ROMS; ++offset)
+			{
+				unsigned next = (start + offset) % ROMs::MAX_ROMS;
+				if (roms->ROMValid[next])
+				{
+					roms->currentROMIndex = next;
+					roms->lastManualSelectedROMIndex = next;
+					DEBUG_LOG("Cycle ROM %d %s\r\n", next, roms->ROMNames[next]);
+					ShowDeviceAndROM();
+					break;
+				}
+			}
+		}		
 	}
 	else if (inputMappings->BrowseSelect())
 	{
@@ -1665,12 +1691,23 @@ void FileBrowser::ShowDeviceAndROM( const char* ROMName )
 	{
 		x = 0;
 		y = 0;
+		// The OLED is 16 characters wide. PlotText() only overwrites the
+		// characters supplied, so switching from a longer ROM name to a shorter
+		// one would otherwise leave characters from the old name visible.
+		// Always render a complete, space-padded row to remove those artefacts
+		// without clearing the whole display (which would make the browser flicker).
+		char lcdLine[17];
+		char lcdText[256];
+		memset(lcdLine, ' ', 16);
+		lcdLine[16] = 0;
 
-		snprintf(buffer, 256, "D%2d %s"
-			, *deviceID
-			, ROMName
-			);
-		screenLCD->PrintText(false, x, y, buffer, textColour, bgColour);
+		snprintf(lcdText, sizeof(lcdText), "D%2d %s", *deviceID, ROMName);
+		size_t lcdLen = strlen(lcdText);
+		if (lcdLen > 16)
+			lcdLen = 16;
+		memcpy(lcdLine, lcdText, lcdLen);
+
+		screenLCD->PrintText(false, x, y, lcdLine, textColour, bgColour);
 		screenLCD->SwapBuffers();
 	}
 }

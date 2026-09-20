@@ -46,6 +46,10 @@ InputMappings::InputMappings()
 	: keyboardBrowseLCDScreen(false)
 	, insertButtonPressedPrev(false)
 	, insertButtonPressed(false)
+	, insertLongActionTriggered(false)
+	, backButtonPressedPrev(false)
+	, backButtonPressed(false)
+	, backLongActionTriggered(false)
 	, enterButtonPressedPrev(false)
 	, enterButtonPressed(false)
 {
@@ -55,30 +59,49 @@ bool InputMappings::CheckButtonsBrowseMode()
 {
 	buttonFlags = 0;
 
+	// Keep the original Pi1541 chord shortcuts. They take precedence over
+	// the new single-button long-press shortcuts below.
 	if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_INSERT))	// Change DeviceID
 	{
+		bool chordHandled = false;
 		if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_ENTER))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 8;
+			chordHandled = true;
 		}
 		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 9;
+			chordHandled = true;
 		}
 		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 10;
+			chordHandled = true;
 		}
 		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_BACK))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 11;
 			Reboot_Pi(); // reboot instead of device 11
+			chordHandled = true;
 		}
-		insertButtonPressedPrev = false;
+		if (chordHandled)
+		{
+			// Suppress the normal INSERT action when the modifier key is released.
+			insertLongActionTriggered = true;
+		}
+		else if (!insertLongActionTriggered)
+		{
+			// Pi1541-III convenience: hold INSERT to cycle through all configured
+			// and valid 1541 ROMs. One change per press; release before cycling again.
+			SetButtonFlag(FUNCTION_FLAG);
+			inputROMOrDevice = INPUT_FUNCTION_CYCLE_ROM;
+			insertLongActionTriggered = true;
+		}
 	}
 	else if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_ENTER))	// Change ROMs
 	{
@@ -104,18 +127,42 @@ bool InputMappings::CheckButtonsBrowseMode()
 		}
 		enterButtonPressedPrev = false;
 	}
+	else if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_BACK))
+	{
+		if (!backLongActionTriggered)
+		{
+			// Pi1541-III convenience: hold BACK to cycle D08 -> D09 -> D10 ->
+			// D11 -> D08. One change per press; release before cycling again.
+			SetButtonFlag(FUNCTION_FLAG);
+			inputROMOrDevice = INPUT_FUNCTION_CYCLE_DEVICE;
+			backLongActionTriggered = true;
+		}
+	}
 	else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
 		SetButtonFlag(UP_FLAG);
 	else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(DOWN_FLAG);
-	else if (IEC_Bus::GetInputButtonPressed(INPUT_BUTTON_BACK))
-		SetButtonFlag(BACK_FLAG);
 	else
-	{
-		// edge detection
+		{
+		// BACK is handled on release so a long press can be distinguished from
+		// a normal short press without first leaving the current directory.
+		backButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_BACK);
+		if (backButtonPressedPrev && !backButtonPressed)
+		{
+			if (!backLongActionTriggered)
+				SetButtonFlag(BACK_FLAG);
+			backLongActionTriggered = false;
+		}
+		backButtonPressedPrev = backButtonPressed;
+
+		// INSERT keeps its original short-press action, also on release.
 		insertButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_INSERT);
 		if (insertButtonPressedPrev && !insertButtonPressed)
-			SetButtonFlag(INSERT_FLAG);
+		{
+			if (!insertLongActionTriggered)
+				SetButtonFlag(INSERT_FLAG);
+			insertLongActionTriggered = false;
+		}
 		insertButtonPressedPrev = insertButtonPressed;
 
 		enterButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_ENTER);
@@ -138,11 +185,17 @@ void InputMappings::WaitForClearButtons()
 		insertButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_INSERT);
 		insertButtonPressedPrev = insertButtonPressed;
 
+		backButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_BACK);
+		backButtonPressedPrev = backButtonPressed;
+
 		enterButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_ENTER);
 		enterButtonPressedPrev = enterButtonPressed;
 		
 		usDelay(1);
-	} while (insertButtonPressedPrev || enterButtonPressedPrev);
+	} while (insertButtonPressedPrev || backButtonPressedPrev || enterButtonPressedPrev);
+
+	insertLongActionTriggered = false;
+	backLongActionTriggered = false;
 }
 
 void InputMappings::CheckButtonsEmulationMode()
