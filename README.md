@@ -157,6 +157,7 @@ When uploading directories, the browser may ask if you're sure. You still need t
 
 ![](docs/mount.png)
 <br />
+![](docs/mount-cmdhd.png)
 
 Select image for preview and mount it.
 <br />
@@ -266,10 +267,40 @@ The following options control new functions available:
 | DNSServer   | a.b.c.d | DNS Server, e.g. _192.168.1.1_          ||ignored when using DHCP |
 | headLess    | 0 or 1 | obsolete, same as DisableHDMI: disable/enable HDMI output |0||
 
-Refer to PiCMDs documentation for CMD-HD specific options.
+Refer to PiCMDs documentation for CMD-HD specific options, see also in the provided `options.txt`.
 
 Here a snippet one can add to his `options.txt`:
 ```
+// ---------------------------------------------------------------------------
+// CMD HD
+// ---------------------------------------------------------------------------
+// Name of the CMD HD boot ROM file
+//CMDHDRomName = cmdhd-bootrom.bin
+
+// Force the drive's device number (0 = respect what is stored in the image).
+// Only works once the image HAS a stored number - see "Device numbers" below.
+//CMDHDDeviceID = 0
+
+// Size in MB of the RAM cache in front of the DHD image (default 32)
+//CMDHDCacheMB = 32
+
+// GPIO used to pull the IEC ATN line low (0 = off, 24 on a Pi1541io).
+// Needed only so the SWAP buttons can reprogram another drive - see
+// "Swapping device numbers" below.
+//CMDHDAtnOutGPIO = 24
+
+// Show the front panel lamps on the I2C LCD/OLED (1 = on, the default)
+CMDHDLcdLamps = 1
+
+// Front panel buttons. The real CMD HD has four: SWAP 8, SWAP 9,
+// WRITE PROTECT and RESET. Button 5 exits emulation (not a CMD HD function).
+// Set any to 0 to disable it.
+CMDHDButtonSwap8 = 1
+CMDHDButtonSwap9 = 2
+CMDHDButtonWP = 3
+CMDHDButtonReset = 4
+CMDHDButtonExit = 5
+
 // this turns on/off HDMI output
 DisableHDMI = 1 // equal to headLess = 1  // no HDMI output
 
