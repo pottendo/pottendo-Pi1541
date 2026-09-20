@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News vs 2.2
 V2.3Beta2
 - Preview of CMD-HD partitions shows partition table
+- Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobble (and ChatGPT)
   
 V2.3Beta1
 - Merge CMD-HD support, see https://github.com/xlar54/PiCMD

@@ -458,7 +458,7 @@ static bool read_file(string &dfn, string &msg, string &fcontent, UINT *nLength 
 	return ret;
 }
 
-#if 1
+#if 0
 void hexdump(const unsigned char *buf, int len)
 {
     int i;
@@ -468,7 +468,7 @@ void hexdump(const unsigned char *buf, int len)
 	char ta[12];
 	const unsigned char *tp = buf;
     while (len > 0) {
-		snprintf(ta, 12, "%08x: ", ((buf + idx) - tp));
+		snprintf(ta, 12, "%08lx: ", ((buf + idx) - tp));
 		strcat(linestr, ta);
         for (i = 0; i < 16; i++) {
             if (i < len) {
