@@ -465,9 +465,11 @@ void hexdump(const unsigned char *buf, int len)
     int idx = 0;
     int lines = 0;
     char linestr[256] = {0};
-
+	char ta[12];
+	const unsigned char *tp = buf;
     while (len > 0) {
-
+		snprintf(ta, 12, "%08x: ", ((buf + idx) - tp));
+		strcat(linestr, ta);
         for (i = 0; i < 16; i++) {
             if (i < len) {
                 char t[4];
@@ -593,6 +595,209 @@ static bool D81DiskInfo(unsigned char *img_buf, list<string> *dir)
 	}
 	snprintf(linebuffer, 31, "%u BLOCKS FREE", size);
 	dir->push_back(string(linebuffer));
+	return ret;
+}
+
+static FRESULT read_at(FIL *fp, uint64_t offset, void *buffer, UINT size)
+{
+	UINT br;
+	FRESULT r;
+    if ((r = f_lseek(fp, (off_t)offset)) != FR_OK)
+        return r;
+
+    if ((r = f_read(fp, buffer, size, &br)) != FR_OK)
+        return r;
+
+    return FR_OK;
+}
+
+/*
+ * Read a big-endian 16-bit value.
+ */
+static uint16_t
+be16(const uint8_t *p)
+{
+    return (p[0] << 8) | p[1];
+}
+
+/*
+ * Read a big-endian 24-bit value.
+ */
+static uint32_t
+be24(const uint8_t *p)
+{
+    return ((uint32_t)p[0] << 16) |
+           ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2]);
+}
+#define SECTOR_SIZE 256
+#define CONFIG_OFFSET       0x0005f0
+#define PART_TABLE_PTR      0x0005e6
+#define MAX_TABLE_SECTORS   32
+#define ENTRY_SIZE          32
+#define ENTRIES_PER_SECTOR  8
+
+/* Partition types from the VICE documentation */
+static const char *
+partition_type(uint8_t type)
+{
+    switch (type) {
+    case 0x00: return "NONE";
+    case 0x01: return "NATIVE";
+    case 0x02: return "1541";
+    case 0x03: return "1571";
+    case 0x04: return "1581";
+    case 0x05: return "1581CPM";
+    case 0x06: return "PRINT QUEUE";
+    case 0x07: return "FOREIGN";
+    case 0xff: return "SYSTEM";
+    default:   return "UNKNOWN";
+    }
+}
+
+static bool DHDDiskInfo(string &name, list<string> &dir)
+{
+	bool ret = false;
+	FIL fp;
+	unsigned cfgblock = 0x30500;
+    static uint8_t config[SECTOR_SIZE];
+    static uint8_t table_sector[SECTOR_SIZE];
+    uint16_t table_sector_number = 0;
+	uint64_t table_offset = 0;
+	FSIZE_t image_size = 0;
+	FILINFO fi;
+	static char tbuf[256];
+    unsigned partition_number = 0;
+    unsigned table_sector_index = 0;
+    uint8_t next_track = 0;
+    uint8_t next_sector = 0;
+    static uint8_t visited[MAX_TABLE_SECTORS];
+    uint8_t nt = 0;
+    uint8_t ns = 0;
+	double siz = 0.0;
+	uint8_t device = 0, defpart = 0;
+    /* Check CMD-HD signature */
+    static const uint8_t signature[] = {
+        0x43, 0x4d, 0x44, 0x20,
+        0x48, 0x44, 0x20, 0x20,
+        0x8d, 0x03, 0x88, 0x8e,
+        0x02, 0x88, 0xea, 0x60
+    };
+
+	if (f_open(&fp, name.c_str(), FA_READ) != FR_OK)
+		return ret;
+	//DEBUG_LOG("%s: image = %s", __FUNCTION__, name.c_str());
+	if (f_stat(name.c_str(), &fi) != FR_OK)
+		goto out;
+    if (read_at(&fp, cfgblock, config, sizeof(config)) != FR_OK) {
+        DEBUG_LOG("%s: failed to read DHD info", __FUNCTION__);
+		goto out;
+    }
+	//hexdump((const unsigned char *) config, SECTOR_SIZE);
+    if (memcmp(config + 0xf0, signature, sizeof(signature)) != 0) {
+        DEBUG_LOG("%s: Warning: CMD-HD signature not found at 0x%08x", __FUNCTION__, config + 0xf0);
+		goto out;
+    }
+	device = config[0xe1];
+	defpart = config[0xe2];
+	image_size = fi.fsize;
+	siz = ((double)image_size) / (1024.0 * 1024.0);
+	snprintf(tbuf, 255, "CMD-HD: %.2f MB DEVICE: %d DEF PART: %d", siz, device, defpart);
+	dir.push_back(string(tbuf));
+
+	table_sector_number = be16(config + 0xe6);
+	table_offset = (uint64_t)table_sector_number * SECTOR_SIZE;
+	//DEBUG_LOG("%s: 1 sector_num = 0x%04x, table_offset = 0x%08x", __FUNCTION__, table_sector_number, table_offset);
+	if (table_offset + (MAX_TABLE_SECTORS * SECTOR_SIZE) > image_size) 
+	{
+		DEBUG_LOG("%s: Warning: complete 32-sector partition table extends beyond image", __FUNCTION__);
+		goto out;
+	}
+	snprintf(tbuf, 255, "# %-16s %-10s %-5s %-5s",
+           "PARTITION NAME", "TYPE", "BSIZE", "MB");
+
+	dir.push_back(string(tbuf));
+	dir.push_back(string("- ---------------- ---------- ----- -----"));
+
+    next_track = 1;
+    next_sector = 0;
+    memset(visited, 0, sizeof(visited));
+    while (table_sector_index < MAX_TABLE_SECTORS) {
+
+	    uint64_t offset = table_offset +(uint64_t)table_sector_index * SECTOR_SIZE;
+
+        if (offset + SECTOR_SIZE > image_size) {
+            DEBUG_LOG("%s: ERROR: partition table sector is outside image", __FUNCTION__);
+            goto out;
+        }
+
+        if (read_at(&fp, 0x30000 + offset, table_sector, sizeof(table_sector)) != FR_OK) {
+            DEBUG_LOG("%s: ERROR: cannot read partition table sector", __FUNCTION__);
+            goto out;
+        }
+		// link to next sector
+        nt = table_sector[0];
+        ns = table_sector[1];
+
+        /*
+         * Parse the eight 32-byte entries.
+         */
+        for (unsigned i = 0; i < ENTRIES_PER_SECTOR; i++) {
+
+            const uint8_t *entry = table_sector + i * ENTRY_SIZE;
+            uint8_t type = entry[2];
+
+            if (type == 0x00) // unused partition
+                continue;
+            uint32_t start_block = be24(entry + 0x15);
+            uint16_t size_blocks = be16(entry + 0x1e);
+            uint64_t start_offset = (uint64_t)start_block * 512;
+            uint64_t size_bytes = (uint64_t)size_blocks * 512;
+
+            double size_mib = (double)size_bytes / (1024.0 * 1024.0);
+            snprintf(tbuf, 255, "%u %-16s %-10s %-5u %2.2f", 
+				partition_number, entry + 0x05, 
+			    partition_type(type), size_blocks, size_mib);
+			dir.push_back(string(tbuf));
+#if 0
+            DEBUG_LOG("%s:    start offset: 0x%08llX, "
+                   "end: 0x%08llX", __FUNCTION__, 
+                   (unsigned long long)start_offset,
+                   (unsigned long long)
+                       (start_offset + size_bytes - 1));
+#endif	    
+
+            partition_number++;
+        }
+
+        if (nt == 0) // terminate table
+            break;
+
+        if (nt != 1) {
+            DEBUG_LOG("%s: Warning: unexpected partition-table "
+                    "track %u, sector %u", __FUNCTION__, nt, ns);
+        }
+
+        if (ns >= MAX_TABLE_SECTORS) {
+            DEBUG_LOG("%s: ERROR: invalid next table sector %u", __FUNCTION__, ns);
+            goto out;
+        }
+
+		// protection against loop
+        if (visited[ns]) {
+            DEBUG_LOG("%s: ERROR: partition-table loop at sector %u", __FUNCTION__, ns);
+			goto out;
+        }
+        visited[ns] = 1; 
+
+        table_sector_index = ns;
+        next_track = nt;
+        next_sector = ns;
+    }
+	ret = true;
+
+	out:
+	f_close(&fp);
 	return ret;
 }
 
@@ -737,6 +942,8 @@ static int read_dir(string name, list<string> &dir)
 	FILINFO fileinfo;
 	FIL fp;
 	int ret = -1;
+	if (DiskImage::IsDiskImageCMDHDExtention(name.c_str()))
+		return DHDDiskInfo(name, dir);
 	if (f_open(&fp, name.c_str(), FA_READ) != FR_OK)
 		return -1;
 	strncpy(fileinfo.fname, name.c_str(), 255);
