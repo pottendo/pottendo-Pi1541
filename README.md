@@ -1,15 +1,16 @@
-# pottendo-Pi1541 V2.3 WIP
+# pottendo-Pi1541 V2.3
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
-## News vs 2.2
-V2.3Beta2
-- Preview of CMD-HD partitions shows partition table
-- Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobble (and ChatGPT)
-  
-V2.3Beta1
-- Merge CMD-HD support, see https://github.com/xlar54/PiCMD
 
 ## News vs 2.1
+
+V2.3
+- Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
+V2.3Beta2
+- Preview of CMD-HD partitions shows partition table
+- Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobbel (and ChatGPT)
+V2.3Beta1
+- Merge CMD-HD support, see https://github.com/xlar54/PiCMD
 V2.2Beta2
 - Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
 - Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
@@ -21,6 +22,8 @@ V2.2Beta1
 - webserver now hands out files from /web
 - stats show current mounted image
 - Fixed 'CD' command to exit emulation
+
+# What's pottendo-Pi1541 vs. Pi1541
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
@@ -201,12 +204,11 @@ Future releases will add some specifics to support the HD emulation also from th
 
 Limitations: 
 - HD images can't be up/down-loaded via web-interface - the 16MB limit makes it anyway not very useful.
-- Automount of HD images is not yet supported
 - Webserver won't show image content of HD images
 
 Know Bugs/Observations:
 - The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
-- GEOS - see here: https://github.com/xlar54/PiCMD/issues/20 (may be caused by my Pi1541 setup)
+- CPM see, maybe not emulation related: https://github.com/xlar54/PiCMD/issues/23
 
 ## Compatibility
 
@@ -221,7 +223,7 @@ The emulation is quite demanding for Pis (reaction time in <1us). Empirically I'
 - I found on Pi3s 32 bit version a bit more stable 
   - don't use 64bit builds, see `config.txt`
 - I've seen that DMA sound delays emulation
-  - `SoundOnGPIO = 1` for Buzzer or `SounOnGPIO = -1` for no sound at all
+  - `SoundOnGPIO = 1` for Buzzer or `SoundOnGPIO = -1` for no sound at all
 - Users have reported
   - IEC Cable length and quality may have an impact
   - Quality of LS and level shifter of the Pi1541 HW

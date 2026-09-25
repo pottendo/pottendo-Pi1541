@@ -113,7 +113,7 @@ if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
         make RASPPI=${b} clean
         cd ${PPI1541}
         echo "building legacy codebase for RASPPI=${b}..."
-        if make RASPPI=${b} legacy > make-RASPPI-${b}-legacy.log; then
+        if make -j12 RASPPI=${b} legacy > make-RASPPI-${b}-legacy.log; then
             echo "successully built for RASPPI=${b}, legacy code base"
             mv kernel.img ${RELEASE}/orig-build/kernel-Pi${b}.img
             cp kernel.lst ${RELEASE}/debug-syms/kernel-Pi${b}.lst
@@ -124,6 +124,18 @@ if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
         fi
     done
     make RASPPI=${b} clean
+    # build PiCMD-HD legacy
+    cd ${base}/../pottendo-PiCMD
+    make clean 2>&1 > /dev/null
+    if make -j12 > make-PiCMD.log; then
+        echo "successfully built PiCMD for Pi3 and compatible"
+        mv target/kernel.img ${RELEASE}/orig-build/kernel-PiCMD-HD.img
+        cp target/kernel.map ${RELEASE}/debug-syms/kernel-PiCMD-HD.map
+        cp target/kernel.lst ${RELEASE}/debug-syms/kernel-PiCMD-HD.lst
+    else
+        echo "failed to build legacy codebase for PiCMD-HD"
+        exit 1
+    fi
     cat > ${RELEASE}/orig-build/README.txt <<EOF
 # Legacy builds of pottendo-Pi1541
 # These builds are based on the original codebase
@@ -141,6 +153,7 @@ if [ x${build_legacy} = "xyes" -o x${build_legacy} = "xonly" ] ; then
 # kernel-Pi1BRev2.img -> Raspberry Pi 1 Model B Revision 2, 26 pin GPIO
 # kernel-Pi2.img      -> Raspberry Pi 2
 # kernel-Pi3.img      -> Raspberry Pi 3, Pi 3B+, Pi 3A+, Pizero 2 W
+# kernel-PiCMD-HD.img -> Raspberry Pi 3, Pi 3B+, Pi 3A+, Pizero 2 W for CMD-HD emulation only
 # verify config.txt for correct kernel file names!
 EOF
     echo "successfully built legacy codebase for all RASPPI models"
@@ -153,11 +166,11 @@ fi
 if [ x${checkout} = "xyes" ] ; then
     cd ${base}/..
     rm -rf ${CIRCLE}
-    git clone --branch v20 --depth 1 --recursive https://codeberg.org/larchcone/circle-stdlib.git
+    git clone --branch v21 --depth 1 --recursive https://github.com/smuehlst/circle-stdlib.git
     cd ${CIRCLE}
     patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-httpDaemon.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-1-1.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make

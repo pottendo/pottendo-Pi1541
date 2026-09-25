@@ -1,5 +1,5 @@
 diff --git a/addon/fatfs/ffconf.h b/addon/fatfs/ffconf.h
-index bd65f4c2..be8806d5 100644
+index 9011a9a8..4c7c722a 100644
 --- a/addon/fatfs/ffconf.h
 +++ b/addon/fatfs/ffconf.h
 @@ -47,7 +47,7 @@
@@ -267,10 +267,10 @@ index e9a5a458..d19d2607 100644
  	if (m_pSocket->Send ((const char *) Header, Header.GetLength (), MSG_DONTWAIT) < 0)
  	{
 diff --git a/lib/usb/usbstring.cpp b/lib/usb/usbstring.cpp
-index 54e9bd47..61416a76 100644
+index ae567ada..cf5e437e 100644
 --- a/lib/usb/usbstring.cpp
 +++ b/lib/usb/usbstring.cpp
-@@ -113,6 +113,10 @@ boolean CUSBString::GetFromDescriptor (u8 ucID, u16 usLanguageID)
+@@ -126,6 +126,10 @@ boolean CUSBString::GetFromDescriptor (u8 ucID, u16 usLanguageID)
  		}
  	}
  
