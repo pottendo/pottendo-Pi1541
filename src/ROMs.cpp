@@ -32,7 +32,7 @@ void ROMs::SelectROM(const char* ROMName)
 
 	for (index = 0; index < MAX_ROMS; ++index)
 	{
-		if (ROMNames[index] && strcasecmp(ROMNames[index], ROMName) == 0)
+		if (/* ROMNames[index] && */strcasecmp(ROMNames[index], ROMName) == 0)
 		{
 			DEBUG_LOG("LST switching ROM %d %s\r\n", index, ROMNames[index]);
 

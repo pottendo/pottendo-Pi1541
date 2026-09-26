@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
-#ifndef _uspi__dwhcixferstagedata_h
+#ifndef _uspi_dwhcixferstagedata_h
 #define _uspi_dwhcixferstagedata_h
 
 #include <uspi/usb.h>
