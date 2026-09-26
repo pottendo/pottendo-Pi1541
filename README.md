@@ -6,6 +6,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 V2.3
 - Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
+- Provide PiCMD original build in orig-build
 V2.3Beta2
 - Preview of CMD-HD partitions shows partition table
 - Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobbel (and ChatGPT)
@@ -90,7 +91,7 @@ The following is supposed to work on the circle based _V1.25c_, as I've tested t
 - PWM/DMA Soundoutput (sounds nicer than in legacy codebase, IMHO)
 - USB Keyboard and USB Massstorage (improved over original, see also Bugs below)
 - Ethernet or WiFi network (if configured) starts and seeks for a DHCP server, a webserver runs, time is fetched via NTP if possible
-- PiCMDHD Emulator ****), tested on Pi1541 I/O Rev 4 hat in combination with Pi3B+/Pi4 with 32bit and 64bit kernels
+- PiCMDHD Emulator ****), tested on Pi1541 I/O Rev 4 hat (option B) in combination with Pi3B+/Pi4 with 32bit and 64bit kernels, Pi3A+/Pi3B+/Zero2W with Option A HW setup (single drive setup)
 
 *) Credits to @znarF who kindly donated and tested on Option B HW and @ILAH on F64, who tested Option B HW.
 
