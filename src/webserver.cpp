@@ -1616,7 +1616,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/pistats.html") == 0)
 	{
@@ -1646,7 +1646,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/getindex.html") == 0)
 	{
@@ -1654,7 +1654,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		gen_index(index, string(""));
 		pContent = (const u8 *)index.c_str();
 		nLength = index.length();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/update.html") == 0)
 	{
@@ -1693,7 +1693,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		String.Format(s_update, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";		
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/options.html") == 0)
 	{
@@ -1720,7 +1720,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		String.Format(s_update, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}	
 	else if (strcmp(pPath, "/edit-config.html") == 0)
 	{
@@ -1752,7 +1752,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		String.Format(s_edit_config, msg.c_str(), options.c_str(), config.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/edit-file.html") == 0)
 	{
@@ -1825,7 +1825,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	} 
 	else if (strcmp(pPath, "/mount-imgs.html") == 0)
 	{
@@ -1973,7 +1973,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					msg = "Can't download directory '" + fullname + "'";
 					pContent = (const u8 *)msg.c_str();
 					nLength = msg.length();
-					*ppContentType = "text/html; charset=iso-8859-1";
+					*ppContentType = "text/html; charset=utf-8";
 				}
 				else
 				{
@@ -2079,7 +2079,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					);
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/logger.html") == 0)
 	{
@@ -2094,7 +2094,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		String.Format(s_logger, logger.get_bootlogs().c_str(), logger.get_log_count(), logger.get_logs().c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/reset.html") == 0)
 	{
@@ -2106,7 +2106,7 @@ extern int reboot_req;
 		String.Format(s_status, msg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
-		*ppContentType = "text/html; charset=iso-8859-1";
+		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/style.css") == 0)
 	{
