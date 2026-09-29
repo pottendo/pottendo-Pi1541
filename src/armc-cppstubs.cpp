@@ -18,7 +18,10 @@
 
 #include <stdlib.h>
 
-extern "C" void *__dso_handle = 0;
+extern "C" 
+{
+	void *__dso_handle = 0;
+}
 
 void* operator new(size_t size) noexcept
 {
