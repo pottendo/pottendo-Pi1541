@@ -792,6 +792,27 @@ void UpdateScreen()
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top4, bottom, BkColour);
 
+		value = srq;
+		if (options.HDMIGraphIEC())
+		{
+			bottom = top3 - 2;
+			if (value ^ oldSRQ)
+			{
+				screen->DrawLineV(graphX, top4, bottom, SRQColour);
+			}
+			else
+			{
+				if (value) screen->PlotPixel(graphX, top4, SRQColour);
+				else screen->PlotPixel(graphX, bottom, SRQColour);
+			}
+		}
+		if (value != oldSRQ)
+		{
+			oldSRQ = value;
+			snprintf(tempBuffer, tempBufferSize, "%d", value);
+			screen->PrintText(false, 47 * 8, y, tempBuffer, textColour, bgColour);
+			//refreshUartStatusDisplay = true;
+		}
 		value = atn;
 		if (options.HDMIGraphIEC())
 		{
@@ -869,30 +890,6 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-#if defined(CMDHD_SUPPORT)		
-		value = srq;
-		if (options.HDMIGraphIEC())
-		{
-			if (value ^ oldSRQ)
-			{
-				screen->DrawLineV(graphX, top4, bottom, SRQColour);
-			}
-			else
-			{
-				if (value) screen->PlotPixel(graphX, top4, SRQColour);
-				else screen->PlotPixel(graphX, bottom, SRQColour);
-			}
-		}
-		if (value != oldSRQ)
-		{
-			oldSRQ = value;
-			snprintf(tempBuffer, tempBufferSize, "%d", value);
-			screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
-			//refreshUartStatusDisplay = true;
-		}
-#endif
-
-
 		if (graphX++ > screenWidthM1) graphX = 0;
 // black vertical line ahead of graph
 		if (options.HDMIGraphIEC())
@@ -966,7 +963,7 @@ void UpdateScreen()
 						oldTemperature = temperature;
 						//DEBUG_LOG("Temperature: %d\r\n", temperature);
 						snprintf(tempBuffer, tempBufferSize, "%02d", temperature);
-						screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
+						screen->PrintText(false, 49 * 8, y, tempBuffer, textColour, bgColour);
 						refreshLCDStatusDisplay = true;
 					}
 				}
