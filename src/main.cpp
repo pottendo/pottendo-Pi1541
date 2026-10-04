@@ -127,6 +127,7 @@ u8 s_u8Memory[0xc000];
 int numberOfUSBMassStorageDevices = 0;
 DiskCaddy diskCaddy;
 Pi1541 pi1541;
+Options options;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
 #endif
@@ -135,6 +136,17 @@ extern PiCMDHD piCMDHD;
 // Filename the CMD HD boot ROM was loaded from, shown by the browser next to
 // the device number. The ROM itself lives in PiCMDHD.
 char cmdhdRomName[256] = { 0 };
+
+void setPiCMDTime(void)
+{
+	time_t now = time(nullptr);
+	now += options.GetTZ() * 3600;;
+	struct tm *tm = localtime(&now);
+			/* DEBUG_LOG("%s: clock is %04d-%02d-%02d %02d:%02d:%02d:%02d", __FUNCTION__, 
+				tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_wday); */
+	piCMDHD.rtc.SetTime((options.GetNetWifi() | options.GetNetEthernet()), tm->tm_sec, tm->tm_min, tm->tm_hour, tm->tm_mday, tm->tm_mon + 1, tm->tm_year - 100, tm->tm_wday);
+}
+
 #endif
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
@@ -146,7 +158,6 @@ Screen *screen_hdmi;
 ScreenHeadLess *screen_headless;
 ScreenLCD* screenLCD = 0;
 static u32 lcdTrackRow = 0;
-Options options;
 const char* fileBrowserSelectedName;
 u8 deviceID = 8;
 IEC_Commands *_m_IEC_Commands;	/* need dynamic allocation for ESPs with PSRAM */
