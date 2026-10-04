@@ -3,6 +3,7 @@
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 ## News vs. 2.3
 - Fix webserver to use UTF-8, so international characters can be used in `options.txt` e.g. in comments
+- Fixed SRQ plot
 
 ## News vs 2.1
 
@@ -328,6 +329,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Plugging/Unplugging USB stick is in general not recommended and unstable.
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
+- PiZero2W won't run stable with HDMI enabled @1400 Mhz -> keep HDMI disabled (`DisableHDMI = 1`) or reduce clock-speed in `config.txt`.
 
 # Checkout & Build
 

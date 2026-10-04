@@ -894,7 +894,6 @@ void UpdateScreen()
 // black vertical line ahead of graph
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top4, bottom, COLOUR_BLACK);
-
 		u32 track;
 #if defined(CMDHD_SUPPORT)		
 		if (emulating == EMULATING_CMDHD)
@@ -1061,8 +1060,8 @@ void UpdateScreen()
 
 		// Go back to sleep. The USB irq will wake us up again.
 #if defined (__CIRCLE__)		
-		MsDelay(10);		/* less CPU demanding */
-#else		
+		MsDelay(20);		/* less CPU demanding */
+#else
 		__asm ("WFE");
 #endif
 	}
