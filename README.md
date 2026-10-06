@@ -9,7 +9,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News vs 2.1
 
 V2.3
-- Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
+- Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 V2.3Beta2
 - Preview of CMD-HD partitions shows partition table
 - Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobbel (and ChatGPT)
@@ -17,7 +17,7 @@ V2.3Beta1
 - Merge CMD-HD support, see https://github.com/xlar54/PiCMD
 V2.2Beta2
 - Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
-- Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
+- Moved to circle-stdlib/circle to recent step 51. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 - Fixed crash when Pi4 is used with USB sticks
 - Fixed 'CD' command for dos1541
 V2.2Beta1
