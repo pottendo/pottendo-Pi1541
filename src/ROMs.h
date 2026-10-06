@@ -55,8 +55,18 @@ public:
 	static const int ROM1581_SIZE = 16384 * 2;
 	unsigned char ROMImage1581[ROM1581_SIZE];
 	char ROMName1581[256];
+
+	static const int ROM1571_SIZE = 16384 * 2;
+	unsigned char ROMImage1571[ROM1571_SIZE];
+	char ROMName1571[256];
+	inline u8 Read1571(u16 address)
+	{
+		return ROMImage1571[address & 0x7fff];
+	}
+
 	static const int MAX_ROMS = 7;
 	unsigned char ROMImageMPS802[ROM_MPS802_SIZE];
+
 #else
 	static const int MAX_ROMS = 1;
 #endif

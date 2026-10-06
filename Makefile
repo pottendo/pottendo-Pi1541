@@ -48,7 +48,7 @@ CMD_OBJS = i8255a.o m65c02.o m6522.o picmdhd.o rtc72421.o scsi.o iec_bus.o
 COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 		gcr.o prot.o lz.o Options.o Screen.o ScreenLCD.o \
 		FileBrowser.o DiskCaddy.o ROMs.o InputMappings.o xga_font_data.o \
-		m8520.o wd177x.o Pi1581.o Keyboard.o SSD1306.o
+		m8520.o wd177x.o Pi1581.o Pi1571.o Keyboard.o SSD1306.o
 SRCDIR   = src
 CMDSRC = $(abspath ../pottendo-PiCMD/src/emulation)
 OBJS_CIRCLE  := $(addprefix $(SRCDIR)/, $(CIRCLE_OBJS) $(COMMON_OBJS))

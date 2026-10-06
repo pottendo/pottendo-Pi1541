@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <string>
+#include <time.h>
 #if RASPPI <= 1 && AARCH == 32
 #include "SpinLock.h"
 #else

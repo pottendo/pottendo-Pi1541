@@ -200,6 +200,7 @@ Options::Options(void)
 	ROMNameSlot7[0] = 0;
 	ROMNameSlot8[0] = 0;
 	ROMName1581[0] = 0;
+	ROMName1571[0] = 0;
 	newDiskType[0] = 0;
 	i2cLcdModelName = "LCD_UNKNOWN";
 #if defined(CMDHD_SUPPORT)	
@@ -344,6 +345,10 @@ void Options::Process(char* buffer)
 		{
 			strncpy(ROMName1581, pValue, 255);
 		}
+		else if ((strcasecmp(pOption, "ROM1571") == 0))
+		{
+			strncpy(ROMName1571, pValue, 255);
+		}
 		else if ((strcasecmp(pOption, "ROM") == 0) || (strcasecmp(pOption, "ROM1") == 0))
 		{
 			strncpy(ROMName, pValue, 255);
@@ -452,6 +457,14 @@ const char* Options::GetRomName1581() const
 		return "1581-rom.318045-02.bin";
 	else
 		return ROMName1581;
+}
+
+const char* Options::GetRomName1571() const
+{
+	if (ROMName1571[0] == 0)
+		return "dos1571-310654-05.bin";
+	else
+		return ROMName1571;
 }
 
 DiskImage::DiskType Options::GetNewDiskType() const

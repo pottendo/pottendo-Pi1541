@@ -70,6 +70,7 @@ public:
 	inline unsigned GetHeadBitOffset() const { return headBitOffset; }
 	inline bool IsMotorOn() const { return motor; }
 	inline bool IsLEDOn() const { return LED; }
+	inline void SetHead(unsigned headIndex) { head = headIndex; }
 
 	inline unsigned char GetLastHeadDirection() const { return lastHeadDirection; } // For simulated head movement sounds
 private:
@@ -188,6 +189,8 @@ private:
 	// CB2 (output)
 	//	- R/!W
 	m6522* m_pVIA;
+
+	u32 head;
 #if defined(FAST_CODE)
 	unsigned int cyclesLeftForBit;
 	unsigned int fluxReversalCyclesLeft;
