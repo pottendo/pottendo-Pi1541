@@ -2085,7 +2085,7 @@ EXIT_TYPE Emulate1571(FileBrowser* fileBrowser)
 				{
 					// If this ever occurs then we have taken too long (ie >1us) and lost a cycle.
 					// Cycle accuracy is now in jeopardy. If this occurs during critical communication loops then emulation can fail!
-					//DEBUG_LOG("ct = %d", ct);
+					DEBUG_LOG("ct = %d", ct);
 				}
 			} while (ctAfter == ctBefore);
 #if 0			
