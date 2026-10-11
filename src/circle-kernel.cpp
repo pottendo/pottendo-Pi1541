@@ -34,6 +34,7 @@
 #include <circle/usb/usbmassdevice.h>
 #include "Options.h"
 #include "webserver.h"
+#include "printer.h"
 #include "version.h"
 #include <list>
 #include <string>
@@ -285,6 +286,7 @@ boolean CKernel::Initialize (void)
 extern ScreenLCD *screenLCD;
 extern DiskCaddy diskCaddy;
 extern CSpinLock core0RefreshingScreen;
+CSpinLock emuSpinLock;
 
 TShutdownMode CKernel::Run(void)
 {
@@ -784,8 +786,9 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		while (1)
 			Kernel.lcd_showheadless();
 		break;
-	case 3:	/* health monitoring */
-		logger.finished_booting("system monitor core");
+	case 3:	/* other emulator */
+		logger.finished_booting("other emulator core");
+#if 0		
 		if (options.GetHealthMonitor() == 1)
 			Kernel.log("disabling health monitoring on core %d", core);
 		else
@@ -793,6 +796,14 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			Kernel.log("launching system monitoring on core %d", core);
 			Kernel.run_tempmonitor();
 		}
+#endif
+		{
+			Printer printer(4);
+			while (1)
+			{
+				printer.emulate();
+			}
+		}		
 		break;
 	default:
 		break;

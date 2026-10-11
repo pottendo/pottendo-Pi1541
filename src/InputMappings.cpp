@@ -30,6 +30,8 @@ extern void usDelay(unsigned nMicroSeconds);
 extern void Reboot_Pi(void);
 #endif
 
+extern IEC_Bus *iec_bus;
+
 // If disk swaps can be done via multiple cores then directDiskSwapRequest needs to be volatile. WARNING: volatile acesses can be very expensive.
 //volatile unsigned InputMappings::directDiskSwapRequest = 0;
 unsigned InputMappings::directDiskSwapRequest = 0;
@@ -61,28 +63,28 @@ bool InputMappings::CheckButtonsBrowseMode()
 
 	// Keep the original Pi1541 chord shortcuts. They take precedence over
 	// the new single-button long-press shortcuts below.
-	if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_INSERT))	// Change DeviceID
+	if (iec_bus->GetInputButtonHeld(INPUT_BUTTON_INSERT))	// Change DeviceID
 	{
 		bool chordHandled = false;
-		if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_ENTER))
+		if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_ENTER))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 8;
 			chordHandled = true;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_UP))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 9;
 			chordHandled = true;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 10;
 			chordHandled = true;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_BACK))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_BACK))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 11;
@@ -103,31 +105,31 @@ bool InputMappings::CheckButtonsBrowseMode()
 			insertLongActionTriggered = true;
 		}
 	}
-	else if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_ENTER))	// Change ROMs
+	else if (iec_bus->GetInputButtonHeld(INPUT_BUTTON_ENTER))	// Change ROMs
 	{
-		if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
+		if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_UP))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 1;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 2;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_BACK))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_BACK))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 3;
 		}
-		else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_INSERT))
+		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_INSERT))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 4;
 		}
 		enterButtonPressedPrev = false;
 	}
-	else if (IEC_Bus::GetInputButtonHeld(INPUT_BUTTON_BACK))
+	else if (iec_bus->GetInputButtonHeld(INPUT_BUTTON_BACK))
 	{
 		if (!backLongActionTriggered)
 		{
@@ -138,15 +140,15 @@ bool InputMappings::CheckButtonsBrowseMode()
 			backLongActionTriggered = true;
 		}
 	}
-	else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
+	else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_UP))
 		SetButtonFlag(UP_FLAG);
-	else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
+	else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(DOWN_FLAG);
 	else
 		{
 		// BACK is handled on release so a long press can be distinguished from
 		// a normal short press without first leaving the current directory.
-		backButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_BACK);
+		backButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_BACK);
 		if (backButtonPressedPrev && !backButtonPressed)
 		{
 			if (!backLongActionTriggered)
@@ -156,7 +158,7 @@ bool InputMappings::CheckButtonsBrowseMode()
 		backButtonPressedPrev = backButtonPressed;
 
 		// INSERT keeps its original short-press action, also on release.
-		insertButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_INSERT);
+		insertButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_INSERT);
 		if (insertButtonPressedPrev && !insertButtonPressed)
 		{
 			if (!insertLongActionTriggered)
@@ -165,7 +167,7 @@ bool InputMappings::CheckButtonsBrowseMode()
 		}
 		insertButtonPressedPrev = insertButtonPressed;
 
-		enterButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_ENTER);
+		enterButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_ENTER);
 		if (enterButtonPressedPrev && !enterButtonPressed)
 			SetButtonFlag(ENTER_FLAG);
 		enterButtonPressedPrev = enterButtonPressed;
@@ -180,15 +182,15 @@ void InputMappings::WaitForClearButtons()
 
 	do
 	{
-		IEC_Bus::ReadBrowseMode();
+		iec_bus->ReadBrowseMode();
 
-		insertButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_INSERT);
+		insertButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_INSERT);
 		insertButtonPressedPrev = insertButtonPressed;
 
-		backButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_BACK);
+		backButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_BACK);
 		backButtonPressedPrev = backButtonPressed;
 
-		enterButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_ENTER);
+		enterButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_ENTER);
 		enterButtonPressedPrev = enterButtonPressed;
 		
 		usDelay(1);
@@ -202,16 +204,16 @@ void InputMappings::CheckButtonsEmulationMode()
 {
 	buttonFlags = 0;
 
-	if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_UP))
+	if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_UP))
 		SetButtonFlag(NEXT_FLAG);
-	else if (IEC_Bus::GetInputButtonRepeating(INPUT_BUTTON_DOWN))
+	else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		SetButtonFlag(PREV_FLAG);
-	//else if (IEC_Bus::GetInputButtonPressed(INPUT_BUTTON_BACK))
+	//else if (iec_bus->GetInputButtonPressed(INPUT_BUTTON_BACK))
 	//	SetButtonFlag(BACK_FLAG);
-	//else if (IEC_Bus::GetInputButtonPressed(INPUT_BUTTON_INSERT))
+	//else if (iec_bus->GetInputButtonPressed(INPUT_BUTTON_INSERT))
 	//	SetButtonFlag(INSERT_FLAG);
 	else {
-		enterButtonPressed = !IEC_Bus::GetInputButtonReleased(INPUT_BUTTON_ENTER);
+		enterButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_ENTER);
 		if (enterButtonPressedPrev && !enterButtonPressed)
 			SetButtonFlag(ESC_FLAG);
 		enterButtonPressedPrev = enterButtonPressed;

@@ -37,7 +37,7 @@
 
 #define INPUT_BUTTON_DEBOUNCE_THRESHOLD 20000
 #define INPUT_BUTTON_REPEAT_THRESHOLD 460000
-
+#define BUTTON_COUNT 6
 /* moved to variables in InputMapping
 #define INPUT_BUTTON_ENTER 0
 #define INPUT_BUTTON_UP 1
@@ -325,6 +325,7 @@ enum VIAPortPins
 
 typedef bool(*CheckStatus)();
 
+extern SpinLock emuSpinLock;
 class IEC_Bus
 {
 #if defined (__CIRCLE__)
@@ -358,13 +359,25 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
 	static unsigned _mask;
+	const uint32_t device_id;
+	const uint32_t drive_id;
+	static bool iec_initialized;
 #endif	
 public:
-	static inline void Initialise(void)
+	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
+	~IEC_Bus() { Reset(); DEBUG_LOG("%s: done", __FUNCTION__); };
+
+	inline void Initialise(void)
 	{
 		volatile int index; // Force a real delay in the loop below.
-		// Clear all outputs to 0
+		emuSpinLock.Acquire();
+		if (iec_initialized) 
+		{
+			emuSpinLock.Release();
+			return;
+		}
 #if !defined(__PICO2__)	&& !defined(ESP32)
+		// Clear all outputs to 0
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
 #endif		
 		//CGPIOPin::WriteAll(0xffffffff, 0xffffffff);
@@ -515,7 +528,7 @@ public:
 		write32(PWM_CTL, PWM_USEF2 + PWM_PWEN2 + PWM_USEF1 + PWM_PWEN1 + PWM_CLRF1);
 #endif		
 #endif
-		for (index = 0; index < buttonCount; ++index)
+		for (index = 0; index < BUTTON_COUNT; ++index)
 		{
 			InputButton[index] = false;
 			InputButtonPrev[index] = false;
@@ -551,10 +564,13 @@ public:
 				IEC_Bus::rotaryEncoder.Initialize(RPI_GPIO22, RPI_GPIO23, RPI_GPIO27);
 			}
 		} */
-#endif		
+#endif
+		iec_initialized = true;
+		DEBUG_LOG("%s: IEC Bus I/Os Initialized", __FUNCTION__);
+		emuSpinLock.Release();
 	}
 
-	static inline void LetSRQBePulledHigh()
+	inline void LetSRQBePulledHigh()
 	{
 		SRQSetToOut = IEC_Bus::invertIECInputs;
 #if defined(PI1581SUPPORT)
@@ -563,15 +579,15 @@ public:
 	}
 
 #if defined(EXPERIMENTALZERO)
-	static inline bool AnyButtonPressed()
+	inline bool AnyButtonPressed()
 	{
 		return ((gplev0 & PIGPIO_MASK_ANY_BUTTON) != PIGPIO_MASK_ANY_BUTTON);
 	}
 #endif
 
-	static void UpdateButton(int index);
+	void UpdateButton(int index);
     //ROTARY: Added for rotary encoder support - 12/23/2025 by hgryska
-	static void UpdateRotary(int index_clock, int index_data);
+	void UpdateRotary(int index_clock, int index_data);
 	
 	//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
 	//
@@ -612,12 +628,12 @@ public:
 
 	} */
 
-	static void ReadBrowseMode(void);
-	static void ReadGPIOUserInput(bool minimalCheck = false);
-	static void ReadEmulationMode1541(void);
-	static void ReadEmulationMode1581(void);
+	void ReadBrowseMode(void);
+	void ReadGPIOUserInput(bool minimalCheck = false);
+	void ReadEmulationMode1541(void);
+	void ReadEmulationMode1581(void);
 
-	static void WaitUntilReset(void)
+	void WaitUntilReset(void)
 	{
 		unsigned gplev0;
 		do
@@ -647,14 +663,14 @@ public:
 	}
 
 	// Out going
-	static void PortB_OnPortOut(void* pUserData, unsigned char status);
+	void PortB_OnPortOut(void* pUserData, unsigned char status);
 
 #if defined(__PICO2__) || defined(ESP32)
 	static void RefreshOuts1541(void);
 	static void RefreshOutLED(void);
 	static void RefreshOutSound(void);
 #else
-	static inline void RefreshOuts1541(void)
+	inline void RefreshOuts1541(void)
 	{
 		if (!splitIECLines)
 		{
@@ -767,7 +783,7 @@ public:
 #endif /* __PICO2__ || ESP32 */
 
 #if defined(PI1581SUPPORT)
-	static inline void RefreshOuts1581(void)
+	inline void RefreshOuts1581(void)
 	{
 		unsigned set = 0;
 		unsigned clear = 0;
@@ -858,18 +874,18 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// 1581 Fast Serial
-	static inline void SetFastSerialData(bool value)
+	inline void SetFastSerialData(bool value)
 	{
 		DataSetToOut = value;
 	}
-	static inline void SetFastSerialSRQ(bool value)
+	inline void SetFastSerialSRQ(bool value)
 	{
 		SRQSetToOut = value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// Manual methods used by IEC_Commands
-	static inline void AssertData()
+	inline void AssertData()
 	{
 		if (!DataSetToOut)
 		{
@@ -877,7 +893,7 @@ public:
 			RefreshOuts1541();
 		}
 	}
-	static inline void ReleaseData()
+	inline void ReleaseData()
 	{
 		if (DataSetToOut)
 		{
@@ -886,7 +902,7 @@ public:
 		}
 	}
 
-	static inline void AssertClock()
+	inline void AssertClock()
 	{
 		if (!ClockSetToOut)
 		{
@@ -894,7 +910,7 @@ public:
 			RefreshOuts1541();
 		}
 	}
-	static inline void ReleaseClock()
+	inline void ReleaseClock()
 	{
 		if (ClockSetToOut)
 		{
@@ -903,23 +919,23 @@ public:
 		}
 	}
 
-	static inline bool GetPI_SRQ() { return PI_SRQ; }
-	static inline bool GetPI_Atn() { return PI_Atn; }
-	static inline bool IsAtnAsserted() { return PI_Atn; }
-	static inline bool IsAtnReleased() { return !PI_Atn; }
-	static inline bool GetPI_Data() { return PI_Data; }
-	static inline bool IsDataAsserted() { return PI_Data; }
-	static inline bool IsDataReleased() { return !PI_Data; }
-	static inline bool GetPI_Clock() { return PI_Clock; }
-	static inline bool IsClockAsserted() { return PI_Clock; }
-	static inline bool IsClockReleased() { return !PI_Clock; }
-	static inline bool GetPI_Reset() { return PI_Reset; }
-	static inline bool IsDataSetToOut() { return DataSetToOut; }
-	//static inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
-	static inline bool IsClockSetToOut() { return ClockSetToOut; }
-	static inline bool IsReset() { return Resetting; }
+	inline bool GetPI_SRQ() { return PI_SRQ; }
+	inline bool GetPI_Atn() { return PI_Atn; }
+	inline bool IsAtnAsserted() { return PI_Atn; }
+	inline bool IsAtnReleased() { return !PI_Atn; }
+	inline bool GetPI_Data() { return PI_Data; }
+	inline bool IsDataAsserted() { return PI_Data; }
+	inline bool IsDataReleased() { return !PI_Data; }
+	inline bool GetPI_Clock() { return PI_Clock; }
+	inline bool IsClockAsserted() { return PI_Clock; }
+	inline bool IsClockReleased() { return !PI_Clock; }
+	inline bool GetPI_Reset() { return PI_Reset; }
+	inline bool IsDataSetToOut() { return DataSetToOut; }
+	//inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
+	inline bool IsClockSetToOut() { return ClockSetToOut; }
+	inline bool IsReset() { return Resetting; }
 
-	static inline void WaitWhileAtnAsserted()
+	inline void WaitWhileAtnAsserted()
 	{
 		while (IsAtnAsserted())
 		{
@@ -928,7 +944,7 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	static inline void SetSplitIECLines(bool value)
+	inline void SetSplitIECLines(bool value)
 	{
 		splitIECLines = value;
 		if (splitIECLines)
@@ -943,7 +959,7 @@ public:
 		}
 	}
 
-	static inline void SetInvertIECInputs(bool value) 
+	inline void SetInvertIECInputs(bool value) 
 	{
 		invertIECInputs = value;
 		if (value)
@@ -956,12 +972,12 @@ public:
 		}
 	}
 
-	static inline void SetInvertIECOutputs(bool value)
+	inline void SetInvertIECOutputs(bool value)
 	{
 		invertIECOutputs = value;
 	}
 
-	static inline void SetIgnoreReset(bool value)
+	inline void SetIgnoreReset(bool value)
 	{
 		ignoreReset = value;
 	}
@@ -987,13 +1003,13 @@ public:
 	static m8520* CIA;
 	static IOPort* port;
 
-	static void Reset(void);
+	void Reset(void);
 
-	static bool GetInputButtonPressed(int buttonIndex) { return InputButton[buttonIndex] && !InputButtonPrev[buttonIndex]; }
-	static bool GetInputButtonReleased(int buttonIndex) { return InputButton[buttonIndex] == false; }
-	static bool GetInputButton(int buttonIndex) { return InputButton[buttonIndex]; }
-	static bool GetInputButtonRepeating(int buttonIndex) { return inputRepeat[buttonIndex] != inputRepeatPrev[buttonIndex]; }
-	static bool GetInputButtonHeld(int buttonIndex) { return inputRepeatThreshold[buttonIndex] >= INPUT_BUTTON_DEBOUNCE_THRESHOLD + (INPUT_BUTTON_REPEAT_THRESHOLD * 2); }
+	bool GetInputButtonPressed(int buttonIndex) { return InputButton[buttonIndex] && !InputButtonPrev[buttonIndex]; }
+	bool GetInputButtonReleased(int buttonIndex) { return InputButton[buttonIndex] == false; }
+	bool GetInputButton(int buttonIndex) { return InputButton[buttonIndex]; }
+	bool GetInputButtonRepeating(int buttonIndex) { return inputRepeat[buttonIndex] != inputRepeatPrev[buttonIndex]; }
+	bool GetInputButtonHeld(int buttonIndex) { return inputRepeatThreshold[buttonIndex] >= INPUT_BUTTON_DEBOUNCE_THRESHOLD + (INPUT_BUTTON_REPEAT_THRESHOLD * 2); }
 
 	static bool OutputLED;
 	static bool OutputSound;
@@ -1002,10 +1018,10 @@ private:
 	static u32 oldClears;
 	static u32 oldSets;
 
-	static bool splitIECLines;
-	static bool invertIECInputs;
-	static bool invertIECOutputs;
-	static bool ignoreReset;
+	bool splitIECLines;
+	bool invertIECInputs;
+	bool invertIECOutputs;
+	bool ignoreReset;
 
 	static u32 PIGPIO_MASK_IN_ATN;
 	static u32 PIGPIO_MASK_IN_DATA;
@@ -1019,32 +1035,30 @@ private:
 
 	static unsigned gplev0;
 
-	static bool PI_Atn;
-	static bool PI_Data;
-	static bool PI_Clock;
-	static bool PI_SRQ;
-	static bool PI_Reset;
+	bool PI_Atn;
+	bool PI_Data;
+	bool PI_Clock;
+	bool PI_SRQ;
+	bool PI_Reset;
 
-	static bool VIA_Atna;
-	static bool VIA_Data;
-	static bool VIA_Clock;
+	bool VIA_Atna;
+	bool VIA_Data;
+	bool VIA_Clock;
 
-	static bool DataSetToOut;
-	static bool AtnaDataSetToOut;
-	static bool ClockSetToOut;
-	static bool SRQSetToOut;
-	static bool Resetting;
+	bool DataSetToOut;
+	bool AtnaDataSetToOut;
+	bool ClockSetToOut;
+	bool SRQSetToOut;
+	bool Resetting;
 
-	static int buttonCount;
-
-	static u32 myOutsGPFSEL0;
-	static u32 myOutsGPFSEL1;
-	static bool InputButton[5];
-	static bool InputButtonPrev[5];
-	static u32 validInputCount[5];
-	static u32 inputRepeatThreshold[5];
-	static u32 inputRepeat[5];
-	static u32 inputRepeatPrev[5];
+	u32 myOutsGPFSEL0;
+	u32 myOutsGPFSEL1;
+	bool InputButton[BUTTON_COUNT];
+	bool InputButtonPrev[BUTTON_COUNT];
+	u32 validInputCount[BUTTON_COUNT];
+	u32 inputRepeatThreshold[BUTTON_COUNT];
+	u32 inputRepeat[BUTTON_COUNT];
+	u32 inputRepeatPrev[BUTTON_COUNT];
 
 	//ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
 	//static RotaryEncoder rotaryEncoder;

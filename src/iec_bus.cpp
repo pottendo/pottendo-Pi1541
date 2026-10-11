@@ -18,10 +18,13 @@
 
 #include "iec_bus.h"
 #include "InputMappings.h"
+#include "Options.h"
 
 //#define REAL_XOR 1
 
-int IEC_Bus::buttonCount = sizeof(ButtonPinFlags) / sizeof(unsigned);
+extern Options options;
+
+//int IEC_Bus::buttonCount = sizeof(ButtonPinFlags) / sizeof(unsigned);
 
 u32 IEC_Bus::oldClears = 0;
 u32 IEC_Bus::oldSets = 0;
@@ -32,49 +35,49 @@ u32 IEC_Bus::PIGPIO_MASK_IN_SRQ = 1 << PIGPIO_SRQ;
 u32 IEC_Bus::PIGPIO_MASK_IN_RESET = 1 << PIGPIO_RESET;
 u32 IEC_Bus::PIGPIO_MASK_OUT_LED = 1 << PIGPIO_OUT_LED;
 u32 IEC_Bus::PIGPIO_MASK_OUT_SOUND = 1 << PIGPIO_OUT_SOUND;
-
-bool IEC_Bus::PI_Atn = false;
-bool IEC_Bus::PI_Data = false;
-bool IEC_Bus::PI_Clock = false;
-bool IEC_Bus::PI_SRQ = false;
-bool IEC_Bus::PI_Reset = false;
-
-bool IEC_Bus::VIA_Atna = false;
-bool IEC_Bus::VIA_Data = false;
-bool IEC_Bus::VIA_Clock = false;
-
-bool IEC_Bus::DataSetToOut = false;
-bool IEC_Bus::AtnaDataSetToOut = false;
-bool IEC_Bus::ClockSetToOut = false;
-bool IEC_Bus::SRQSetToOut = false;
-
 m6522* IEC_Bus::VIA = 0;
 m8520* IEC_Bus::CIA = 0;
 IOPort* IEC_Bus::port = 0;
-
 bool IEC_Bus::OutputLED = false;
 bool IEC_Bus::OutputSound = false;
 
-bool IEC_Bus::Resetting = false;
+IEC_Bus::IEC_Bus(u8 deviceID, const uint32_t driveID) :
+	device_id(deviceID),
+	drive_id(driveID)
+{
+	PI_Atn = false;
+	PI_Data = false;
+	PI_Clock = false;
+	PI_SRQ = false;
+	PI_Reset = false;
 
-bool IEC_Bus::splitIECLines = false;
-bool IEC_Bus::invertIECInputs = false;
-bool IEC_Bus::invertIECOutputs = true;
-bool IEC_Bus::ignoreReset = false;
+	VIA_Atna = false;
+	VIA_Data = false;
+	VIA_Clock = false;
 
-u32 IEC_Bus::myOutsGPFSEL1 = 0;
-u32 IEC_Bus::myOutsGPFSEL0 = 0;
-bool IEC_Bus::InputButton[5] = { 0 };
-bool IEC_Bus::InputButtonPrev[5] = { 0 };
-u32 IEC_Bus::validInputCount[5] = { 0 };
-u32 IEC_Bus::inputRepeatThreshold[5];
-u32 IEC_Bus::inputRepeat[5] = { 0 };
-u32 IEC_Bus::inputRepeatPrev[5] = { 0 };
+	DataSetToOut = false;
+	AtnaDataSetToOut = false;
+	ClockSetToOut = false;
+	SRQSetToOut = false;
 
+	Resetting = false;
 
-u32 IEC_Bus::emulationModeCheckButtonIndex = 0;
+	myOutsGPFSEL1 = 0;
+	myOutsGPFSEL0 = 0;
 
-unsigned IEC_Bus::gplev0;
+	//emulationModeCheckButtonIndex = 0;
+	emuSpinLock.Acquire();
+	SetSplitIECLines(options.SplitIECLines());
+	SetInvertIECInputs(options.InvertIECInputs());
+	SetInvertIECOutputs(options.InvertIECOutputs());	
+	SetIgnoreReset(options.IgnoreReset());
+	emuSpinLock.Release();
+	DEBUG_LOG("%s: splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", __FUNCTION__, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
+	gplev0 = 0; // not needed as static is used for a working emulation
+	Initialise();
+
+	DEBUG_LOG("%s: IEC Bus initialized for device %d", __FUNCTION__, device_id);
+}
 
 //ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
 //RotaryEncoder IEC_Bus::rotaryEncoder;
@@ -112,8 +115,9 @@ CGPIOPin IEC_Bus::IO_OUT_LED;
 CGPIOPin IEC_Bus::IO_OUT_CLOCK;
 CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
-
-unsigned IEC_Bus::_mask;
+bool IEC_Bus::iec_initialized = false;
+unsigned IEC_Bus::gplev0 = 0;
+unsigned IEC_Bus::_mask = 0;
 #endif
 
 void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)

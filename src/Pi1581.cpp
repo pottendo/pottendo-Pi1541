@@ -27,6 +27,7 @@
 extern Pi1581 pi1581;
 extern u8 s_u8Memory[0xc000];
 extern ROMs roms;
+extern IEC_Bus* iec_bus;
 
 // PA0 SIDE0
 // PA1 !RDY
@@ -197,7 +198,7 @@ static void CIAPortB_OnPortOut(void* pUserData, unsigned char status)
 		pi1581->fastSerialDirection = FAST_SERIAL_DIR_IN;
 
 
-	IEC_Bus::PortB_OnPortOut(0, status);
+	iec_bus->PortB_OnPortOut(0, status);
 }
 
 Pi1581::Pi1581()
@@ -256,8 +257,8 @@ void Pi1581::Update()
 		// When 1
 		//	- SP is sent to DATA
 		//	- Fast Clock (SRQ) is sent to CNT
-		IEC_Bus::SetFastSerialData(!CIA.GetPinSP());	// Communication on fast serial is done after the inverter.
-		IEC_Bus::SetFastSerialSRQ(CIA.GetPinCNT());
+		iec_bus->SetFastSerialData(!CIA.GetPinSP());	// Communication on fast serial is done after the inverter.
+		iec_bus->SetFastSerialSRQ(CIA.GetPinCNT());
 		//trace lines and see it this needs to set other lines
 	}
 	else
@@ -265,8 +266,8 @@ void Pi1581::Update()
 		// When 0
 		//	- DATA is sent to SP
 		//	- CNT is sent to Fast Clock (SRQ)
-		CIA.SetPinSP(!IEC_Bus::GetPI_Data());	// Communication on fast serial is done before the inverter.
-		CIA.SetPinCNT(IEC_Bus::GetPI_SRQ());
+		CIA.SetPinSP(!iec_bus->GetPI_Data());	// Communication on fast serial is done before the inverter.
+		CIA.SetPinCNT(iec_bus->GetPI_SRQ());
 	}
 
 	for (int i = 0; i < 4; ++i)
@@ -282,7 +283,7 @@ void Pi1581::Reset()
 	fastSerialDirection = FAST_SERIAL_DIR_IN;
 	CIA.Reset();
 	wd177x.Reset();
-	IEC_Bus::Reset();
+	iec_bus->Reset();
 	// On a real drive the outputs look like they are being pulled high (when set to inputs) (Taking an input from the front end of an inverter)
 	CIABPortB = CIA.GetPortB();
 	CIABPortB->SetInput(VIAPORTPINS_DATAOUT, true);
