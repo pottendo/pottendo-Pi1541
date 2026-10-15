@@ -49,7 +49,7 @@ void mem_stat(const char *func, std::string &mem, bool verb = false);
 bool parse_netaddr(const char* s, u8 *ip);
 extern "C" {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
-	void UpdateScreen(void);
+	void UpdateScreen(void *iec_bus);
 }
 void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour, u32 backgroundColour);
 

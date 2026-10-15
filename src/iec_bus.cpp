@@ -72,7 +72,8 @@ IEC_Bus::IEC_Bus(u8 deviceID, const uint32_t driveID) :
 	SetInvertIECOutputs(options.InvertIECOutputs());	
 	SetIgnoreReset(options.IgnoreReset());
 	emuSpinLock.Release();
-	DEBUG_LOG("%s: splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", __FUNCTION__, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
+	DEBUG_LOG("%s: iecbus = %p, device %d - splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", 
+		__FUNCTION__, this, device_id, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
 	gplev0 = 0; // not needed as static is used for a working emulation
 	Initialise();
 
@@ -294,6 +295,7 @@ void __not_in_flash_func(IEC_Bus::ReadBrowseMode)(void)
 #else
 #if !defined (CIRCLE_GPIO)	
 	gplev0 = read32(ARM_GPIO_GPLEV0);
+	//DEBUG_LOG("%s: - gplev0 = %08x\n", __FUNCTION__, gplev0);
 #else
 	gplev0 = CGPIOPin::ReadAll();
 #endif	

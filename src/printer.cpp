@@ -23,20 +23,27 @@
 Printer::Printer(u8 ID) 
 : deviceID(ID)
 , iec_bus(ID)
+, printerBufferIndex(0)
 {
     iecCommands = new IEC_Commands(&iec_bus);
     DEBUG_LOG("%s: emulator, deviceID=%d", __FUNCTION__, deviceID);
+    printerBuffer = new u8[printerBufferSize];
 }
 
 Printer::~Printer()
 {
     delete iecCommands;
+    delete[] printerBuffer;
 }
 
 void Printer::emulate(void)
 {
     iecCommands->SetDeviceId(deviceID);
+    iec_bus.Reset();
+    iec_bus.LetSRQBePulledHigh();
+    iec_bus.WaitMicroSeconds(100);
     iecCommands->SimulateIECBegin();
+
     while (true)
     {
         IEC_Commands::UpdateAction action = iecCommands->SimulateIECUpdate();
@@ -46,7 +53,75 @@ void Printer::emulate(void)
             iec_bus.Reset();
             iecCommands->SimulateIECBegin();
         }
-        DEBUG_LOG("%s: action = %d", __FUNCTION__, action);
-        MsDelay(1000);
+        //DEBUG_LOG("%s: action = %d", __FUNCTION__, action);
+        //MsDelay(1);
     }
 }
+
+void Printer::add2buffer(u8 byte)
+{
+    if (printerBufferIndex < printerBufferSize)
+    {
+        printerBuffer[printerBufferIndex++] = byte;
+        /*
+        DEBUG_LOG("%s: added byte 0x%02x (%c) to buffer, deviceID=%d, bufferIndex=%d", 
+            __FUNCTION__, byte, isprint(byte) ? byte : '.', deviceID, printerBufferIndex);
+        */
+    }
+    else
+    {
+        DEBUG_LOG("%s: Printer buffer overflow, deviceID=%d", __FUNCTION__, deviceID);
+        printerBufferIndex = 0; // Reset buffer index to avoid overflow
+    }
+}
+
+void Printer::flush(bool petscii, string &res)
+{
+    if (printerBufferIndex > 0)
+    {
+        int line = 1;
+        int lidx = 0;
+        char lbuf[81];
+        // For now, we just log the data for demonstration purposes.
+        DEBUG_LOG("%s: Flushing %d bytes to printer, deviceID=%d", __FUNCTION__, printerBufferIndex, deviceID);
+        for (uint32_t i = 0; i < printerBufferIndex; ++i)
+        {
+            if (printerBuffer[i] == 0x0a) // Handle line feed
+                continue;
+            if (petscii)
+                lbuf[lidx] = printerBuffer[i]; // Keep the original byte for petscii output
+            else
+                lbuf[lidx] = isprint(printerBuffer[i]) ? printerBuffer[i] : '.';
+            if (printerBuffer[i] == 0x0d)
+            {
+                lbuf[lidx] = '\0'; // Null-terminate the string
+                if (petscii)
+                    res += string(lbuf) + "<br />"; // Convert carriage return to newline for better readability
+                else
+                    DEBUG_LOG("L%03d: %s", line++, lbuf);
+                lidx = 0; 
+                continue;
+            }
+            if (lidx >= 79)
+            {
+                lbuf[lidx + 1] = '\0'; // Null-terminate the string
+                if (petscii)
+                    res += string(lbuf) + "<br />"; // Convert carriage return to newline for better readability
+                else
+                    DEBUG_LOG("L%03d: %s", line, lbuf);
+                lidx = 0; 
+            }
+            lidx++;
+        }
+        lbuf[lidx] = '\0'; // Null-terminate the string
+        if (petscii)
+            res += string(lbuf) + "<br />"; // Convert carriage return to newline for better readability
+        else
+        {
+            DEBUG_LOG("L%03d:%s\n%d chars printed.", line, lbuf, printerBufferIndex);
+            // Reset the buffer index after flushing
+            printerBufferIndex = 0;
+        }
+    }
+}
+

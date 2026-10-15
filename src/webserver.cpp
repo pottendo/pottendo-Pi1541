@@ -41,6 +41,7 @@
 #include "Petscii.h"
 #include "iec_commands.h"
 #include "logger.h"
+#include "printer.h"
 #include "miniz.h"
 using namespace std;
 
@@ -89,6 +90,11 @@ static const char s_status[] =
 static const char s_logger[] =
 {
 #include "webcontent/logger.h"
+};
+
+static const char s_print[] =
+{
+#include "webcontent/print.h"
 };
 
 static const u8 s_Style[] =
@@ -2092,6 +2098,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			goto out;
 		}
 		String.Format(s_logger, logger.get_bootlogs().c_str(), logger.get_log_count(), logger.get_logs().c_str(), Kernel.get_version(), mem.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=utf-8";
+	}
+	else if (strcmp(pPath, "/print.html") == 0)
+	{
+		string pg, t;
+		if (printer)
+		{
+			printer->flush(true, pg);
+			printer->flush(false, t);
+		}
+
+		String.Format(s_print, pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=utf-8";

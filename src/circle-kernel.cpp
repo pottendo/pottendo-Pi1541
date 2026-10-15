@@ -53,6 +53,7 @@ static u8 IPAddress[]      = {192, 168, 188, 31};
 static u8 NetMask[]        = {255, 255, 255, 0};
 static u8 DefaultGateway[] = {192, 168, 188, 1};
 static u8 DNSServer[]      = {192, 168, 188, 1};
+Printer *printer = nullptr;
 
 bool parse_netaddr(const char* s, u8 *ip)
 {
@@ -353,13 +354,12 @@ TShutdownMode CKernel::Run(void)
 	// pre-alloc mem to track potential losses more easily
 	mem_heapinit();
 #endif
-
 	// launch everything
 	Kernel.launch_cores();
 	logger.finished_booting("display core");
 	if (options.GetHeadLess() == false)
 	{
-		UpdateScreen();
+		UpdateScreen(nullptr);
 		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
 	} 
 	else 
@@ -798,11 +798,12 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 #endif
 		{
-			Printer printer(4);
-			while (1)
+			printer = new Printer(4);
+			while (printer)
 			{
-				printer.emulate();
+				printer->emulate();
 			}
+			DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
 		}		
 		break;
 	default:

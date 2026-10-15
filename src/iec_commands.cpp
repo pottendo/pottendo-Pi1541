@@ -30,6 +30,7 @@
 #include "Petscii.h"
 #include "FileBrowser.h"
 #include "DiskImage.h"
+#include "printer.h"
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
@@ -394,7 +395,7 @@ bool IEC_Commands::ReadIECSerialPort(u8& byte)
 		WaitWhile(iec_bus->IsClockReleased());
 	}
 
-	//DEBUG_LOG("%02x\r\n", byte);
+	//DEBUG_LOG("%s: %02x", __FUNCTION__, byte);
 
 	iec_bus->AssertData();
 	return false;
@@ -408,7 +409,7 @@ void IEC_Commands::SimulateIECBegin(void)
 	iec_bus->WaitWhileAtnAsserted();
 	iec_bus->ReleaseClock();
 	iec_bus->ReleaseData();
-	DEBUG_LOG("%s: Begin\r\n", __FUNCTION__);
+	DEBUG_LOG("%s: Begin iec_bus (%p) for device %d\r\n", __FUNCTION__, iec_bus, iec_bus->GetDeviceID());
 }
 
 // Paraphrasing Jim Butterfield
@@ -440,11 +441,11 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 {
 	if (iec_bus->IsReset())
 	{
-		//DEBUG_LOG("Wait for reset\r\n");
+		//DEBUG_LOG("%s: Wait for reset, device %d\r\n", __FUNCTION__, iec_bus->GetDeviceID());
 		// If the computer is resetting then just wait until it has come out of reset.
 		do
 		{
-			//DEBUG_LOG("Reset during SimulateIECUpdate\r\n");
+			//DEBUG_LOG("%s: Reset during SimulateIECUpdate, device %d\r\n", __FUNCTION__, iec_bus->GetDeviceID());
 			iec_bus->ReadBrowseMode();
 			iec_bus->WaitMicroSeconds(100);
 		}
@@ -456,7 +457,10 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 	updateAction = NONE;
 
 	if (selectedImageName[0] != 0) updateAction = IMAGE_SELECTED;
-
+	/*
+	DEBUG_LOG("%s: atnSequence=%d, deviceRole=%d, commandCode=%02x, secondaryAddress=%02x, receivedEOI=%d, updateAction=%d", 
+	    __FUNCTION__, atnSequence, deviceRole, commandCode, secondaryAddress, receivedEOI, updateAction);
+		*/
 	switch (atnSequence)
 	{
 		case ATN_SEQUENCE_IDLE:
@@ -570,6 +574,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
  			
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
+				//DEBUG_LOG("%s: Listen for device %d", __FUNCTION__, deviceID);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_LISTEN;
 				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -582,6 +587,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 			else if (commandCode == 0x40 + deviceID) // Talk
 			{
+				DEBUG_LOG("%s: Talk for device %d", __FUNCTION__, deviceID);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_TALK;
 				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -631,7 +637,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 		break;
 		case ATN_SEQUENCE_HANDLE_COMMAND_CODE:
-			//DEBUG_LOG("CC %d sa=%d\r\n", deviceRole, secondaryAddress);
+			//DEBUG_LOG("%s: role = %d, CC: 0x%02x sa=%d\r\n", __FUNCTION__, deviceRole, commandCode, secondaryAddress);
 
 			//DEBUG_LOG("T sa=%d\r\n", secondaryAddress);
 
@@ -657,7 +663,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				Channel& channelCommand = channels[15];
 
-				//DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
+				DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
@@ -1721,7 +1727,8 @@ void IEC_Commands::Listen()
 {
 	u8 byte;
 
-	if ((commandCode & 0x0f) == 0x0f || (commandCode & 0xf0) == 0xf0)
+	if ((commandCode & 0x0f) == 0x0f || 
+		(commandCode & 0xf0) == 0xf0)
 	{
 		Channel& channel = channels[15];
 		channel.Close();
@@ -1749,8 +1756,26 @@ void IEC_Commands::Listen()
 	}
 	else
 	{
-		OpenFile();
-		SaveFile();
+		if (printer && (deviceID < 8)) // < 8 means we're listening as a printer
+		{
+			//DEBUG_LOG("%s: Ls 0x%02x 0x%02x", __FUNCTION__, commandCode, secondaryAddress);
+			while (!ReadIECSerialPort(byte))
+			{
+				printer->add2buffer(byte);
+				if (receivedEOI)
+				{
+					receivedCommand = true;
+					DEBUG_LOG("%s: receivedEOI", __FUNCTION__);
+					break;
+				}
+			}
+		}
+		else
+		{
+			// file operations
+			OpenFile();
+			SaveFile();
+		}
 	}
 }
 
@@ -2071,7 +2096,7 @@ void IEC_Commands::AddDirectoryEntry(Channel& channel, const char* name, u16 blo
 	channel.cursor += dirEntryLength;
 }
 
-struct greater
+struct _greater
 {
 	bool operator()(const FileBrowser::BrowsableList::Entry& lhs, const FileBrowser::BrowsableList::Entry& rhs) const
 	{
@@ -2121,7 +2146,7 @@ void IEC_Commands::LoadDirectory()
 			} while (res == FR_OK && entry.filImage.fname[0] != 0);
 			f_closedir(&dir);
 
-			std::sort(entries.begin(), entries.end(), greater());
+			std::sort(entries.begin(), entries.end(), _greater());
 		}
 	}
 

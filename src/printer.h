@@ -19,18 +19,28 @@
 #ifndef _printer_h_
 #define _printer_h_
 
+#include <string>
 #include "iec_commands.h"
 #include "iec_bus.h"
+using namespace std;
 
 class Printer
 {
     u8 deviceID;
     IEC_Commands* iecCommands;
     IEC_Bus iec_bus;
+    u8 *printerBuffer;
+    const size_t printerBufferSize = 1024 * 64; // 64KB buffer for printer data
+    uint32_t printerBufferIndex;
 public:
     Printer(u8 deviceID);
     ~Printer();
+    IEC_Bus* GetIEC_Bus() { return &iec_bus; }
     void emulate(void);
+    void add2buffer(u8 byte);
+    void flush(bool petscii, string &res);
+
 };
+extern Printer *printer;
 
 #endif /* _printer_h_ */

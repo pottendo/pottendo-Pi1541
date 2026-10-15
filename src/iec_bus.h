@@ -365,7 +365,7 @@ class IEC_Bus
 #endif	
 public:
 	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
-	~IEC_Bus() { Reset(); DEBUG_LOG("%s: done", __FUNCTION__); };
+	~IEC_Bus() { Reset(); DEBUG_LOG("%s: device %d", __FUNCTION__, device_id); };
 
 	inline void Initialise(void)
 	{
@@ -672,6 +672,12 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
+		static unsigned out_pr1 = 0;
+		if (device_id < 8) 
+		{
+			out_pr1 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);	
+			return;
+		}
 		if (!splitIECLines)
 		{
 			// time_fn_arm();
@@ -684,7 +690,7 @@ public:
 					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
 			unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1);
+				(ClockSetToOut << 1) | out_pr1;
 
 			write32(ARM_GPIO_GPFSEL1, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
 #else
@@ -720,9 +726,10 @@ public:
 				1 << PIGPIO_OUT_CLOCK,
 				1 << PIGPIO_OUT_DATA,
 				0};
+
 			unsigned sel =
 				AtnaDataSetToOut | DataSetToOut |
-				(ClockSetToOut << 1);
+				(ClockSetToOut << 1) | out_pr1;
 
 #if !defined(CIRCLE_GPIO)
 			if (invertIECOutputs)
@@ -930,6 +937,7 @@ public:
 	inline bool IsClockAsserted() { return PI_Clock; }
 	inline bool IsClockReleased() { return !PI_Clock; }
 	inline bool GetPI_Reset() { return PI_Reset; }
+	inline u8 GetDeviceID() { return device_id; }
 	inline bool IsDataSetToOut() { return DataSetToOut; }
 	//inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
 	inline bool IsClockSetToOut() { return ClockSetToOut; }

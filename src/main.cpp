@@ -637,8 +637,11 @@ void UpdateLCDLamps(void)
 
 // This runs on core0 and frees up core1 to just run the emulator.
 // Care must be taken not to crowd out the shared cache with core1 as this could slow down core1 so that it no longer can perform its duties in the 1us timings it requires.
-void UpdateScreen()
+void UpdateScreen(void *ip)
 {
+	IEC_Bus *ibus = (IEC_Bus *)ip;
+	if (!ibus)
+		ibus = iec_bus;
 #if not defined(EXPERIMENTALZERO)
 	bool oldLED = false;
 	bool oldMotor = false;
@@ -708,10 +711,10 @@ void UpdateScreen()
 		else
 #endif
 		{	
-			atn = iec_bus->GetPI_Atn();
-			clock = iec_bus->GetPI_Clock();
-			data = iec_bus->GetPI_Data();
-			srq = iec_bus->GetPI_SRQ();
+			atn = ibus->GetPI_Atn();
+			clock = ibus->GetPI_Clock();
+			data = ibus->GetPI_Data();
+			srq = ibus->GetPI_SRQ();
 		}
 		if (emulating == EMULATING_1541)
 		{
@@ -754,7 +757,7 @@ void UpdateScreen()
 			static char op[32];
 			Kernel.get_ip(&p);
 			if (strcmp(p, op) != 0) {
-				snprintf(tempBuffer, tempBufferSize, "IP address: %s", p);
+				snprintf(tempBuffer, tempBufferSize, "IP address: %s, iec_bus device: %d", p, ibus->GetDeviceID());
 				screen->PrintText(false, 0, y + screen->GetFontHeight(), tempBuffer, textColour, bgColour);
 				strncpy(op, p, 32);
 				snprintf(tempBuffer, tempBufferSize,
