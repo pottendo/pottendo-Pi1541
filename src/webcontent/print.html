@@ -82,9 +82,11 @@
 									value="Mount Images" /></a>
 							<a href="edit-config.html"><input type="submit" class="btn btn-success"
 									value="Change Config" /></a>
+							<a href="print.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
+									value="Print" /></a>
 							<a href="update.html"><input type="submit" class="btn btn-success"
 									value="Update Pi1541" /></a>
-							<a href="logger.html"><input type="submit" class="btn btn-success" style="font-weight: bold; color: black;"
+							<a href="logger.html"><input type="submit" class="btn btn-success" 
 									value="Logging" /></a>
 							<a href="reset.html"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)"
 									value="Reset Pi1541" /></a>
@@ -104,6 +106,18 @@
                 </tr>
             </table>
             <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<table style="width: 100%;">
+                <tr>
+					<td>
+						<div style="display: flex; justify-content: space-between; width: 100%;">
+							<h4 style="text-align: left">Printer output</h4>
+							<a href="print.html?[DOWNLOAD]" download="petlp.ps"><input type="submit" class="btn btn-success" value="Download page"/></a>
+						</div>
+					</td>
+				</tr>
+			</table>
+            <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
+			<h4 style="text-align: left">Preview</h4>
 			<p style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">
 								%s</p>
 		</div>

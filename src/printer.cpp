@@ -20,6 +20,13 @@
 #include "printer.h"
 #include "iec_bus.h"
 
+extern "C" 
+{
+    int petlp_main(int argc, char **argv);
+    int pi1541_printline(BYTE *line, int len);
+    int pi1541_close(void);
+}
+
 Printer::Printer(u8 ID) 
 : deviceID(ID)
 , iec_bus(ID)
@@ -125,3 +132,21 @@ void Printer::flush(bool petscii, string &res)
     }
 }
 
+void Printer::flush_petlp(void)
+{
+    int ret;
+    char *argv[] = { "pipetlpdrv", "-F", "PS", "-o", "petlp.ps", "-pi1541", nullptr };
+    if (printerBufferIndex > 0)
+    {
+        DEBUG_LOG("%s: Flushing %d bytes to pi1541 petlp printer", __FUNCTION__, printerBufferIndex);
+        ret = petlp_main(7, argv);
+        DEBUG_LOG("%s: petlp_main returned %d", __FUNCTION__, ret);
+        ret = pi1541_printline(printerBuffer, printerBufferIndex);
+        if (ret < 0)
+        {
+            DEBUG_LOG("%s: pi1541_printline failed with error code %d", __FUNCTION__, ret);
+        }
+        pi1541_close();
+        DEBUG_LOG("%s: Flushed %d bytes to pi1541 printer", __FUNCTION__, printerBufferIndex);
+    }
+}

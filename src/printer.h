@@ -39,6 +39,7 @@ public:
     void emulate(void);
     void add2buffer(u8 byte);
     void flush(bool petscii, string &res);
+    void flush_petlp(void);
 
 };
 extern Printer *printer;

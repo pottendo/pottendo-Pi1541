@@ -43,7 +43,8 @@ LEGACY_OBJS = 	armc-start.o armc-cstartup.o armc-cstubs.o armc-cppstubs.o emmc.o
 			interrupt.o rpi-aux.o  rpi-i2c.o rpi-mailbox-interface.o rpi-mailbox.o rpi-gpio.o
 
 CIRCLE_OBJS = 	circle-main.o circle-kernel.o webserver.o legacy-wrappers.o logger.o miniz.o #circle-hmi.o 
-CMD_OBJS = i8255a.o m65c02.o m6522.o picmdhd.o rtc72421.o scsi.o iec_bus.o 
+CMD_OBJS = i8255a.o m65c02.o m6522.o picmdhd.o rtc72421.o scsi.o iec_bus.o
+PRNDRIVER_OBJS = charsets.o pchar.o petlp.o printer.o
 
 COMMON_OBJS = 	main.o Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 		gcr.o prot.o lz.o Options.o Screen.o ScreenLCD.o \
@@ -54,6 +55,7 @@ CMDSRC = $(abspath ../pottendo-PiCMD/src/emulation)
 OBJS_CIRCLE  := $(addprefix $(SRCDIR)/, $(CIRCLE_OBJS) $(COMMON_OBJS))
 OBJS_LEGACY  := $(addprefix $(SRCDIR)/, $(LEGACY_OBJS) $(COMMON_OBJS))
 OBJS_CMD     := $(addprefix $(CMDSRC)/, $(CMD_OBJS)) $(CMDSRC)/../main.o
+OBJS_PRNDRIVER := $(addprefix printerdrv/, $(PRNDRIVER_OBJS))
 
 LIBS     = uspi/libuspi.a
 INCLUDE  = -Iuspi/include/
@@ -111,7 +113,7 @@ version:
 	@cmp -s /tmp/__version_cmp $(SRCDIR)/version.h || echo "#define PPI1541VERSION \"`git describe --tags`\"" > $(SRCDIR)/version.h 
 
 $(TARGET_CIRCLE): version
-	$(Q)$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS) -I$(CMDSRC)" COMMON_OBJS="$(COMMON_OBJS) $(OBJS_CMD)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
+	$(Q)$(MAKE) -C $(SRCDIR) -f Makefile.circle XFLAGS="$(XFLAGS) -I$(CMDSRC)" COMMON_OBJS="$(COMMON_OBJS) $(OBJS_CMD) $(OBJS_PRNDRIVER)" CIRCLE_OBJS="$(CIRCLE_OBJS)" 
 	$(Q)cp $(SRCDIR)/$@ ./`basename $@ .img`$(TARGET_PZ2).img
 
 $(TARGET): version $(OBJS_LEGACY) $(LIBS)

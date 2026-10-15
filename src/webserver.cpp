@@ -2105,10 +2105,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	else if (strcmp(pPath, "/print.html") == 0)
 	{
 		string pg, t;
+		string msg;
 		if (printer)
 		{
+			printer->flush_petlp();
 			printer->flush(true, pg);
 			printer->flush(false, t);
+		}
+		if (strcmp(pParams, "[DOWNLOAD]") == 0)
+		{
+			t = "petlp.ps";
+			DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
+			download_file(t, pContent, nLength, msg);
+			*ppContentType = "application/octet-stream";
+			goto out;
 		}
 
 		String.Format(s_print, pg.c_str(), Kernel.get_version(), mem.c_str());
