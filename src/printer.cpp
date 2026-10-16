@@ -56,6 +56,7 @@ void Printer::emulate(void)
         IEC_Commands::UpdateAction action = iecCommands->SimulateIECUpdate();
         if (action == IEC_Commands::UpdateAction::RESET)
         {
+            MsDelay(500);
             iecCommands->Reset();
             iec_bus.Reset();
             iecCommands->SimulateIECBegin();

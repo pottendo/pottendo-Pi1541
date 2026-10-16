@@ -169,6 +169,8 @@ public:
 	inline unsigned int GetHealthMonitor() const { return noHealthMonitor; }
 	inline unsigned int GetDHCP() const { return useDHCP; }
 	inline float GetTZ() const { return TZ; }
+	inline unsigned int GetPrinter(void) const { return printer; }
+	inline void SetPrinter(unsigned p) { printer = p; }
 #endif	
 
 	// Page up and down will jump a different amount based on the maximum number rows displayed.
@@ -290,6 +292,8 @@ private:
 	// Timezone, multiplied by 60, defaults to 2.0 (CEST)
 	float TZ;
 
+	// printer
+	unsigned int printer;
 #endif	
 };
 #endif

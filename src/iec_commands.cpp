@@ -409,7 +409,7 @@ void IEC_Commands::SimulateIECBegin(void)
 	iec_bus->WaitWhileAtnAsserted();
 	iec_bus->ReleaseClock();
 	iec_bus->ReleaseData();
-	DEBUG_LOG("%s: Begin iec_bus (%p) for device %d\r\n", __FUNCTION__, iec_bus, iec_bus->GetDeviceID());
+	DEBUG_LOG("%s: device %d\r\n", __FUNCTION__, iec_bus->GetDeviceID());
 }
 
 // Paraphrasing Jim Butterfield
@@ -587,7 +587,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 			else if (commandCode == 0x40 + deviceID) // Talk
 			{
-				DEBUG_LOG("%s: Talk for device %d", __FUNCTION__, deviceID);
+				//DEBUG_LOG("%s: Talk for device %d", __FUNCTION__, deviceID);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_TALK;
 				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -663,7 +663,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				Channel& channelCommand = channels[15];
 
-				DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
+				//DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
@@ -1765,7 +1765,6 @@ void IEC_Commands::Listen()
 				if (receivedEOI)
 				{
 					receivedCommand = true;
-					DEBUG_LOG("%s: receivedEOI", __FUNCTION__);
 					break;
 				}
 			}

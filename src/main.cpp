@@ -1133,7 +1133,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 {
 #if defined(CMDHD_SUPPORT)
 	const char *imagePath = fileBrowser->SelectedDHDPath();
-	DEBUG_LOG("%s: imagePath = '%s', filenameForIcon='%s'\n", __FUNCTION__, imagePath, filenameForIcon);
+	//DEBUG_LOG("%s: imagePath = '%s', filenameForIcon='%s'\n", __FUNCTION__, imagePath, filenameForIcon);
 	if (imagePath != 0 && imagePath[0] != 0)
 	{
 		bool readOnly = fileBrowser->SelectedDHDReadOnly();
@@ -1150,7 +1150,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 	}
 #endif
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
+	DEBUG_LOG("%s: image = %s", __FUNCTION__, diskImage->GetName());
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)

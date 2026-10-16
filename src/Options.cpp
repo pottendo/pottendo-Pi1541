@@ -183,6 +183,7 @@ Options::Options(void)
 	, noHealthMonitor(1)
 	, useDHCP(1)
 	, TZ(2.0)
+	, printer(0)
 #endif	
 {
 	autoMountImageName[0] = 0;
@@ -293,6 +294,7 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(noHealthMonitor)
 		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
 		ELSE_CHECK_FLOAT_OPTION(TZ)
+		ELSE_CHECK_DECIMAL_OPTION(printer)
 #endif		
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{

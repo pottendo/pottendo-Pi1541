@@ -370,48 +370,48 @@ TShutdownMode CKernel::Run(void)
 #if RASPPI >= 3
 	int i = 0;
 	int core = 0;
-		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
-		do
+	if (!options.GetNetWifi() && !options.GetNetEthernet())
+		goto out;
+	do
+	{
+		bool run_wifi;
+		run_wifi = false;
+		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
+		if (options.GetNetEthernet()) // cable network has priority over Wifi
 		{
-			bool run_wifi;
-
-			run_wifi = false;
-			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
-			if (options.GetNetEthernet()) // cable network has priority over Wifi
+			if (!Kernel.run_ethernet())
 			{
-				if (!Kernel.run_ethernet())
-				{
-					Kernel.log("setup ethernet failed");
-					i = 0;
-				}
-				else
-					i = 1;
-			}
-			if ((i == 0) && options.GetNetWifi())
-			{
-				i = 10;
-				do
-				{
-					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
-				} while (i-- && !Kernel.run_wifi());
-				run_wifi = true;
-			}
-			if (i == 0)
-			{
-				Kernel.log("network setup failed, retrying in 5s");
-				MsDelay(5 * 1000);
+				Kernel.log("setup ethernet failed");
+				i = 0;
 			}
 			else
+				i = 1;
+		}
+		if ((i == 0) && options.GetNetWifi())
+		{
+			i = 10;
+			do
 			{
-				Kernel.log("launching webserver on core %d", core);
-				Kernel.run_webserver(run_wifi);
-			}
-		} while (true);
-		out:
-#endif	
-	logger.finished_booting("display core");
+				Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
+			} while (i-- && !Kernel.run_wifi());
+			run_wifi = true;
+		}
+		if (i == 0)
+		{
+			Kernel.log("network setup failed, retrying in 5s");
+			MsDelay(5 * 1000);
+		}
+		else
+		{
+			Kernel.log("launching webserver on core %d", core);
+			Kernel.run_webserver(run_wifi);
+		}
+	} while (true);
+out:
+#endif
 	if (options.GetHeadLess() == false)
 	{
+		logger.finished_booting("display core");
 		UpdateScreen(nullptr);
 		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
 	} 
@@ -594,9 +594,12 @@ void CKernel::run_webserver(bool isWifi)
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
 		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
-		logger.finished_booting("network core");
 		if (!options.GetHeadLess())
+		{
+			logger.finished_booting("network & display core");
 			UpdateScreen(nullptr); // won't return, does its own while(1)
+		}
+		logger.finished_booting("network core");
 		while (1)
 		{
 			reboot_hook();
@@ -787,14 +790,6 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		emulator();
 		break;
 	case 2:
-		Kernel.log("disabling network support on core %d", core);
-		logger.finished_booting("network core - disabled");
-		//while (1)
-		//	Kernel.lcd_showheadless();
-		break;
-	case 3:	/* other emulator */
-		logger.finished_booting("other emulator core");
-#if 0		
 		if (options.GetHealthMonitor() == 1)
 			Kernel.log("disabling health monitoring on core %d", core);
 		else
@@ -802,15 +797,19 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			Kernel.log("launching system monitoring on core %d", core);
 			Kernel.run_tempmonitor();
 		}
-#endif
+		break;
+	case 3:	/* other emulator */
+		if (options.GetPrinter() > 0)
 		{
-			printer = new Printer(4);
-			while (printer)
+			logger.finished_booting("other emulator core");
 			{
-				printer->emulate();
+				printer = new Printer(4);
+				while (printer)
+					printer->emulate();
+				DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
 			}
-			DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
-		}		
+		}
+		DEBUG_LOG("%s: no printer, halting core %d", __FUNCTION__, core);
 		break;
 	default:
 		break;

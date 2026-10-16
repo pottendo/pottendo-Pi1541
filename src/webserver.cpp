@@ -1643,9 +1643,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
+				 (options.GetPrinter() ? "on" : "off"),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -2106,6 +2107,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	{
 		string pg, t;
 		string msg;
+		if (strcmp(pParams, "[TOGGLE]") == 0)
+		{
+			options.SetPrinter(!options.GetPrinter());
+			DEBUG_LOG("%s: printer is %s", __FUNCTION__, options.GetPrinter() ? "on" : "off");
+		}
 		if (printer)
 		{
 			printer->flush_petlp();
