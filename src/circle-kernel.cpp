@@ -144,6 +144,17 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 	old = ms->GetHeapFreeSpace(HEAP_ANY);
 }
 
+void reboot_hook(void)
+{
+	if (reboot_req && reboot_req++ > 4)
+	{
+		DEBUG_LOG("%s: rebooting now...", __FUNCTION__);
+		DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
+		MsDelay(20);
+		reboot_now();
+	}
+}
+
 #ifdef HEAP_DEBUG	
 void mem_heapinit(void)
 {
@@ -356,6 +367,48 @@ TShutdownMode CKernel::Run(void)
 #endif
 	// launch everything
 	Kernel.launch_cores();
+#if RASPPI >= 3
+	int i = 0;
+	int core = 0;
+		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
+		do
+		{
+			bool run_wifi;
+
+			run_wifi = false;
+			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
+			if (options.GetNetEthernet()) // cable network has priority over Wifi
+			{
+				if (!Kernel.run_ethernet())
+				{
+					Kernel.log("setup ethernet failed");
+					i = 0;
+				}
+				else
+					i = 1;
+			}
+			if ((i == 0) && options.GetNetWifi())
+			{
+				i = 10;
+				do
+				{
+					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
+				} while (i-- && !Kernel.run_wifi());
+				run_wifi = true;
+			}
+			if (i == 0)
+			{
+				Kernel.log("network setup failed, retrying in 5s");
+				MsDelay(5 * 1000);
+			}
+			else
+			{
+				Kernel.log("launching webserver on core %d", core);
+				Kernel.run_webserver(run_wifi);
+			}
+		} while (true);
+		out:
+#endif	
 	logger.finished_booting("display core");
 	if (options.GetHeadLess() == false)
 	{
@@ -542,18 +595,12 @@ void CKernel::run_webserver(bool isWifi)
 		init_webserver();
 		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
 		logger.finished_booting("network core");
+		if (!options.GetHeadLess())
+			UpdateScreen(nullptr); // won't return, does its own while(1)
 		while (1)
 		{
-			if (reboot_req && reboot_req++ > 4)
-			{
-				log("%s: rebooting now...", __FUNCTION__);
-				DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
-				mScheduler.MsSleep(20);
-				reboot_now();
-			}
+			reboot_hook();
 			lcd_showheadless();
-			//if (!m_Net->IsRunning())
-			//	break;
 		}
 		DEBUG_LOG("%s: network down, restarting...", __FUNCTION__);
 	}
@@ -733,7 +780,6 @@ void CKernel::lcd_showheadless(void)
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
-	int i = 0;
 	switch (core) {
 		case 1:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
@@ -741,50 +787,10 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		emulator();
 		break;
 	case 2:
-#if RASPPI >= 3
-		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
-		do
-		{
-			bool run_wifi;
-
-			run_wifi = false;
-			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
-			if (options.GetNetEthernet()) // cable network has priority over Wifi
-			{
-				if (!Kernel.run_ethernet())
-				{
-					Kernel.log("setup ethernet failed");
-					i = 0;
-				}
-				else
-					i = 1;
-			}
-			if ((i == 0) && options.GetNetWifi())
-			{
-				i = 10;
-				do
-				{
-					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
-				} while (i-- && !Kernel.run_wifi());
-				run_wifi = true;
-			}
-			if (i == 0)
-			{
-				Kernel.log("network setup failed, retrying in 5s");
-				MsDelay(5 * 1000);
-			}
-			else
-			{
-				Kernel.log("launching webserver on core %d", core);
-				Kernel.run_webserver(run_wifi);
-			}
-		} while (true);
-		out:
-#endif	
 		Kernel.log("disabling network support on core %d", core);
 		logger.finished_booting("network core - disabled");
-		while (1)
-			Kernel.lcd_showheadless();
+		//while (1)
+		//	Kernel.lcd_showheadless();
 		break;
 	case 3:	/* other emulator */
 		logger.finished_booting("other emulator core");
