@@ -2099,7 +2099,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	else if (strcmp(pPath, "/reset.html") == 0)
 	{
 		string msg;
-extern int reboot_req;
 		DEBUG_LOG("%s: reset requested.", __FUNCTION__);
 		msg = "Reboot requested...";
 		reboot_req++;

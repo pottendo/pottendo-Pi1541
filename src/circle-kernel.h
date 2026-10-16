@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <string>
+#include <time.h>
 #if RASPPI <= 1 && AARCH == 32
 #include "SpinLock.h"
 #else
@@ -77,6 +78,7 @@ public:
 	CLogger *get_logger(void) { return &mLogger; }
 	CScreenDevice *get_scrdevice(void) { return &mScreen; }
     CEMMCDevice &get_emmc(void) { return m_EMMC; }
+	CScheduler *get_scheduler(void) { return &mScheduler; }
 
 	void blink(int n) { m_ActLED.Blink(n); }
 	void tlog(int i) { char x[1024]; sprintf(x, "0x%08x", i); mLogger.Write("tlog:", LogNotice, x); }
@@ -146,6 +148,7 @@ private:
 
 extern CKernel Kernel;
 extern CCPUThrottle CPUThrottle;
+extern int reboot_req;
 
 #include "legacy-wrappers.h"
 
