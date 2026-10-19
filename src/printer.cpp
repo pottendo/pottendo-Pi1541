@@ -27,10 +27,11 @@ extern "C"
     int pi1541_close(void);
 }
 
-Printer::Printer(u8 ID) 
+Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
 , iec_bus(ID)
 , printerBufferIndex(0)
+, run(activate)
 {
     iecCommands = new IEC_Commands(&iec_bus);
     DEBUG_LOG("%s: emulator, deviceID=%d", __FUNCTION__, deviceID);
@@ -41,17 +42,19 @@ Printer::~Printer()
 {
     delete iecCommands;
     delete[] printerBuffer;
+    DEBUG_LOG("%s: %d deleted", __FUNCTION__, deviceID);
 }
 
 void Printer::emulate(void)
 {
+    DEBUG_LOG("%s: printer emulation started for device %d", __FUNCTION__, deviceID);
     iecCommands->SetDeviceId(deviceID);
     iec_bus.Reset();
     iec_bus.LetSRQBePulledHigh();
     iec_bus.WaitMicroSeconds(100);
     iecCommands->SimulateIECBegin();
 
-    while (true)
+    do
     {
         IEC_Commands::UpdateAction action = iecCommands->SimulateIECUpdate();
         if (action == IEC_Commands::UpdateAction::RESET)
@@ -61,9 +64,8 @@ void Printer::emulate(void)
             iec_bus.Reset();
             iecCommands->SimulateIECBegin();
         }
-        //DEBUG_LOG("%s: action = %d", __FUNCTION__, action);
-        //MsDelay(1);
-    }
+    } while (run);
+    DEBUG_LOG("%s: printer emulation exited", __FUNCTION__);
 }
 
 void Printer::add2buffer(u8 byte)

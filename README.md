@@ -2,6 +2,8 @@
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 ## News vs. 2.3
+- Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
+- Run network on core 0 (along with HDMI output if activated)
 - CMD-HD receives time from network
 - Fix webserver to use UTF-8, so international characters can be used in `options.txt` e.g. in comments
 - Fixed SRQ plot

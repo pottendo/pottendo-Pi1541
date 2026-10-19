@@ -781,6 +781,30 @@ void CKernel::lcd_showheadless(void)
 	}
 }
 
+void Pi1541Cores::activate_core(unsigned int core)
+{
+	//DEBUG_LOG("%s: core %d", __FUNCTION__, core);
+	CMultiCoreSupport::SendIPI(core, IPI_ACTIVATE_CORE3);
+}
+
+    // Called on the target core when an IPI arrives.
+void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
+{
+	if (nCore == 3 && nIPI == IPI_ACTIVATE_CORE3)
+	{
+		DEBUG_LOG("%s: activating core %d", __FUNCTION__, nCore);
+		core3activated = 1;
+		DataMemBarrier();
+
+		// Wake a core waiting with WFE.
+		asm volatile("sev" ::: "memory");
+		return;
+	}
+
+	// Preserve Circle's built-in IPI handling.
+	CMultiCoreSupport::IPIHandler(nCore, nIPI);
+}
+
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	switch (core) {
@@ -799,17 +823,24 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 		break;
 	case 3:	/* other emulator */
-		if (options.GetPrinter() > 0)
+		Kernel.log("%s: other emulatore (printer) on core %d", __FUNCTION__, core);
+		logger.finished_booting("other emulator (printer) core");
+		core3activated = (options.GetPrinter() != 0);
+		printer = new Printer(4, core3activated);
+
+		while (true)
 		{
-			logger.finished_booting("other emulator core");
-			{
-				printer = new Printer(4);
-				while (printer)
-					printer->emulate();
-				DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
-			}
+	        // Core 3 waits here until activated.
+    	    while (core3activated == 0)
+        	{
+            	DataMemBarrier();
+            	asm volatile ("wfe" ::: "memory");
+        	}
+	        DataMemBarrier();
+			printer->emulate();
+			core3activated = 0;
 		}
-		DEBUG_LOG("%s: no printer, halting core %d", __FUNCTION__, core);
+		DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
 		break;
 	default:
 		break;

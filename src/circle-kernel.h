@@ -33,6 +33,7 @@
 #include <circle/usb/usbkeyboard.h>
 #include <circle/sched/scheduler.h>
 #include <circle/memio.h>
+#include <circle/sched/semaphore.h>
 #include <SDCard/emmc.h>
 #include <circle/i2cmaster.h>
 #include <circle/sound/pwmsounddevice.h>
@@ -57,11 +58,16 @@ enum TShutdownMode
 };
 
 class Pi1541Cores : public CMultiCoreSupport {
+	u32 core3activated;
+	static constexpr unsigned IPI_ACTIVATE_CORE3 = IPI_USER;
 public:
-	Pi1541Cores(CMemorySystem *pMemorySystem) : CMultiCoreSupport(pMemorySystem) {}
+	Pi1541Cores(CMemorySystem *pMemorySystem) : 
+		CMultiCoreSupport(pMemorySystem), 
+		core3activated(0) {}
 	virtual ~Pi1541Cores(void) = default;
-
-	virtual void Run(unsigned int); 
+	virtual void IPIHandler(unsigned nCore, unsigned nIPI) override;
+	virtual void Run(unsigned int) override; 
+	void activate_core(unsigned int core);
 };
 
 class CKernel
@@ -114,6 +120,7 @@ public:
 	void append2version(const char *a) { char tmp[512]; snprintf(tmp, 511, "%s/%s", version_extra, a); strcpy(version_extra, tmp); }
 	static CMachineInfo *get_machine_info(std::string &kernelname);
 	void lcd_showheadless(void);
+	inline void activate_core(unsigned int core) { m_MCores.activate_core(core); }
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;
