@@ -216,6 +216,11 @@ Know Bugs/Observations:
 - The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
 - CPM see, maybe not emulation related: https://github.com/xlar54/PiCMD/issues/23
 
+## Printer Emulation
+
+An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
+One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
+
 ## Compatibility
 
 The emulation is quite demanding for Pis (reaction time in <1us). Empirically I've found the following rules which may increase the compatibility:
@@ -263,6 +268,7 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
+| printer     | 0 or 1 | enable printer at start |0| can be activated/deactivated via the WebUI |
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
 | netWifi     | 0 or 1 | disable/enable Wifi network              |0||
@@ -279,6 +285,9 @@ Refer to PiCMDs documentation for CMD-HD specific options, see also in the provi
 
 Here a snippet one can add to his `options.txt`:
 ```
+// Printer
+printer = 0
+
 // ---------------------------------------------------------------------------
 // CMD HD
 // ---------------------------------------------------------------------------
@@ -333,6 +342,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
 - PiZero2W won't run stable with HDMI enabled @1400 Mhz -> keep HDMI disabled (`DisableHDMI = 1`) or reduce clock-speed in `config.txt`.
+- Printer preview is very limited, GFX printer output is not yet supported
 
 # Checkout & Build
 

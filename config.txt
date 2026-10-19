@@ -15,7 +15,7 @@ kernel=orig-build/kernel-Pi0.img
 
 # this is for the PiZero 2W, merged with [p0]!
 [pi02]
-arm_freq=1400
+arm_freq=1350
 over_voltage=4
 sdram_freq=450
 over_voltage_sdram=1
