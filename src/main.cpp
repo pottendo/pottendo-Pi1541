@@ -2878,7 +2878,7 @@ extern "C"
 				MsDelay(1000*3600);
 		} else 
 		{
-			UpdateScreen();		// core0 now loops here where it will handle interrupts and passively update the screen->
+			UpdateScreen(nullptr);		// core0 now loops here where it will handle interrupts and passively update the screen->
 		}
 		while (1);
 #else
