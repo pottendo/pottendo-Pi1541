@@ -933,6 +933,7 @@ static FRESULT gen_index(string &index, string path)
 	{	
 		npath = path + '/' + fi.fname;
 		if (DiskImage::IsDiskImageExtention(fi.fname) ||
+			DiskImage::IsPrinterFileExtension(fi.fname) ||
 			DiskImage::IsLSTExtention(fi.fname))
 		{
 			index += ("\n" + npath);
@@ -1643,10 +1644,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i>, spooldir = <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
 				 (printer->running() ? "on" : "off"),
+				 (def_prefix + '/' + string(options.GetPrPath())).c_str(),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -2002,7 +2004,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				{
 					content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
 				}
-				else if (DiskImage::IsTextFileExtention(mount_img)) // LSTs are also TextFiles
+				else if (DiskImage::IsTextFileExtention(mount_img) || DiskImage::IsPrinterFileExtension(mount_img)) // LSTs are also TextFiles
 				{
 					// assume a textfile to show, e.g. .LST file
 					string tmp;
@@ -2107,30 +2109,33 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	{
 		string pg, t;
 		string msg;
+		string p = "petlp";
+		string pbn = "petlp";
 		if (printer)
 		{
 			printer->flush_petlp();
 			printer->flush(true, pg);
 			printer->flush(false, t);
+			printer->get_prspool(p);
+			printer->get_prspool(pbn, true);
 			if (strcmp(pParams, "[TOGGLE]") == 0)
 			{
 				bool p = printer->running();
 				printer->set_running(!p);
 				if (!p)
 					Kernel.activate_core(3);
-				DEBUG_LOG("%s: printer is %s", __FUNCTION__, p ? "off" : "on");
+				DEBUG_LOG("%s: printer is %s, spooldir = '<i>%s</i>'", __FUNCTION__, (p ? "off" : "on"), options.GetPrPath());
 			}
 		}
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)
 		{
-			t = "petlp.ps";
 			DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
-			download_file(t, pContent, nLength, msg);
+			download_file(p, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
 			goto out;
 		}
 
-		String.Format(s_print, pg.c_str(), Kernel.get_version(), mem.c_str());
+		String.Format(s_print, pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=utf-8";

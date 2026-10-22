@@ -19,6 +19,8 @@
 
 #include "printer.h"
 #include "iec_bus.h"
+#include "Options.h"
+extern Options options;
 
 extern "C" 
 {
@@ -32,10 +34,26 @@ Printer::Printer(u8 ID, bool activate)
 , iec_bus(ID)
 , printerBufferIndex(0)
 , run(activate)
+, spoolnr(0)
 {
+    FRESULT res;
+    FILINFO fi;
+    string fp;
     iecCommands = new IEC_Commands(&iec_bus);
-    DEBUG_LOG("%s: emulator, deviceID=%d", __FUNCTION__, deviceID);
+    fp = def_prefix + options.GetPrPath();
+    DEBUG_LOG("%s: emulator, deviceID=%d, spooler dir = '%s'", __FUNCTION__, deviceID, fp.c_str());
     printerBuffer = new u8[printerBufferSize];
+    res = f_stat(fp.c_str(), &fi);
+    if (res == FR_INVALID_NAME)
+        DEBUG_LOG("%s: invalid path '%s'", __FUNCTION__, fp.c_str());
+    else
+    {
+        res = f_mkdir(fp.c_str());
+        if (res == FR_OK)
+            DEBUG_LOG("%s: printer spool directory '%s' created", __FUNCTION__, fp.c_str());
+        else if (res != FR_EXIST)
+            DEBUG_LOG("%s: couldn't create printer spool directory: '%s'", __FUNCTION__, fp.c_str());
+    }
 }
 
 Printer::~Printer()
@@ -66,6 +84,13 @@ void Printer::emulate(void)
         }
     } while (run);
     DEBUG_LOG("%s: printer emulation exited", __FUNCTION__);
+}
+
+void Printer::get_prspool(string &p, bool basename)
+{ 
+    p = p + '-' + to_string(spoolnr) + string(".ps"); 
+    if (!basename)
+        p = def_prefix + string(options.GetPrPath()) + '/' + p;
 }
 
 void Printer::add2buffer(u8 byte)
@@ -138,10 +163,13 @@ void Printer::flush(bool petscii, string &res)
 void Printer::flush_petlp(void)
 {
     int ret;
-    char *argv[] = { "pipetlpdrv", "-F", "PS", "-o", "petlp.ps", "-pi1541", nullptr };
+    char *argv[] = { "pipetlpdrv", "-F", "PS", "-o", "", "-pi1541", nullptr };
     if (printerBufferIndex > 0)
     {
-        DEBUG_LOG("%s: Flushing %d bytes to pi1541 petlp printer", __FUNCTION__, printerBufferIndex);
+        string p = "petlp";
+        get_prspool(p);
+        argv[4] = (char *)p.c_str();
+        DEBUG_LOG("%s: Flushing %d bytes to pi1541 petlp printer file %s", __FUNCTION__, printerBufferIndex, p.c_str());
         ret = petlp_main(7, argv);
         DEBUG_LOG("%s: petlp_main returned %d", __FUNCTION__, ret);
         ret = pi1541_printline(printerBuffer, printerBufferIndex);

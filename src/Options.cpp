@@ -206,7 +206,9 @@ Options::Options(void)
 #if defined(CMDHD_SUPPORT)	
 	ROMNameCMDHD[0] = 0;
 #endif
-
+#if defined(__CIRCLE__)
+	strcpy(prpath, "prn-out");
+#endif
 }
 
 #define ELSE_CHECK_DECIMAL_OPTION(Name) \
@@ -295,6 +297,10 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
 		ELSE_CHECK_FLOAT_OPTION(TZ)
 		ELSE_CHECK_DECIMAL_OPTION(printer)
+		else if ((strcasecmp(pOption, "PrinterPath") == 0))
+		{
+			strncpy(prpath, pValue, 255);
+		}
 #endif		
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{

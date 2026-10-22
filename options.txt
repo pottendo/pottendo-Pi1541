@@ -84,6 +84,13 @@ ROM2 = dos1541ii
 ROM1581 = dos1581
 //ROM1581 = JiffyDOS_1581.bin
 
+// Printer
+// chose value > 0 to activate printer at startup
+// if 0, printer can be enabled via the webui
+printer = 0
+// Spool directory, where prints are being stored using the webui
+PrinterPath = prn-out
+
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1
 

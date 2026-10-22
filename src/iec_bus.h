@@ -325,7 +325,9 @@ enum VIAPortPins
 
 typedef bool(*CheckStatus)();
 
+#if defined(__CIRCLE__)
 extern SpinLock emuSpinLock;
+#endif
 class IEC_Bus
 {
 #if defined (__CIRCLE__)
@@ -359,10 +361,10 @@ class IEC_Bus
 	static CGPIOPin IO_OUT_DATA;
 	static CGPIOPin IO_OUT_SRQ;
 	static unsigned _mask;
-	const uint32_t device_id;
-	const uint32_t drive_id;
 	static bool iec_initialized;
 #endif	
+	const u8 device_id;
+	const uint32_t drive_id;
 public:
 	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
 	~IEC_Bus() { Reset(); DEBUG_LOG("%s: device %d", __FUNCTION__, device_id); };
@@ -370,12 +372,14 @@ public:
 	inline void Initialise(void)
 	{
 		volatile int index; // Force a real delay in the loop below.
+#if defined(__CIRCLE__)		
 		emuSpinLock.Acquire();
 		if (iec_initialized) 
 		{
 			emuSpinLock.Release();
 			return;
 		}
+#endif		
 #if !defined(__PICO2__)	&& !defined(ESP32)
 		// Clear all outputs to 0
 		write32(ARM_GPIO_GPCLR0, 0xFFFFFFFF);	
@@ -565,9 +569,11 @@ public:
 			}
 		} */
 #endif
-		iec_initialized = true;
+#if defined(__CIRCLE__)
 		DEBUG_LOG("%s: IEC Bus I/Os Initialized", __FUNCTION__);
+		iec_initialized = true;
 		emuSpinLock.Release();
+#endif		
 	}
 
 	inline void LetSRQBePulledHigh()

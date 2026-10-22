@@ -23,7 +23,6 @@
 //#define REAL_XOR 1
 
 extern Options options;
-
 //int IEC_Bus::buttonCount = sizeof(ButtonPinFlags) / sizeof(unsigned);
 
 u32 IEC_Bus::oldClears = 0;
@@ -66,12 +65,16 @@ IEC_Bus::IEC_Bus(u8 deviceID, const uint32_t driveID) :
 	myOutsGPFSEL0 = 0;
 
 	//emulationModeCheckButtonIndex = 0;
+#if defined(__CIRCLE__)	
 	emuSpinLock.Acquire();
+#endif	
 	SetSplitIECLines(options.SplitIECLines());
 	SetInvertIECInputs(options.InvertIECInputs());
 	SetInvertIECOutputs(options.InvertIECOutputs());	
 	SetIgnoreReset(options.IgnoreReset());
+#if defined(__CIRCLE__)
 	emuSpinLock.Release();
+#endif	
 	DEBUG_LOG("%s: iecbus = %p, device %d - splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", 
 		__FUNCTION__, this, device_id, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
 	gplev0 = 0; // not needed as static is used for a working emulation
@@ -117,9 +120,9 @@ CGPIOPin IEC_Bus::IO_OUT_CLOCK;
 CGPIOPin IEC_Bus::IO_OUT_DATA;
 CGPIOPin IEC_Bus::IO_OUT_SRQ;
 bool IEC_Bus::iec_initialized = false;
-unsigned IEC_Bus::gplev0 = 0;
 unsigned IEC_Bus::_mask = 0;
 #endif
+unsigned IEC_Bus::gplev0 = 0;
 
 void __not_in_flash_func(IEC_Bus::ReadGPIOUserInput)(bool minimalCheck)
 {

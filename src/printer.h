@@ -26,6 +26,7 @@ using namespace std;
 
 class Printer
 {
+    const string def_prefix = "SD:/1541/";
     u8 deviceID;
     IEC_Commands* iecCommands;
     IEC_Bus iec_bus;
@@ -33,12 +34,14 @@ class Printer
     const size_t printerBufferSize = 1024 * 64; // 64KB buffer for printer data
     uint32_t printerBufferIndex;
     bool run;
+    uint16_t spoolnr;
 public:
     Printer(u8 deviceID, bool activate);
     ~Printer();
     IEC_Bus* GetIEC_Bus() { return &iec_bus; }
     void emulate(void);
     void add2buffer(u8 byte);
+    void get_prspool(string &p, bool basename = false);
     void flush(bool petscii, string &res);
     void flush_petlp(void);
     inline bool running(void) { return run; }

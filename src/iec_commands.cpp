@@ -1756,6 +1756,7 @@ void IEC_Commands::Listen()
 	}
 	else
 	{
+#if defined(__CIRCLE__)		
 		if (printer && (deviceID < 8)) // < 8 means we're listening as a printer
 		{
 			//DEBUG_LOG("%s: Ls 0x%02x 0x%02x", __FUNCTION__, commandCode, secondaryAddress);
@@ -1770,6 +1771,7 @@ void IEC_Commands::Listen()
 			}
 		}
 		else
+#endif		
 		{
 			// file operations
 			OpenFile();

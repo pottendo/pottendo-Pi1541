@@ -221,6 +221,8 @@ Know Bugs/Observations:
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
 
+printer output files (postscript) are stored on the SDCard. Use option `PrinterPath` (default `prin-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+
 ## Compatibility
 
 The emulation is quite demanding for Pis (reaction time in <1us). Empirically I've found the following rules which may increase the compatibility:
@@ -269,6 +271,7 @@ The following options control new functions available:
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
 | printer     | 0 or 1 | enable printer at start |0| can be activated/deactivated via the WebUI |
+| PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
 | netWifi     | 0 or 1 | disable/enable Wifi network              |0||

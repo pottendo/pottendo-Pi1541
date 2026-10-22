@@ -840,7 +840,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			printer->emulate();
 			core3activated = 0;
 		}
-		DEBUG_LOG("%s: unexpected return of printer thread, halting core %d", __FUNCTION__, core);
+		DEBUG_LOG("%s: unexpected return of other emulator (printer), halting core %d", __FUNCTION__, core);
 		break;
 	default:
 		break;

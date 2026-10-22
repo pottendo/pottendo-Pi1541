@@ -195,6 +195,7 @@ public:
 	static bool IsEditableExtention(const char* name);
 	static bool IsPicFileExtention(const char* diskImageName);
 	static bool IsDiskImageCMDHDExtention(const char* diskImageName);
+	static bool IsPrinterFileExtension(const char *file);
 	
 	bool GetReadOnly() const { return readOnly; }
 	void SetReadOnly(bool readOnly) { this->readOnly = readOnly; }
