@@ -68,6 +68,7 @@ extern "C"
 EXIT_TYPE EmulateCMDHD(FileBrowser* fileBrowser);
 #define PI1541BUILD 1
 #include "picmdhd.h"
+#include <time.h>
 #endif
 #include "ScreenLCD.h"
 #include "ScreenHeadless.h"
