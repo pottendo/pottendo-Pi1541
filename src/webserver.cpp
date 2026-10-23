@@ -1644,11 +1644,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i>, spooldir = <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i>%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
 				 (printer->running() ? "on" : "off"),
-				 (def_prefix + '/' + string(options.GetPrPath())).c_str(),
+				 (printer->running() ? (string(", spooldir: <i>") + (def_prefix + '/' + string(options.GetPrPath())) + "</i>").c_str() : ""),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -2124,7 +2124,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				printer->set_running(!p);
 				if (!p)
 					Kernel.activate_core(3);
-				DEBUG_LOG("%s: printer is %s, spooldir = '<i>%s</i>'", __FUNCTION__, (p ? "off" : "on"), options.GetPrPath());
+				DEBUG_LOG("%s: printer is %s, spooldir = '%s'", __FUNCTION__, (p ? "off" : "on"), options.GetPrPath());
 			}
 		}
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)
