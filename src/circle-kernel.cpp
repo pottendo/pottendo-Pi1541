@@ -250,6 +250,7 @@ CKernel::CKernel(void) :
 	strcpy(ip_address, "<n/a>");
 	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
 	version_extra[0] = '\0';
+	IPString = "no IP";
 	DEBUG_LOG("%s: CKernel initialized, KERNEL_STACK_SIZE = 0x%08x, TASK_STACK_SIZE = 0x%08x", __FUNCTION__, KERNEL_STACK_SIZE, TASK_STACK_SIZE);
 }
 
@@ -460,14 +461,19 @@ void CKernel::toggle_network(void)
 	 if (options.GetNetEthernet() | options.GetNetWifi())
 	 {
 		net_run = !net_run;
+		display_networkstat();
 		if (net_run)
 	 		m_MCores.toggle_network();
 		else
-		{
 			DEBUG_LOG("%s: network disabled", __FUNCTION__);
-			DisplayMessage(0, 24, true, "Network off", 0xffffff, 0x0);
-		}
 	 }
+}
+
+void CKernel::display_networkstat(void)
+{
+	char buf[256];
+	snprintf(buf, 255, "Network %s\nIP: %s", (net_run ? "on" : "off"), (const char *)IPString);
+	DisplayMessage(0, 24, true, buf, 0xffffffff, 0);
 }
 
 bool CKernel::run_ethernet(void)
@@ -538,7 +544,6 @@ static void display_temp(void)
 
 void CKernel::run_webserver(bool isWifi) 
 {
-	CString IPString;
 	while (!m_Net->IsRunning())
 	{
 		log("webserver waits for network... waiting 5s");
@@ -548,7 +553,8 @@ void CKernel::run_webserver(bool isWifi)
 	strcpy(ip_address, (const char *) IPString);
 	log ("Open \"http://%s/\" in your web browser!", ip_address);
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
-	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
+	net_run = true;
+	display_networkstat();
 	if (isWifi)
 		DEBUG_LOG("%s: Wifi IsConnected = %d", __FUNCTION__, m_WPASupplicant.IsConnected());
 
@@ -579,7 +585,6 @@ void CKernel::run_webserver(bool isWifi)
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
 		CWebServer *webserver = new CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
-		net_run = true;
 /* 		
 		if (!options.GetHeadLess())
 		{
@@ -867,7 +872,6 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
         	}
 	        DataMemBarrier();
 			DEBUG_LOG("%s: network & display core %d activated", __FUNCTION__, core);
-			DisplayMessage(0, 24, true, "Network on", 0xffffff, 0x0);
 			while (Kernel.net_running())
 			{
 				reboot_hook();

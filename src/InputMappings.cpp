@@ -141,9 +141,7 @@ bool InputMappings::CheckButtonsBrowseMode()
 		{
 #if defined(__CIRCLE__)			
 			// long press enter: toggle network
-			SetButtonFlag(FUNCTION_FLAG);
 			DEBUG_LOG("%s: long press ENTER detected", __FUNCTION__);
-			inputROMOrDevice = INPUT_FUNCTION_TOGGLE_NETWORK;	// a bit of misuse, sorry
 			enterLongActionTriggered = true;
 #endif			
 		}
@@ -188,12 +186,24 @@ bool InputMappings::CheckButtonsBrowseMode()
 		insertButtonPressedPrev = insertButtonPressed;
 
 		enterButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_ENTER);
-		if (enterButtonPressedPrev && !enterButtonPressed)
+
+		if (!enterButtonPressed)
 		{
-			if (!enterLongActionTriggered)
+#if defined(__CIRCLE__)			
+			if (enterLongActionTriggered)
+			{
+				SetButtonFlag(FUNCTION_FLAG);
+				inputROMOrDevice = INPUT_FUNCTION_TOGGLE_NETWORK;
+				enterLongActionTriggered = false;
+			}
+			else 
+#endif			
+			if (enterButtonPressedPrev)
+			{
 				SetButtonFlag(ENTER_FLAG);
+			}
 		}
-		enterLongActionTriggered = false;
+
 		enterButtonPressedPrev = enterButtonPressed;
 	}
 

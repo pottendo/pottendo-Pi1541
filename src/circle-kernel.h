@@ -132,6 +132,7 @@ public:
 	bool setup_network(unsigned int core);
 	void toggle_network(void);
 	bool net_running(void) { return net_run; }
+	void display_networkstat(void);
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;
@@ -163,6 +164,7 @@ private:
 	char pPi1541Version[256];
 	char version_extra[256];
 	bool net_run;
+	CString IPString;
 };
 
 extern CKernel Kernel;

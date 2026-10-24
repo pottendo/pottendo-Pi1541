@@ -2656,6 +2656,7 @@ void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour,
 
 #endif
 }
+
 void list_directory(const char *path) {
     FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
