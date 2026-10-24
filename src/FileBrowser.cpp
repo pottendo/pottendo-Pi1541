@@ -1255,6 +1255,14 @@ void FileBrowser::UpdateInputFolders()
 	{
 		// check for ROM and Drive Number changes
 		unsigned ROMOrDevice = inputMappings->getROMOrDevice();
+#if defined(__CIRCLE__)		
+		if (ROMOrDevice == INPUT_FUNCTION_TOGGLE_NETWORK)
+		{
+			Kernel.toggle_network();
+			dirty = true;
+		}
+		else
+#endif		
 		if ( ROMOrDevice >= 1 && ROMOrDevice <= 11 )
 		{
 			SelectROMOrDevice(ROMOrDevice);

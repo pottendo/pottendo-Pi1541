@@ -57,17 +57,25 @@ enum TShutdownMode
 	ShutdownReboot
 };
 
+const unsigned int MAIN_CORE = 0;
+const unsigned int EMULATOR_CORE = 1;
+const unsigned int NET_CORE = 2;
+const unsigned int PRINTER_CORE = 3;
+
 class Pi1541Cores : public CMultiCoreSupport {
-	u32 core3activated;
-	static constexpr unsigned IPI_ACTIVATE_CORE3 = IPI_USER;
+	u32 core2activated, core3activated;
+	static constexpr unsigned IPI_ACTIVATE_CORE = IPI_USER;
 public:
-	Pi1541Cores(CMemorySystem *pMemorySystem) : 
-		CMultiCoreSupport(pMemorySystem), 
-		core3activated(0) {}
+	Pi1541Cores(CMemorySystem *pMemorySystem) 
+	: CMultiCoreSupport(pMemorySystem) 
+	, core2activated(0)
+	, core3activated(0)
+	{}
 	virtual ~Pi1541Cores(void) = default;
 	virtual void IPIHandler(unsigned nCore, unsigned nIPI) override;
 	virtual void Run(unsigned int) override; 
 	void activate_core(unsigned int core);
+	void toggle_network(void);
 };
 
 class CKernel
@@ -121,6 +129,9 @@ public:
 	static CMachineInfo *get_machine_info(std::string &kernelname);
 	void lcd_showheadless(void);
 	inline void activate_core(unsigned int core) { m_MCores.activate_core(core); }
+	bool setup_network(unsigned int core);
+	void toggle_network(void);
+	bool net_running(void) { return net_run; }
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;
@@ -151,6 +162,7 @@ private:
 	char *arch;
 	char pPi1541Version[256];
 	char version_extra[256];
+	bool net_run;
 };
 
 extern CKernel Kernel;

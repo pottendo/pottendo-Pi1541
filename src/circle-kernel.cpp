@@ -46,6 +46,7 @@
 
 CCPUThrottle CPUThrottle;
 int reboot_req = 0;
+Printer *printer = nullptr;
 extern CKernel Kernel;
 extern Options options;
 
@@ -53,7 +54,8 @@ static u8 IPAddress[]      = {192, 168, 188, 31};
 static u8 NetMask[]        = {255, 255, 255, 0};
 static u8 DefaultGateway[] = {192, 168, 188, 1};
 static u8 DNSServer[]      = {192, 168, 188, 1};
-Printer *printer = nullptr;
+static CWebServer *webserver = nullptr;
+static CNTPDaemon *cntp = nullptr;
 
 bool parse_netaddr(const char* s, u8 *ip)
 {
@@ -224,7 +226,8 @@ CKernel::CKernel(void) :
 	m_MCores(CMemorySystem::Get()),
 	screen_failed(false),
 	no_pwm(false),
-	arch("unknown")
+	arch("unknown"),
+	net_run(false)
 {
 	boolean serialOK;
 	
@@ -367,58 +370,25 @@ TShutdownMode CKernel::Run(void)
 #endif
 	// launch everything
 	Kernel.launch_cores();
-#if RASPPI >= 3
-	int i = 0;
-	int core = 0;
-	if (!options.GetNetWifi() && !options.GetNetEthernet())
-		goto out;
-	do
-	{
-		bool run_wifi;
-		run_wifi = false;
-		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
-		if (options.GetNetEthernet()) // cable network has priority over Wifi
-		{
-			if (!Kernel.run_ethernet())
-			{
-				Kernel.log("setup ethernet failed");
-				i = 0;
-			}
-			else
-				i = 1;
-		}
-		if ((i == 0) && options.GetNetWifi())
-		{
-			i = 10;
-			do
-			{
-				Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
-			} while (i-- && !Kernel.run_wifi());
-			run_wifi = true;
-		}
-		if (i == 0)
-		{
-			Kernel.log("network setup failed, retrying in 5s");
-			MsDelay(5 * 1000);
-		}
-		else
-		{
-			Kernel.log("launching webserver on core %d", core);
-			Kernel.run_webserver(run_wifi);
-		}
-	} while (true);
-out:
-#endif
 	if (options.GetHeadLess() == false)
 	{
 		logger.finished_booting("display core");
 		UpdateScreen(nullptr);
-		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
+		DEBUG_LOG("%s: unexpected return of display thread on core %d", __FUNCTION__, 0);
 	} 
-	else 
-	{
-		DEBUG_LOG("%s: running headless, halting core %d...", __FUNCTION__, 0);
-	}
+	DEBUG_LOG("%s: running headless...", __FUNCTION__);
+	while (true)
+		Kernel.lcd_showheadless();
+/*
+		// recover one day 
+		if (options.GetHealthMonitor() == 1)
+			Kernel.log("disabling health monitoring on core %d", core);
+		else
+		{
+			Kernel.log("launching system monitoring on core %d", core);
+			Kernel.run_tempmonitor();
+		}
+*/
 	return ShutdownHalt;
 }
 
@@ -483,6 +453,21 @@ boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDept
 	if (!pitch) return false;
 #endif	
 	return true;
+}
+
+void CKernel::toggle_network(void)
+{
+	 if (options.GetNetEthernet() | options.GetNetWifi())
+	 {
+		net_run = !net_run;
+		if (net_run)
+	 		m_MCores.toggle_network();
+		else
+		{
+			DEBUG_LOG("%s: network disabled", __FUNCTION__);
+			DisplayMessage(0, 24, true, "Network off", 0xffffff, 0x0);
+		}
+	 }
 }
 
 bool CKernel::run_ethernet(void)
@@ -572,7 +557,7 @@ void CKernel::run_webserver(bool isWifi)
 	else
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	{
-		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
+		CNTPDaemon *cntp = new CNTPDaemon("152.53.132.244", m_Net);
 		unsigned max_cs = options.GetMaxContentSize();
 		unsigned max_mps = options.GetMaxMultipartSize();
 		if (max_cs < 256) { 
@@ -593,19 +578,15 @@ void CKernel::run_webserver(bool isWifi)
 		}
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
-		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
+		CWebServer *webserver = new CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
+		net_run = true;
+/* 		
 		if (!options.GetHeadLess())
 		{
 			logger.finished_booting("network & display core");
 			UpdateScreen(nullptr); // won't return, does its own while(1)
 		}
-		logger.finished_booting("network core");
-		while (1)
-		{
-			reboot_hook();
-			lcd_showheadless();
-		}
-		DEBUG_LOG("%s: network down, restarting...", __FUNCTION__);
+*/			
 	}
 }
 
@@ -760,7 +741,8 @@ void CKernel::lcd_showheadless(void)
 
 		UpdateLCDLamps();
 		UpdateLCD(nullptr, temp / 1000);
-		mScheduler.MsSleep(100);
+		//mScheduler.MsSleep(100);
+		MsDelay(100);
 		if (options.DisplayTemperature() &&
 			!(temp_period++ % 50)) // every 5 sec, display temp on LCD
 		{
@@ -771,7 +753,8 @@ void CKernel::lcd_showheadless(void)
 	}
 	else
 #endif
-		mScheduler.MsSleep(100);
+		//mScheduler.MsSleep(100);
+		MsDelay(100);
 	if (options.DisplayTemperature() &&
 		options.GetHeadLess() &&
 		!(temp_period++ % 50)) // every 5 sec, display temp on LCD
@@ -781,19 +764,76 @@ void CKernel::lcd_showheadless(void)
 	}
 }
 
+bool CKernel::setup_network(unsigned int core)
+{
+#if RASPPI >= 3
+	int i = 0;
+	bool res = false;
+	bool run_wifi;
+	if (!options.GetNetWifi() && !options.GetNetEthernet())
+		goto out;
+	do
+	{
+		run_wifi = false;
+		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
+		if (options.GetNetEthernet()) // cable network has priority over Wifi
+		{
+			if (!Kernel.run_ethernet())
+			{
+				Kernel.log("setup ethernet failed");
+				i = 0;
+			}
+			else
+				i = 1;
+		}
+		if ((i == 0) && options.GetNetWifi())
+		{
+			i = 10;
+			do
+			{
+				Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
+			} while (i-- && !Kernel.run_wifi());
+			run_wifi = true;
+		}
+		if (i == 0)
+		{
+			Kernel.log("network setup failed, retrying in 5s");
+			MsDelay(5 * 1000);
+		}
+		else
+		{
+			res = true;
+			break;
+		}
+	} while (true);
+	Kernel.log("launching webserver on core %d", core);
+	Kernel.run_webserver(run_wifi);
+out:
+	return res;
+}
+#endif
+
 void Pi1541Cores::activate_core(unsigned int core)
 {
 	//DEBUG_LOG("%s: core %d", __FUNCTION__, core);
-	CMultiCoreSupport::SendIPI(core, IPI_ACTIVATE_CORE3);
+	CMultiCoreSupport::SendIPI(core, IPI_ACTIVATE_CORE);
 }
 
-    // Called on the target core when an IPI arrives.
+void Pi1541Cores::toggle_network(void)
+{
+	CMultiCoreSupport::SendIPI(NET_CORE, IPI_ACTIVATE_CORE);
+}
+
+// Called on the target core when an IPI arrives.
 void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 {
-	if (nCore == 3 && nIPI == IPI_ACTIVATE_CORE3)
+	if (nIPI == IPI_ACTIVATE_CORE)
 	{
 		DEBUG_LOG("%s: activating core %d", __FUNCTION__, nCore);
-		core3activated = 1;
+		if (nCore == 2)
+			core2activated = 1;
+		if (nCore == 3)
+			core3activated = 1;
 		DataMemBarrier();
 
 		// Wake a core waiting with WFE.
@@ -807,22 +847,37 @@ void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
+	bool run_net = false;
 	switch (core) {
-		case 1:
+		case EMULATOR_CORE:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
 		logger.finished_booting("emulator core");
 		emulator();
 		break;
-	case 2:
-		if (options.GetHealthMonitor() == 1)
-			Kernel.log("disabling health monitoring on core %d", core);
-		else
+	case NET_CORE:
+		run_net = Kernel.setup_network(core);
+		core2activated = run_net;
+		logger.finished_booting("network core");
+		while (run_net)
 		{
-			Kernel.log("launching system monitoring on core %d", core);
-			Kernel.run_tempmonitor();
+			while (core2activated == 0)
+			{
+				DataMemBarrier();
+            	asm volatile ("wfe" ::: "memory");
+        	}
+	        DataMemBarrier();
+			DEBUG_LOG("%s: network & display core %d activated", __FUNCTION__, core);
+			DisplayMessage(0, 24, true, "Network on", 0xffffff, 0x0);
+			while (Kernel.net_running())
+			{
+				reboot_hook();
+				MsDelay_s(100);
+			}
+			core2activated = 0;
 		}
+		DEBUG_LOG("%s: halting network & display core %d", __FUNCTION__, core);
 		break;
-	case 3:	/* other emulator */
+	case PRINTER_CORE:	/* other emulator */
 		Kernel.log("%s: other emulatore (printer) on core %d", __FUNCTION__, core);
 		logger.finished_booting("other emulator (printer) core");
 		core3activated = (options.GetPrinter() != 0);

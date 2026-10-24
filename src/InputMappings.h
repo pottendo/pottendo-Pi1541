@@ -52,6 +52,9 @@
 // Custom Pi1541-III convenience actions used by the browser.
 #define INPUT_FUNCTION_CYCLE_DEVICE 12
 #define INPUT_FUNCTION_CYCLE_ROM    13
+#if defined(__CIRCLE__)
+#define INPUT_FUNCTION_TOGGLE_NETWORK 14
+#endif
 
 class InputMappings //: public Singleton<InputMappings>
 {
@@ -73,6 +76,7 @@ protected:
 
 	bool enterButtonPressedPrev;
 	bool enterButtonPressed;
+	bool enterLongActionTriggered;
 
 	unsigned keyboardNumLetter;
 	unsigned inputROMOrDevice;
@@ -223,4 +227,3 @@ public:
 //	static unsigned escapeSequenceIndex;
 };
 #endif
-

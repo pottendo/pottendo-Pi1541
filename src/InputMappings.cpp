@@ -54,6 +54,7 @@ InputMappings::InputMappings()
 	, backLongActionTriggered(false)
 	, enterButtonPressedPrev(false)
 	, enterButtonPressed(false)
+	, enterLongActionTriggered(false)
 {
 }
 
@@ -107,25 +108,44 @@ bool InputMappings::CheckButtonsBrowseMode()
 	}
 	else if (iec_bus->GetInputButtonHeld(INPUT_BUTTON_ENTER))	// Change ROMs
 	{
+		bool chordHandled = false;
 		if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_UP))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 1;
+			chordHandled = true;
 		}
 		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_DOWN))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 2;
+			chordHandled = true;
 		}
 		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_BACK))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 3;
+			chordHandled = true;
 		}
 		else if (iec_bus->GetInputButtonRepeating(INPUT_BUTTON_INSERT))
 		{
 			SetButtonFlag(FUNCTION_FLAG);
 			inputROMOrDevice = 4;
+			chordHandled = true;
+		}
+		if (chordHandled)
+		{
+			enterLongActionTriggered = true;
+		}
+		else if (!enterLongActionTriggered)
+		{
+#if defined(__CIRCLE__)			
+			// long press enter: toggle network
+			SetButtonFlag(FUNCTION_FLAG);
+			DEBUG_LOG("%s: long press ENTER detected", __FUNCTION__);
+			inputROMOrDevice = INPUT_FUNCTION_TOGGLE_NETWORK;	// a bit of misuse, sorry
+			enterLongActionTriggered = true;
+#endif			
 		}
 		enterButtonPressedPrev = false;
 	}
@@ -169,7 +189,11 @@ bool InputMappings::CheckButtonsBrowseMode()
 
 		enterButtonPressed = !iec_bus->GetInputButtonReleased(INPUT_BUTTON_ENTER);
 		if (enterButtonPressedPrev && !enterButtonPressed)
-			SetButtonFlag(ENTER_FLAG);
+		{
+			if (!enterLongActionTriggered)
+				SetButtonFlag(ENTER_FLAG);
+		}
+		enterLongActionTriggered = false;
 		enterButtonPressedPrev = enterButtonPressed;
 	}
 
@@ -198,6 +222,7 @@ void InputMappings::WaitForClearButtons()
 
 	insertLongActionTriggered = false;
 	backLongActionTriggered = false;
+	enterLongActionTriggered = false;
 }
 
 void InputMappings::CheckButtonsEmulationMode()
@@ -415,4 +440,3 @@ void InputMappings::CheckKeyboardEmulationMode(unsigned numberOfImages, unsigned
 	}
 #endif
 }
-
