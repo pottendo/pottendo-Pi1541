@@ -2,33 +2,32 @@
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
-## News vs. 2.3
+## News vs. 2.3.1
+
 V2.4 Beta2
-- Move network back to run on core 2 and toggle on/off via longpress ENTER. See options below.
+- Move network back to run on core 2 and implement toggle on/off via longpress ENTER. See options below.
 
 V2.4 Beta1
 - default `config.txt` reduces overclocking to 1350MHz for PiZero2 to improve stability
 - Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
 - Run network on core 0 (along with HDMI output if activated)
+
+## News V2.3.1 vs 2.1
+
 - CMD-HD receives time from network
 - Fix webserver to use UTF-8, so international characters can be used in `options.txt` e.g. in comments
 - Fixed SRQ plot
 
-## News vs 2.1
+## News V2.3 vs 2.1
 
-V2.3
 - Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note building requires new compiler toolchain (15.2.rel1)*, see below
-V2.3Beta2
 - Preview of CMD-HD partitions shows partition table
 - Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobbel (and ChatGPT)
-V2.3Beta1
 - Merge CMD-HD support, see https://github.com/xlar54/PiCMD
-V2.2Beta2
 - Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
 - Moved to circle-stdlib/circle to recent step 51. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 - Fixed crash when Pi4 is used with USB sticks
 - Fixed 'CD' command for dos1541
-V2.2Beta1
 - allow 32kB 1541 Roms, should fix SJD
 - Support to extract/preview .zip archives
 - webserver now hands out files from /web
