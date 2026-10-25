@@ -141,7 +141,10 @@ bool InputMappings::CheckButtonsBrowseMode()
 		{
 #if defined(__CIRCLE__)			
 			// long press enter: toggle network
+			extern CKernel kernel;
 			DEBUG_LOG("%s: long press ENTER detected", __FUNCTION__);
+			Kernel.toggle_network();
+			Kernel.display_networkstat();
 			enterLongActionTriggered = true;
 #endif			
 		}

@@ -472,7 +472,7 @@ void CKernel::toggle_network(void)
 void CKernel::display_networkstat(void)
 {
 	char buf[256];
-	snprintf(buf, 255, "Network %s\nIP: %s", (net_run ? "on" : "off"), (const char *)IPString);
+	snprintf(buf, 255, "Network %s\n%s", (net_run ? "on" : "off"), (const char *)IPString);
 	DisplayMessage(0, 24, true, buf, 0xffffffff, 0);
 }
 
@@ -542,7 +542,7 @@ static void display_temp(void)
 	//DEBUG_LOG("%s: temp = %d", __FUNCTION__, temp / 1000);
 }
 
-void CKernel::run_webserver(bool isWifi) 
+void CKernel::run_webserver(bool isWifi, unsigned int startit) 
 {
 	while (!m_Net->IsRunning())
 	{
@@ -553,7 +553,8 @@ void CKernel::run_webserver(bool isWifi)
 	strcpy(ip_address, (const char *) IPString);
 	log ("Open \"http://%s/\" in your web browser!", ip_address);
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
-	net_run = true;
+	if (startit == 1)
+		net_run = true;
 	display_networkstat();
 	if (isWifi)
 		DEBUG_LOG("%s: Wifi IsConnected = %d", __FUNCTION__, m_WPASupplicant.IsConnected());
@@ -563,7 +564,7 @@ void CKernel::run_webserver(bool isWifi)
 	else
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	{
-		CNTPDaemon *cntp = new CNTPDaemon("152.53.132.244", m_Net);
+		CNTPDaemon *cntp = new CNTPDaemon("152.53.132.244", m_Net);	// never deleted
 		unsigned max_cs = options.GetMaxContentSize();
 		unsigned max_mps = options.GetMaxMultipartSize();
 		if (max_cs < 256) { 
@@ -584,14 +585,7 @@ void CKernel::run_webserver(bool isWifi)
 		}
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
-		CWebServer *webserver = new CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
-/* 		
-		if (!options.GetHeadLess())
-		{
-			logger.finished_booting("network & display core");
-			UpdateScreen(nullptr); // won't return, does its own while(1)
-		}
-*/			
+		CWebServer *webserver = new CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024); // never deleted
 	}
 }
 
@@ -769,19 +763,19 @@ void CKernel::lcd_showheadless(void)
 	}
 }
 
-bool CKernel::setup_network(unsigned int core)
+unsigned int CKernel::setup_network(unsigned int core)
 {
 #if RASPPI >= 3
 	int i = 0;
-	bool res = false;
+	int startit = 0;
 	bool run_wifi;
 	if (!options.GetNetWifi() && !options.GetNetEthernet())
-		goto out;
+		return 0;
 	do
 	{
 		run_wifi = false;
 		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
-		if (options.GetNetEthernet()) // cable network has priority over Wifi
+		if ((startit = options.GetNetEthernet())) // cable network has priority over Wifi
 		{
 			if (!Kernel.run_ethernet())
 			{
@@ -791,7 +785,7 @@ bool CKernel::setup_network(unsigned int core)
 			else
 				i = 1;
 		}
-		if ((i == 0) && options.GetNetWifi())
+		if ((i == 0) && (startit = options.GetNetWifi()))
 		{
 			i = 10;
 			do
@@ -807,14 +801,13 @@ bool CKernel::setup_network(unsigned int core)
 		}
 		else
 		{
-			res = true;
 			break;
 		}
 	} while (true);
 	Kernel.log("launching webserver on core %d", core);
-	Kernel.run_webserver(run_wifi);
-out:
-	return res;
+	Kernel.run_webserver(run_wifi, startit);
+
+	return startit;
 }
 #endif
 
@@ -852,7 +845,7 @@ void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
-	bool run_net = false;
+	unsigned int run_net = 0;
 	switch (core) {
 		case EMULATOR_CORE:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
@@ -861,7 +854,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		break;
 	case NET_CORE:
 		run_net = Kernel.setup_network(core);
-		core2activated = run_net;
+		core2activated = (run_net == 1) ? 1 : 0;	// if options give value >1 then start disabled
 		logger.finished_booting("network core");
 		while (run_net)
 		{

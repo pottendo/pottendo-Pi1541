@@ -1,9 +1,11 @@
 # pottendo-Pi1541 V2.4 Beta
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
+
 ## News vs. 2.3
 V2.4 Beta2
-- Move network back on core 2 and toggle on/off via longpress ENTER, if network is not configured in options.txt, it can't be enabled.
+- Move network back to run on core 2 and toggle on/off via longpress ENTER. See options below.
+
 V2.4 Beta1
 - default `config.txt` reduces overclocking to 1350MHz for PiZero2 to improve stability
 - Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
@@ -37,6 +39,8 @@ V2.2Beta1
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
+- PiCMD Emulator
+- Basic Printer emulator
 - Manage Upload and SDCard
   - support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
   - support to rename of files/dirs on SDCard/USB via WebUI
@@ -60,13 +64,13 @@ A web-server has been added which features the WebUI:
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - View & Download log-messages
 - Show DeviceID in stats
+- Easier handling for switching device IDs and ROMs via long-press of BACK and INSERT
 - Reboot of Pi1541
 - Support firmware update from USB (untested!)
 - IEC command fix for partition parsing, credits to RetroNynjah
 - Improved rotary support - Credits to hgryska
 - Configure web-memory profile (see new options below)
 - Minor changes: remove debuglogs
-- Update circle-stdlib/circle to recent step 50.1
 - Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
             3A+ kernel name for upload, create image supports .g64, ...
 
@@ -253,7 +257,7 @@ Other uController support has been added:
 
 However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handle Pi1541 hard realtime requirements.
 
-**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`.
+**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`. One can disable the network core, which may reduce temperature, by long-pressing ENTER. See options how control network setup on startup.
 
 For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B+3A+'s protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
 
@@ -277,8 +281,8 @@ The following options control new functions available:
 | printer     | 0 or 1 | enable printer at start |0| can be activated/deactivated via the WebUI |
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
-| netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
-| netWifi     | 0 or 1 | disable/enable Wifi network              |0||
+| netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
+| netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
 | maxContentSize | value | max memory in kB for webserver | 1000 | range from 256 to 4000 |
 | maxMultipartSize | value | max memory in kB for multipart uploads | 20000| range from 1000 to 20000 |
 | useDHCP     | 0 or 1 | disable/enable DHCP for optaining IP configuration |1||
@@ -292,8 +296,13 @@ Refer to PiCMDs documentation for CMD-HD specific options, see also in the provi
 
 Here a snippet one can add to his `options.txt`:
 ```
+
 // Printer
+// chose value > 0 to activate printer at startup
+// if 0, printer can be enabled via the webui
 printer = 0
+// Spool directory, where prints are being stored using the webui
+PrinterPath = prn-out
 
 // ---------------------------------------------------------------------------
 // CMD HD
@@ -330,8 +339,10 @@ DisableHDMI = 1 // equal to headLess = 1  // no HDMI output
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
 TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
+// network setup: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later)
 netWifi = 0
 netEthernet = 1
+
 // webserver static memory profile in kB, use smaller value (4000) for Pis < 1GB memory.
 maxContentSize = 1000     // == 1MB (min 256, max 4000)
 maxMultipartSize = 20000  // == 20MB for directory upload (min 1000, max 20000)
@@ -417,7 +428,7 @@ kernel=kernel-Pi0.img
 
 # this is for the PiZero 2W, merged with [p0]!
 [pi02]
-arm_freq=1400
+arm_freq=1350
 over_voltage=4
 sdram_freq=450
 over_voltage_sdram=1
@@ -462,7 +473,7 @@ kernel=kernel-P1BPlus.img
 # force_turbo = 1 in combination with over_voltage invalidates warranty!
 # may improve compatibility, and needed for Steve's original kernels
 force_turbo=1
-arm_freq=1400
+arm_freq=1350
 over_voltage=4
 sdram_freq=500
 over_voltage_sdram=1

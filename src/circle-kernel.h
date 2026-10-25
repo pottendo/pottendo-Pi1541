@@ -105,7 +105,7 @@ public:
 	void yield(void) { mScheduler.Yield(); }
 	bool run_wifi(void);
 	bool run_ethernet(void);
-	void run_webserver(bool isWifi);
+	void run_webserver(bool isWifi, unsigned int startit);
 	void i2c_init(int BSCMaster, int fast);
 	void i2c_setclock(int BSCMaster, int clock_freq);
 	int i2c_read(int BSCMaster, unsigned char slaveAddress, void* buffer, unsigned count);
@@ -129,7 +129,7 @@ public:
 	static CMachineInfo *get_machine_info(std::string &kernelname);
 	void lcd_showheadless(void);
 	inline void activate_core(unsigned int core) { m_MCores.activate_core(core); }
-	bool setup_network(unsigned int core);
+	unsigned int setup_network(unsigned int core);
 	void toggle_network(void);
 	bool net_running(void) { return net_run; }
 	void display_networkstat(void);
