@@ -5,7 +5,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News V2.4 vs. V2.3.1
 
 V2.4 Beta2
-- Move network back to run on core 2 and implement toggle on/off via longpress ENTER. See options below.
+- Move network back to run on core 2 and implement toggle on/off via longpress ENTER in IEC Emulation Mode. See options below.
 
 V2.4 Beta1
 - default `config.txt` reduces overclocking to 1350MHz for PiZero2 to improve stability
@@ -256,7 +256,7 @@ Other uController support has been added:
 
 However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handle Pi1541 hard realtime requirements.
 
-**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`. One can disable the network core, which may reduce temperature, by long-pressing ENTER. See options how control network setup on startup.
+**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`. One can disable the network core, which may reduce temperature, by long-pressing ENTER when in IEC Emulation mode (i.e. no diskimage is mounted). See options how control network setup on startup.
 
 For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B+3A+'s protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
 
