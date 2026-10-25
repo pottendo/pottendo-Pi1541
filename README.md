@@ -2,7 +2,7 @@
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
-## News vs. 2.3.1
+## News V2.4 vs. V2.3.1
 
 V2.4 Beta2
 - Move network back to run on core 2 and implement toggle on/off via longpress ENTER. See options below.
@@ -12,13 +12,13 @@ V2.4 Beta1
 - Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
 - Run network on core 0 (along with HDMI output if activated)
 
-## News V2.3.1 vs 2.1
+## News V2.3.1 vs. V2.3
 
 - CMD-HD receives time from network
 - Fix webserver to use UTF-8, so international characters can be used in `options.txt` e.g. in comments
 - Fixed SRQ plot
 
-## News V2.3 vs 2.1
+## News V2.3 vs V2.1
 
 - Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 - Preview of CMD-HD partitions shows partition table
