@@ -4,6 +4,9 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+- Make printer buffer allocation dynamic
+- Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
+  
 V2.4 Beta2
 - Move network back to run on core 2 and implement toggle on/off via longpress ENTER in IEC Emulation Mode. See options below.
 
