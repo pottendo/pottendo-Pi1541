@@ -2114,6 +2114,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (printer)
 		{
 			printer->flush_petlp();
+			printer->flush_raw();
 			printer->flush(true, pg);
 			printer->flush(false, t);
 			printer->get_prspool(p);

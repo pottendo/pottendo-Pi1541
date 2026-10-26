@@ -20,6 +20,7 @@
 #define _printer_h_
 
 #include <string>
+#include <vector>
 #include "iec_commands.h"
 #include "iec_bus.h"
 using namespace std;
@@ -30,9 +31,7 @@ class Printer
     u8 deviceID;
     IEC_Commands* iecCommands;
     IEC_Bus iec_bus;
-    u8 *printerBuffer;
-    const size_t printerBufferSize = 1024 * 64; // 64KB buffer for printer data
-    uint32_t printerBufferIndex;
+    vector<u8> printerBuffer;
     bool run;
     uint16_t spoolnr;
 public:
@@ -44,6 +43,7 @@ public:
     void get_prspool(string &p, bool basename = false);
     void flush(bool petscii, string &res);
     void flush_petlp(void);
+    bool flush_raw(void);
     inline bool running(void) { return run; }
     inline void set_running(bool r) { run = r; }
 };

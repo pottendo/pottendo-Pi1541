@@ -29,10 +29,11 @@ extern "C"
     int pi1541_close(void);
 }
 
+size_t bufferlen = 1024*64;
+
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
 , iec_bus(ID)
-, printerBufferIndex(0)
 , run(activate)
 , spoolnr(0)
 {
@@ -42,7 +43,7 @@ Printer::Printer(u8 ID, bool activate)
     iecCommands = new IEC_Commands(&iec_bus);
     fp = def_prefix + options.GetPrPath();
     DEBUG_LOG("%s: emulator, deviceID=%d, spooler dir = '%s'", __FUNCTION__, deviceID, fp.c_str());
-    printerBuffer = new u8[printerBufferSize];
+    printerBuffer.reserve(128 * 1024);
     res = f_stat(fp.c_str(), &fi);
     if (res == FR_INVALID_NAME)
         DEBUG_LOG("%s: invalid path '%s'", __FUNCTION__, fp.c_str());
@@ -59,7 +60,6 @@ Printer::Printer(u8 ID, bool activate)
 Printer::~Printer()
 {
     delete iecCommands;
-    delete[] printerBuffer;
     DEBUG_LOG("%s: %d deleted", __FUNCTION__, deviceID);
 }
 
@@ -95,31 +95,20 @@ void Printer::get_prspool(string &p, bool basename)
 
 void Printer::add2buffer(u8 byte)
 {
-    if (printerBufferIndex < printerBufferSize)
-    {
-        printerBuffer[printerBufferIndex++] = byte;
-        /*
-        DEBUG_LOG("%s: added byte 0x%02x (%c) to buffer, deviceID=%d, bufferIndex=%d", 
-            __FUNCTION__, byte, isprint(byte) ? byte : '.', deviceID, printerBufferIndex);
-        */
-    }
-    else
-    {
-        DEBUG_LOG("%s: Printer buffer overflow, deviceID=%d", __FUNCTION__, deviceID);
-        printerBufferIndex = 0; // Reset buffer index to avoid overflow
-    }
+    printerBuffer.push_back(byte);
 }
 
 void Printer::flush(bool petscii, string &res)
 {
-    if (printerBufferIndex > 0)
+    if (!printerBuffer.empty())
     {
         int line = 1;
         int lidx = 0;
         char lbuf[81];
         // For now, we just log the data for demonstration purposes.
-        DEBUG_LOG("%s: Flushing %d bytes to printer, deviceID=%d", __FUNCTION__, printerBufferIndex, deviceID);
-        for (uint32_t i = 0; i < printerBufferIndex; ++i)
+        DEBUG_LOG("%s: Flushing %u bytes to printer, deviceID=%d", __FUNCTION__,
+            static_cast<unsigned>(printerBuffer.size()), deviceID);
+        for (size_t i = 0; i < printerBuffer.size(); ++i)
         {
             if (printerBuffer[i] == 0x0a) // Handle line feed
                 continue;
@@ -153,9 +142,9 @@ void Printer::flush(bool petscii, string &res)
             res += string(lbuf) + "<br />"; // Convert carriage return to newline for better readability
         else
         {
-            DEBUG_LOG("L%03d:%s\n%d chars printed.", line, lbuf, printerBufferIndex);
-            // Reset the buffer index after flushing
-            printerBufferIndex = 0;
+            DEBUG_LOG("L%03d:%s\n%u chars printed.", line, lbuf,
+                static_cast<unsigned>(printerBuffer.size()));
+            printerBuffer.clear();
         }
     }
 }
@@ -163,21 +152,68 @@ void Printer::flush(bool petscii, string &res)
 void Printer::flush_petlp(void)
 {
     int ret;
-    char *argv[] = { "pipetlpdrv", "-F", "PS", "-o", "", "-pi1541", nullptr };
-    if (printerBufferIndex > 0)
+    char *argv[] = { "pipetlpdrv", "-o", "", "-lower", "-lang", "commodore", "-F", "PS", "-pi1541", nullptr };
+    if (!printerBuffer.empty())
     {
         string p = "petlp";
+        bufferlen = printerBuffer.size();
         get_prspool(p);
-        argv[4] = (char *)p.c_str();
-        DEBUG_LOG("%s: Flushing %d bytes to pi1541 petlp printer file %s", __FUNCTION__, printerBufferIndex, p.c_str());
-        ret = petlp_main(7, argv);
-        DEBUG_LOG("%s: petlp_main returned %d", __FUNCTION__, ret);
-        ret = pi1541_printline(printerBuffer, printerBufferIndex);
+        argv[2] = (char *)p.c_str();
+        DEBUG_LOG("%s: Flushing %u bytes to pi1541 petlp printer file %s", __FUNCTION__,
+            static_cast<unsigned>(printerBuffer.size()), p.c_str());
+        ret = petlp_main(10, argv);
+        DEBUG_LOG("%s: petlp_main allocated %dbytes", __FUNCTION__, ret);
+        ret = pi1541_printline(printerBuffer.data(), static_cast<int>(printerBuffer.size()));
         if (ret < 0)
         {
             DEBUG_LOG("%s: pi1541_printline failed with error code %d", __FUNCTION__, ret);
         }
         pi1541_close();
-        DEBUG_LOG("%s: Flushed %d bytes to pi1541 printer", __FUNCTION__, printerBufferIndex);
+        DEBUG_LOG("%s: Flushed %u bytes to pi1541 printer '%s", __FUNCTION__,
+            static_cast<unsigned>(printerBuffer.size()), p.c_str());
     }
+}
+
+bool Printer::flush_raw(void)
+{
+    if (printerBuffer.empty())
+        return true;
+    string p = "petlp";
+    get_prspool(p);
+    p.replace(p.size() - 3, 3, ".raw");
+
+    FIL fp;
+    FRESULT res = f_open(&fp, p.c_str(), FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK)
+    {
+        DEBUG_LOG("%s: couldn't open '%s' for writing (%d)", __FUNCTION__, p.c_str(), res);
+        return false;
+    }
+
+    size_t offset = 0;
+    while (offset < printerBuffer.size())
+    {
+        UINT bytesWritten = 0;
+        UINT bytesToWrite = static_cast<UINT>(
+            printerBuffer.size() - offset > 64 * 1024 ? 64 * 1024 : printerBuffer.size() - offset);
+        res = f_write(&fp, printerBuffer.data() + offset, bytesToWrite, &bytesWritten);
+        if (res != FR_OK || bytesWritten != bytesToWrite)
+        {
+            DEBUG_LOG("%s: couldn't write '%s' (%d)", __FUNCTION__, p.c_str(), res);
+            f_close(&fp);
+            return false;
+        }
+        offset += bytesWritten;
+    }
+
+    res = f_close(&fp);
+    if (res != FR_OK)
+    {
+        DEBUG_LOG("%s: couldn't close '%s' (%d)", __FUNCTION__, p.c_str(), res);
+        return false;
+    }
+
+    DEBUG_LOG("%s: dumped %u bytes to '%s'", __FUNCTION__,
+        static_cast<unsigned>(printerBuffer.size()), p.c_str());
+    return true;
 }

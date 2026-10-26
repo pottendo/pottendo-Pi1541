@@ -105,8 +105,9 @@ static char *filetypes[] = {
 
 #define MAX_FT 6
 
-#define INBUFSIZ  (1024*64)
-
+//#define INBUFSIZ  (1024*64)
+extern size_t bufferlen;
+size_t INBUFSIZ = (1024*64);
 
 /* ------------------------------------------------------------------------- */
 
@@ -125,6 +126,7 @@ int petlp_main(int argc, char **argv)
 	int pi1541 = 0;
 
 	set_locale(NULL);
+	INBUFSIZ = bufferlen;
 	initialize_printer(0, NULL, NULL);
 
 	fprintf(stderr, "\n\t%s V%4.2f -- Commodore Matrix Printer Emulator.\n",
@@ -298,8 +300,6 @@ int petlp_main(int argc, char **argv)
 		{
 			fprintf(stderr, "\n\t%s V%4.2f -- Commodore Matrix Printer Emulator.\n",
 					progname, (float)PETLPVERSION);
-			--argc;
-			++argv;
 			pi1541 = 1;
 			continue;
 		}
@@ -392,7 +392,9 @@ int petlp_main(int argc, char **argv)
 	}
 
 	if (pi1541)
-		return 0;
+	{
+		return INBUFSIZ;
+	}
 
 	/*
 	 * Loop all files
@@ -476,6 +478,10 @@ int pi1541_close(void)
 		do_formfeed(PrinterData); /* eject paper */
 
 	close_printer(PrinterData, 0);
+	free(PrinterData->inbuf);
+	free(PrinterData);
+	PrinterData = 0;
+
 	return 0;
 }
 
