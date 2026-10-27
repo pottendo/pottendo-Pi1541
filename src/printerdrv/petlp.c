@@ -118,14 +118,14 @@ void pr_init_page (PRINTER *printer)
 
     fprintf (printer->FileDs, "\
 %%5.66929 8.5039 scale	%% ensin skaalat kohdalleen\n\
-%d 3 translate		%% siirretään ensin vähän irti reunasta\n\
-%%0 85 translate		%% siirretään 85 riviä ylöspäin\n\n",
+%d 3 translate		%% siirretï¿½ï¿½n ensin vï¿½hï¿½n irti reunasta\n\
+%%0 85 translate		%% siirretï¿½ï¿½n 85 riviï¿½ ylï¿½spï¿½in\n\n",
 	     (printer->page_h < 600 ? 2 : 10));
 
     printer->ps_state |= PS_PAGEHDR;
     printer->line = printer->mgn_top;		/* Move onto top of page */
 
-    ps_outline (printer->FileDs);
+    //ps_outline (printer->FileDs);
 
     fprintf (printer->FileDs, "10 0 translate	%% merkki reunasta\n");
 

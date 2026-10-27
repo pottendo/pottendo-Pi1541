@@ -34,12 +34,13 @@ class Printer
     vector<u8> printerBuffer;
     bool run;
     uint16_t spoolnr;
+    u8 last_secaddr;
 public:
     Printer(u8 deviceID, bool activate);
     ~Printer();
     IEC_Bus* GetIEC_Bus() { return &iec_bus; }
     void emulate(void);
-    void add2buffer(u8 byte);
+    void add2buffer(u8 byte, u8 sec_addr);
     void get_prspool(string &p, bool basename = false);
     void flush(bool petscii, string &res);
     void flush_petlp(void);

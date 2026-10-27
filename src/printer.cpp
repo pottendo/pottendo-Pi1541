@@ -36,6 +36,7 @@ Printer::Printer(u8 ID, bool activate)
 , iec_bus(ID)
 , run(activate)
 , spoolnr(0)
+, last_secaddr(0)
 {
     FRESULT res;
     FILINFO fi;
@@ -93,8 +94,9 @@ void Printer::get_prspool(string &p, bool basename)
         p = def_prefix + string(options.GetPrPath()) + '/' + p;
 }
 
-void Printer::add2buffer(u8 byte)
+void Printer::add2buffer(u8 byte, u8 secondary_addr)
 {
+    last_secaddr = secondary_addr;
     printerBuffer.push_back(byte);
 }
 
@@ -159,6 +161,7 @@ void Printer::flush_petlp(void)
         bufferlen = printerBuffer.size();
         get_prspool(p);
         argv[2] = (char *)p.c_str();
+        argv[3] = (char *)((last_secaddr == 7) ? "-lower" : "-upper");
         DEBUG_LOG("%s: Flushing %u bytes to pi1541 petlp printer file %s", __FUNCTION__,
             static_cast<unsigned>(printerBuffer.size()), p.c_str());
         ret = petlp_main(10, argv);

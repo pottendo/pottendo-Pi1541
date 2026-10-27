@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+- Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
   
@@ -50,11 +51,10 @@ A web-server has been added which features the WebUI:
   - delete of files & directories
   - download files
   - create directory
-  - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
+  - create new diskimages, use extension to select between .d64, .g64 or .d81 formats
   - create LST files from current directory
   - LST support for D81 images, limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
   - Support to create/edit .txt, .nfo or .lst files
-  - Support creating empty d81 images
   - show icons (.png) if exists for images
   - script to upload files or directories via commandline
   - script to mount from an index via commandline, index can be generated
@@ -66,7 +66,8 @@ A web-server has been added which features the WebUI:
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - View & Download log-messages
 - Show DeviceID in stats
-- Easier handling for switching device IDs and ROMs via long-press of BACK and INSERT
+- Easier handling for switching device IDs and ROMs via long-press of BACK and INSERT (in IEC Emulation mode)
+- Toggle network via long-press ENTER (in IEC Emulation mode)
 - Reboot of Pi1541
 - Support firmware update from USB (untested!)
 - IEC command fix for partition parsing, credits to RetroNynjah
@@ -203,7 +204,6 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + 
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
-- new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 - added support for a SH1107 based LCD featuring 128x128 pixel resolution (see note above on I2Cs and pull-up resistors in case it doesn't work)
 - SoundOnGPIO = -1 turns sound completely off
@@ -219,8 +219,8 @@ Follow the toplevel readme on my fork of the great PiCMD project: [pottendo-PiCM
 Future releases will add some specifics to support the HD emulation also from the webserver. Currently the controls follows the original design and must use the buttons as described.
 
 Limitations: 
-- HD images can't be up/down-loaded via web-interface - the 16MB limit makes it anyway not very useful.
-- Webserver won't show image content of HD images
+- HD images can't be down-loaded via web-interface - the 16MB limit makes it anyway not very useful. Upload zipped images (<16MB) is possible and can subsequently unzipped using the WebUI.
+- Webserver won't show partition content of HD images, just the partition table.
 
 Know Bugs/Observations:
 - The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
@@ -231,7 +231,9 @@ Know Bugs/Observations:
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
 
-printer output files (postscript) are stored on the SDCard. Use option `PrinterPath` (default `prin-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+printer output files (postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+
+Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters.
 
 ## Compatibility
 
@@ -272,7 +274,7 @@ For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limi
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
 - Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working; maybe never will.
-- Pico2/ESP32 support
+- Pico2/ESP32 support; compilation compatibility is called obsolete and may disappear any time.
   
 # Additional Options in `options.txt`
 
@@ -376,7 +378,7 @@ The following compiler suites were used for development:
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
 For building the project needs certain developer tools installed. Depending on your Linux installation these may be needed to be installed:
-_make, wget, unzip, git, sed, patch, c1541_.
+_make, wget, unzip, git, sed, patch, c1541, acme_.
 
 My development machine is an x86_64 based ArchLinux box.
 Checkout & build
@@ -407,7 +409,7 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
 Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
-The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
+The prepared _config.txt_ covers several Pi models, and defaults to 32bit versions. If you want to boot the 64 bit versions, adjust `config.txt` accordingly - see comments below.
 In case you want to run the slightly improved legacy 1.25 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
 
 Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendo-Pi1541:

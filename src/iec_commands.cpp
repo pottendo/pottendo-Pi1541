@@ -1762,7 +1762,7 @@ void IEC_Commands::Listen()
 			//DEBUG_LOG("%s: Ls 0x%02x 0x%02x", __FUNCTION__, commandCode, secondaryAddress);
 			while (!ReadIECSerialPort(byte))
 			{
-				printer->add2buffer(byte);
+				printer->add2buffer(byte, secondaryAddress);
 				if (receivedEOI)
 				{
 					receivedCommand = true;
