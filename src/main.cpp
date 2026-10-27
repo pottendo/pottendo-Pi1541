@@ -1503,10 +1503,16 @@ extern int mount_new;
 			}
 		}
 
+		extern int imageAdvance;
 		if (numberOfImages > 1)
 		{
 			bool nextDisk = inputMappings->NextDisk();
 			bool prevDisk = inputMappings->PrevDisk();
+			
+			if(imageAdvance == 1) nextDisk = true;
+			if(imageAdvance == 2) prevDisk = true;
+			imageAdvance = 0;
+
 			if (nextDisk)
 			{
 				pi1541.drive.Insert(diskCaddy.PrevDisk());

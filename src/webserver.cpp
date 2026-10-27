@@ -49,6 +49,7 @@ bool webserver_upload = false;
 char mount_img[256] = { 0 };
 char mount_path[256] = { 0 };
 int mount_new = 0;
+int imageAdvance = 0;
 extern IEC_Commands *_m_IEC_Commands;
 #if defined(CMDHD_SUPPORT)
 #define PI1541BUILD 1
@@ -1854,6 +1855,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		curr_path = urlDecode(curr_path);
 		type = urlDecode(type);
 		//DEBUG_LOG("type = %s / curr_path = %s", type.c_str(), curr_path.c_str());
+		if (type == "[NEXT]")
+		{
+			DEBUG_LOG("Request to switch to next image in current list");
+			imageAdvance = 1;
+			msg = "Switched to the previous image";
+			curr_path = "/";
+		}
+		if (type == "[PREV]")
+		{
+			DEBUG_LOG("Request to switch to previous image in current list");
+			imageAdvance = 2;
+			msg = "Switched to the previous image";
+			curr_path = "/";
+		}
 		if (type == "[CHMEDIUM]")
 		{
 			int ret;
