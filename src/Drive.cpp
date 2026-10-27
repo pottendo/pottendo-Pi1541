@@ -414,6 +414,7 @@ extern "C"
 Drive::Drive()
 	: diskImage(0)
 	, m_pVIA(0)
+	, cyclesPerBit(0.0)
 {
 #if defined(FAST_CODE)
 	localSeed = 0x811c9dc5U;
@@ -461,6 +462,7 @@ void Drive::Insert(DiskImage* diskImage)
 		return; // Can't insert D81/D82 images into 1540/1541 drives.
 	Eject();
 	this->diskImage = diskImage;
+	UpdateHeadSectorPosition();
 	newDiskImageQueuedCylesRemaining = DISK_SWAP_CYCLES_DISK_EJECTING + DISK_SWAP_CYCLES_NO_DISK + DISK_SWAP_CYCLES_DISK_INSERTING;
 }
 

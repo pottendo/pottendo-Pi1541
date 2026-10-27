@@ -151,7 +151,7 @@ enum PIGPIO
 	PIGPIO_IN_BUTTON1 = 27	// 13 Common
 #endif
 };
-#else/* HAS4-PINS */
+#else/* HAS40-PINS */
 //Added GPIO bindings for Raspberry Pi 1B Rev 1/2 (only 26 I/O ports)
 enum PIGPIO
 {
@@ -443,7 +443,11 @@ public:
 			gpio_set_direction((gpio_num_t)PIGPIO_OUT_SOUND, GPIO_MODE_OUTPUT);
 #endif/* ESP32 */
 #if !defined(__PICO2__) && !defined(ESP32)
+#if defined(HAS_40PINS)
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_LED - 10) * 3));
+#else
+			myOutsGPFSEL0 |= (1 << (PIGPIO_OUT_LED * 3));
+#endif			
 			myOutsGPFSEL1 |= (1 << ((PIGPIO_OUT_SOUND - 10) * 3));
 #endif			
 		}

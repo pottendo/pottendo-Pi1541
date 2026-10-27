@@ -43,7 +43,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <string>
-#if RASPPI <= 3 && AARCH == 32
+#if RASPPI <= 1 && AARCH == 32
 #include "SpinLock.h"
 #else
 #define SpinLock CSpinLock

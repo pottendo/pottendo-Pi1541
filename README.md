@@ -1,22 +1,23 @@
-# pottendo-Pi1541 V2.3
+# pottendo-Pi1541 V2.3.1
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
-## News vs 2.1
+## News V2.3.1 vs. V2.3
 
-V2.3
-- Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
-V2.3Beta2
+- CMD-HD receives time from network
+- Fix webserver to use UTF-8, so international characters can be used in `options.txt` e.g. in comments
+- Fixed SRQ plot
+
+## News V2.3 vs V2.1
+
+- Moved circle-stdlib/circle to recent step v21/51.1.1, enables hidden WiFi. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 - Preview of CMD-HD partitions shows partition table
 - Merged easier handling for switching device IDs and ROMs via long-press of BACK and INSERT, credits to @Bobbel (and ChatGPT)
-V2.3Beta1
 - Merge CMD-HD support, see https://github.com/xlar54/PiCMD
-V2.2Beta2
 - Added /web/web-upload.html to support upload of the new UI components. Webproxy, dns-cache, TLS support
-- Moved to circle-stdlib/circle to recent step 51. *Note that this requires new compiler toolchain (15.2.rel1)*, see below
+- Moved to circle-stdlib/circle to recent step 51. *Note building requires new compiler toolchain (15.2.rel1)*, see below
 - Fixed crash when Pi4 is used with USB sticks
 - Fixed 'CD' command for dos1541
-V2.2Beta1
 - allow 32kB 1541 Roms, should fix SJD
 - Support to extract/preview .zip archives
 - webserver now hands out files from /web
@@ -326,6 +327,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Plugging/Unplugging USB stick is in general not recommended and unstable.
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
+- PiZero2W won't run stable with HDMI enabled @1400 Mhz -> keep HDMI disabled (`DisableHDMI = 1`) or reduce clock-speed in `config.txt`.
 
 # Checkout & Build
 

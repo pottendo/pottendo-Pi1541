@@ -68,6 +68,7 @@ extern "C"
 EXIT_TYPE EmulateCMDHD(FileBrowser* fileBrowser);
 #define PI1541BUILD 1
 #include "picmdhd.h"
+#include <time.h>
 #endif
 #include "ScreenLCD.h"
 #include "ScreenHeadless.h"
@@ -127,6 +128,7 @@ u8 s_u8Memory[0xc000];
 int numberOfUSBMassStorageDevices = 0;
 DiskCaddy diskCaddy;
 Pi1541 pi1541;
+Options options;
 #if defined(PI1581SUPPORT)
 Pi1581 pi1581;
 #endif
@@ -135,6 +137,17 @@ extern PiCMDHD piCMDHD;
 // Filename the CMD HD boot ROM was loaded from, shown by the browser next to
 // the device number. The ROM itself lives in PiCMDHD.
 char cmdhdRomName[256] = { 0 };
+
+void setPiCMDTime(void)
+{
+	time_t now = time(nullptr);
+	now += options.GetTZ() * 3600;;
+	struct tm *tm = localtime(&now);
+			/* DEBUG_LOG("%s: clock is %04d-%02d-%02d %02d:%02d:%02d:%02d", __FUNCTION__, 
+				tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_wday); */
+	piCMDHD.rtc.SetTime((options.GetNetWifi() | options.GetNetEthernet()), tm->tm_sec, tm->tm_min, tm->tm_hour, tm->tm_mday, tm->tm_mon + 1, tm->tm_year - 100, tm->tm_wday);
+}
+
 #endif
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 CEMMCDevice	m_EMMC;
@@ -146,7 +159,6 @@ Screen *screen_hdmi;
 ScreenHeadLess *screen_headless;
 ScreenLCD* screenLCD = 0;
 static u32 lcdTrackRow = 0;
-Options options;
 const char* fileBrowserSelectedName;
 u8 deviceID = 8;
 IEC_Commands *_m_IEC_Commands;	/* need dynamic allocation for ESPs with PSRAM */
@@ -792,6 +804,27 @@ void UpdateScreen()
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top4, bottom, BkColour);
 
+		value = srq;
+		if (options.HDMIGraphIEC())
+		{
+			bottom = top3 - 2;
+			if (value ^ oldSRQ)
+			{
+				screen->DrawLineV(graphX, top4, bottom, SRQColour);
+			}
+			else
+			{
+				if (value) screen->PlotPixel(graphX, top4, SRQColour);
+				else screen->PlotPixel(graphX, bottom, SRQColour);
+			}
+		}
+		if (value != oldSRQ)
+		{
+			oldSRQ = value;
+			snprintf(tempBuffer, tempBufferSize, "%d", value);
+			screen->PrintText(false, 47 * 8, y, tempBuffer, textColour, bgColour);
+			//refreshUartStatusDisplay = true;
+		}
 		value = atn;
 		if (options.HDMIGraphIEC())
 		{
@@ -869,35 +902,10 @@ void UpdateScreen()
 				// refreshUartStatusDisplay = true;
 			}
 		}
-#if defined(CMDHD_SUPPORT)		
-		value = srq;
-		if (options.HDMIGraphIEC())
-		{
-			if (value ^ oldSRQ)
-			{
-				screen->DrawLineV(graphX, top4, bottom, SRQColour);
-			}
-			else
-			{
-				if (value) screen->PlotPixel(graphX, top4, SRQColour);
-				else screen->PlotPixel(graphX, bottom, SRQColour);
-			}
-		}
-		if (value != oldSRQ)
-		{
-			oldSRQ = value;
-			snprintf(tempBuffer, tempBufferSize, "%d", value);
-			screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
-			//refreshUartStatusDisplay = true;
-		}
-#endif
-
-
 		if (graphX++ > screenWidthM1) graphX = 0;
 // black vertical line ahead of graph
 		if (options.HDMIGraphIEC())
 			screen->DrawLineV(graphX, top4, bottom, COLOUR_BLACK);
-
 		u32 track;
 #if defined(CMDHD_SUPPORT)		
 		if (emulating == EMULATING_CMDHD)
@@ -966,7 +974,7 @@ void UpdateScreen()
 						oldTemperature = temperature;
 						//DEBUG_LOG("Temperature: %d\r\n", temperature);
 						snprintf(tempBuffer, tempBufferSize, "%02d", temperature);
-						screen->PrintText(false, 43 * 8, y, tempBuffer, textColour, bgColour);
+						screen->PrintText(false, 49 * 8, y, tempBuffer, textColour, bgColour);
 						refreshLCDStatusDisplay = true;
 					}
 				}
@@ -1064,8 +1072,8 @@ void UpdateScreen()
 
 		// Go back to sleep. The USB irq will wake us up again.
 #if defined (__CIRCLE__)		
-		MsDelay(10);		/* less CPU demanding */
-#else		
+		MsDelay(20);		/* less CPU demanding */
+#else
 		__asm ("WFE");
 #endif
 	}
