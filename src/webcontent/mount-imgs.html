@@ -198,6 +198,21 @@
 			  });
 		</script>
 		<script>
+			fetch("/lstbuttons.html")
+			.then((response) => {
+				if (!response.ok) throw new Error("Network error");
+				return response.text();
+			})
+			.then((html) => {
+				document.getElementById("lst-buttons").innerHTML = html;
+			})
+			.catch((err) => {
+				document.getElementById("lst-buttons").textContent =
+				"Failed to load buttons.";
+				console.error(err);
+			});
+      	</script>
+		<script>
 			window.addEventListener("pageshow", function (event) {
   				if (event.persisted) {
     				// Page was restored from bfcache

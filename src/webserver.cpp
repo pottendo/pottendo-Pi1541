@@ -1622,9 +1622,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	else if (strcmp(pPath, "/pistats.html") == 0)
 	{
 		unsigned int temp;
-		DiskImage *di;
+		DiskImage *di = diskCaddy.GetCurrentDisk();
 		char din[256], cwd[256];
-		di = diskCaddy.GetCurrentDisk();
 #if defined (CMDHD_SUPPORT)		
 		if (!di)
 		{
@@ -1647,6 +1646,14 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		delete t;
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=utf-8";
+	}
+	else if (strcmp(pPath, "/lstbuttons.html") == 0)
+	{
+		string buttons = (diskCaddy.GetNumberOfImages() > 1? "<a href=\"mount-imgs.html?[NEXT]\"><input type=\"submit\" class=\"btn btn-success\" value=\"Next Image\"/></a> <a href=\"mount-imgs.html?[PREV]\"><input type=\"submit\" class=\"btn btn-success\" value=\"Previous Image\"/></a>" : " ");
+		
+		pContent = (const u8 *)buttons.c_str();
+		nLength = buttons.length();
 		*ppContentType = "text/html; charset=utf-8";
 	}
 	else if (strcmp(pPath, "/getindex.html") == 0)
@@ -1859,7 +1866,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			DEBUG_LOG("Request to switch to next image in current list");
 			imageAdvance = 1;
-			msg = "Switched to the previous image";
+			msg = "Switched to the next image";
 			curr_path = "/";
 		}
 		if (type == "[PREV]")
