@@ -41,9 +41,10 @@ public:
     IEC_Bus* GetIEC_Bus() { return &iec_bus; }
     void emulate(void);
     void add2buffer(u8 byte, u8 sec_addr);
-    void get_prspool(string &p, bool basename = false);
+    void get_prspool(string &p, string ext, bool basename = false);
     void flush(bool petscii, string &res);
     void flush_petlp(void);
+    void flush_vice(void);
     bool flush_raw(void);
     inline bool running(void) { return run; }
     inline void set_running(bool r) { run = r; }

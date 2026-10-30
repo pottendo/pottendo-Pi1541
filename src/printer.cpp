@@ -20,6 +20,8 @@
 #include "printer.h"
 #include "iec_bus.h"
 #include "Options.h"
+#include <fcntl.h>
+#include <unistd.h>
 extern Options options;
 
 extern "C" 
@@ -27,9 +29,11 @@ extern "C"
     int petlp_main(int argc, char **argv);
     int pi1541_printline(BYTE *line, int len);
     int pi1541_close(void);
+    int vicepr_main(int argc, char **argv);
 }
 
 size_t bufferlen = 1024*64;
+unsigned const char *prBuffer4vicedrv;
 
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
@@ -87,9 +91,9 @@ void Printer::emulate(void)
     DEBUG_LOG("%s: printer emulation exited", __FUNCTION__);
 }
 
-void Printer::get_prspool(string &p, bool basename)
+void Printer::get_prspool(string &p, string ext, bool basename)
 { 
-    p = p + '-' + to_string(spoolnr) + string(".ps"); 
+    p = p + '-' + to_string(spoolnr) + ext; 
     if (!basename)
         p = def_prefix + string(options.GetPrPath()) + '/' + p;
 }
@@ -159,7 +163,7 @@ void Printer::flush_petlp(void)
     {
         string p = "petlp";
         bufferlen = printerBuffer.size();
-        get_prspool(p);
+        get_prspool(p, string(".ps"));
         argv[2] = (char *)p.c_str();
         argv[3] = (char *)((last_secaddr == 7) ? "-lower" : "-upper");
         DEBUG_LOG("%s: Flushing %u bytes to pi1541 petlp printer file %s", __FUNCTION__,
@@ -177,13 +181,35 @@ void Printer::flush_petlp(void)
     }
 }
 
+void Printer::flush_vice(void)
+{
+    int ret;
+    char *argv[] = { "vice-drv", "--gfx", "", "--drv", "mps803", nullptr };
+    if (!printerBuffer.empty())
+    {
+        string p = "pri1541";
+        bufferlen = printerBuffer.size();
+        prBuffer4vicedrv = printerBuffer.data();
+        get_prspool(p, string(".png"));
+        argv[2] = (char *)p.c_str();
+        DEBUG_LOG("%s: Flushing %u bytes to pi1541 petlp printer file %s", __FUNCTION__,
+            static_cast<unsigned>(printerBuffer.size()), p.c_str());
+        ret = vicepr_main(5, argv);
+        if (ret < 0)
+        {
+            DEBUG_LOG("%s: vicepr_main() failed with error code %d", __FUNCTION__, ret);
+        }
+        DEBUG_LOG("%s: Flushed %u bytes to pi1541 printer '%s", __FUNCTION__,
+            static_cast<unsigned>(printerBuffer.size()), p.c_str());
+    }
+}
+
 bool Printer::flush_raw(void)
 {
     if (printerBuffer.empty())
         return true;
-    string p = "petlp";
-    get_prspool(p);
-    p.replace(p.size() - 3, 3, ".raw");
+    string p = "pri1541";
+    get_prspool(p, ".raw");
 
     FIL fp;
     FRESULT res = f_open(&fp, p.c_str(), FA_CREATE_ALWAYS | FA_WRITE);

@@ -53,3 +53,13 @@ int GetTemperature(unsigned &value) { unsigned ret = CPUThrottle.GetTemperature(
 int USPiMassStorageDeviceAvailable(void) { return Kernel.usb_massstorage_available(); }
 
 void PlaySoundDMA(int play) { if (play == 0) Kernel.playsound(); }
+
+extern "C" void klog(const char *fmt, ...)
+{
+	char t[2048];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(t, 2048, fmt, args);
+	Kernel.log(t);
+	va_end(args);
+}

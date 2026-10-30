@@ -2114,18 +2114,19 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		if (printer)
 		{
 			printer->flush_petlp();
+			printer->flush_vice();
 			printer->flush_raw();
 			printer->flush(true, pg);
 			printer->flush(false, t);
-			printer->get_prspool(p);
-			printer->get_prspool(pbn, true);
+			printer->get_prspool(p, ".png");
+			printer->get_prspool(pbn, ".png", true);
 			if (strcmp(pParams, "[TOGGLE]") == 0)
 			{
-				bool p = printer->running();
-				printer->set_running(!p);
-				if (!p)
+				bool pr = printer->running();
+				printer->set_running(!pr);
+				if (!pr)
 					Kernel.activate_core(3);
-				DEBUG_LOG("%s: printer is %s, spooldir = '%s'", __FUNCTION__, (p ? "off" : "on"), options.GetPrPath());
+				DEBUG_LOG("%s: printer is %s, spooldir = '%s'", __FUNCTION__, (pr ? "off" : "on"), options.GetPrPath());
 			}
 		}
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)

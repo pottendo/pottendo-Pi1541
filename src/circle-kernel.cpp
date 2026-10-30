@@ -846,6 +846,8 @@ void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
 	unsigned int run_net = 0;
+	unsigned long wakes_net = 0;
+	unsigned long wakes_prn = 0;
 	switch (core) {
 		case EMULATOR_CORE:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
@@ -862,15 +864,16 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			{
 				DataMemBarrier();
             	asm volatile ("wfe" ::: "memory");
+				wakes_net++;
         	}
 	        DataMemBarrier();
-			DEBUG_LOG("%s: network & display core %d activated", __FUNCTION__, core);
+			DEBUG_LOG("%s: network & display core %d activated (%ld wakes)", __FUNCTION__, core, wakes_net);
 			while (Kernel.net_running())
 			{
 				reboot_hook();
 				MsDelay_s(100);
 			}
-			core2activated = 0;
+			core2activated = wakes_net = 0;
 		}
 		DEBUG_LOG("%s: halting network & display core %d", __FUNCTION__, core);
 		break;
@@ -887,8 +890,10 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
         	{
             	DataMemBarrier();
             	asm volatile ("wfe" ::: "memory");
+				wakes_prn++;
         	}
 	        DataMemBarrier();
+			DEBUG_LOG("%s: printer wakeup (%ld wakes)", __FUNCTION__, wakes_prn);
 			printer->emulate();
 			core3activated = 0;
 		}
