@@ -890,34 +890,64 @@ static FRESULT f_unlink_full(string path, string &msg)
 extern FileBrowser *fileBrowser;
 extern DiskCaddy diskCaddy;
 
-FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
+static THTTPStatus download_file(const string &fullndir, u8 *pBuffer,
+								 unsigned *pLength)
 {
-	FILINFO fileinfo;
 	FIL fp;
-	FRESULT res = FR_OK;
-	UINT bytesRead;
-	msg = "";
+	FRESULT res;
+	FSIZE_t fileSize;
+	unsigned length = 0;
+	unsigned capacity = *pLength;
+
 	if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
-		msg = "Open of " + fullndir + " failed (" + to_string(res) + ")";
-	else
 	{
-		SetACTLed(true);
-		if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
-			msg = "Read failed for " + fullndir + " (" + to_string(res) + ")";
-		SetACTLed(false);
+		Kernel.log("%s: open of '%s' failed (%d)", __FUNCTION__,
+				   fullndir.c_str(), res);
+		return res == FR_NO_FILE || res == FR_NO_PATH
+			? HTTPNotFound : HTTPInternalServerError;
+	}
+
+	fileSize = f_size(&fp);
+	if (fileSize > capacity)
+	{
 		f_close(&fp);
+		Kernel.log("%s: '%s' is too large to download (%lu > %u)",
+				   __FUNCTION__, fullndir.c_str(),
+				   (unsigned long)fileSize, capacity);
+		return HTTPRequestEntityTooLarge;
 	}
-	if (res == FR_OK)
+
+	SetACTLed(true);
+	while ((FSIZE_t)length < fileSize)
 	{
-		pContent = img_buf;
-		nLength = bytesRead;
+		unsigned remaining = (unsigned)(fileSize - length);
+		UINT request = remaining > READBUFFER_SIZE
+			? READBUFFER_SIZE : (UINT)remaining;
+		UINT bytesRead = 0;
+
+		res = f_read(&fp, pBuffer + length, request, &bytesRead);
+		if (res != FR_OK || bytesRead != request)
+		{
+			break;
+		}
+		length += bytesRead;
 	}
-	else
+	SetACTLed(false);
+
 	{
-		pContent = (const u8 *)msg.c_str();
-		nLength = msg.length();
+		FRESULT closeResult = f_close(&fp);
+		if (res != FR_OK || (FSIZE_t)length != fileSize
+			|| closeResult != FR_OK)
+		{
+			Kernel.log("%s: read of '%s' failed (%d, %u of %lu bytes; close %d)",
+					   __FUNCTION__, fullndir.c_str(), res, length,
+					   (unsigned long)fileSize, closeResult);
+			return HTTPInternalServerError;
+		}
 	}
-	return res;
+
+	*pLength = length;
+	return HTTPOK;
 }
 
 static FRESULT gen_index(string &index, string path)
@@ -1315,6 +1345,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	char filename[255];
 	char extension[10];
 	char field[255];
+	char version_buf[256];
 	filename[0] = '\0';
 	extension[0] = '\0';
 	CString String;
@@ -1508,9 +1539,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: download file '%s'", __FUNCTION__, fullndir.c_str());
-			download_file(fullndir, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
-			goto out;
+			return download_file(fullndir, pBuffer, pLength);
 		}
 		if (type == "[CHMEDIUM]")
 		{
@@ -1644,9 +1674,11 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer: <i>%s</i>%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer (%d, %s): <i>%s</i>%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
+				 (printer->get_deviceid()),
+				 (printer->get_driver().c_str()),
 				 (printer->running() ? "on" : "off"),
 				 (printer->running() ? (string(", spooldir: <i>") + (def_prefix + '/' + string(options.GetPrPath())) + "</i>").c_str() : ""),
 				 temp / 1000,
@@ -1987,8 +2019,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				else
 				{
 					//DEBUG_LOG("%s: DOWNLOAD of '%s'", __FUNCTION__, fullname.c_str());
-					download_file(fullname, pContent, nLength, msg);
 					*ppContentType = "application/octet-stream";
+					return download_file(fullname, pBuffer, pLength);
 				}
 				goto out;
 			}
@@ -2107,37 +2139,35 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	}
 	else if (strcmp(pPath, "/print.html") == 0)
 	{
-		string pg, t;
+		string pg;
 		string msg;
-		string p = "petlp";
-		string pbn = "petlp";
+		string p = "";
+		string pbn = "";
+		string pv = "";
 		if (printer)
 		{
-			printer->flush_petlp();
-			printer->flush_vice();
-			printer->flush_raw();
-			printer->flush(true, pg);
-			printer->flush(false, t);
-			printer->get_prspool(p, ".png");
-			printer->get_prspool(pbn, ".png", true);
+			printer->flush(options.GetPrDriver(), msg);	// driver ignored so far
+			printer->get_prspool(pv, ".png", true);
+			printer->get_prspool(p, "");
+			printer->get_prspool(pbn, "", true);
 			if (strcmp(pParams, "[TOGGLE]") == 0)
 			{
 				bool pr = printer->running();
 				printer->set_running(!pr);
 				if (!pr)
 					Kernel.activate_core(3);
-				DEBUG_LOG("%s: printer is %s, spooldir = '%s'", __FUNCTION__, (pr ? "off" : "on"), options.GetPrPath());
+				DEBUG_LOG("%s: printer (%d) is %s, spooldir = '%s'", __FUNCTION__, 
+					printer->get_deviceid(), (pr ? "off" : "on"), options.GetPrPath());
 			}
 		}
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)
 		{
 			DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
-			download_file(p, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
-			goto out;
+			return download_file(p, pBuffer, pLength);
 		}
-
-		String.Format(s_print, pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
+		pg = "<img src=\"" + urlEncode(string("/") + options.GetPrPath() + "/" + pv) + "\">";
+		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=utf-8";
@@ -2203,10 +2233,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	}
 	else if (strcmp(pPath, "/pi1541Version.html") == 0)
 	{
-		char buf[256];
-		sprintf(buf, "%s, %s", Kernel.get_version(), mem.c_str());
-		nLength = strlen(buf);
-		pContent = (const u8 *)buf;
+		sprintf(version_buf, "%s, %s", Kernel.get_version(), mem.c_str());
+		nLength = strlen(version_buf);
+		pContent = (const u8 *)version_buf;
 		*ppContentType = "text/html; charset=UTF-8";
 	}
 	else

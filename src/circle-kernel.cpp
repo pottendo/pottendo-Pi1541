@@ -881,9 +881,9 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		Kernel.log("%s: other emulatore (printer) on core %d", __FUNCTION__, core);
 		logger.finished_booting("other emulator (printer) core");
 		core3activated = (options.GetPrinter() != 0);
-		printer = new Printer(4, core3activated);
+		printer = new Printer(options.GetPrinter(), core3activated);
 
-		while (true)
+		while (!printer->shutoff())
 		{
 	        // Core 3 waits here until activated.
     	    while (core3activated == 0)
@@ -897,6 +897,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			printer->emulate();
 			core3activated = 0;
 		}
+		delete printer;
 		DEBUG_LOG("%s: unexpected return of other emulator (printer), halting core %d", __FUNCTION__, core);
 		break;
 	default:

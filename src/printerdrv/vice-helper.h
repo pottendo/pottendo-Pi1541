@@ -2,14 +2,40 @@
 #define VICE_HELPER_H
 
 #include <stdbool.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #if !defined (__CIRCLE__)
-#define DEBUG_LOG(...) printf(__VA_ARGS__)
+void vice_helper_debug_log(const char *format, ...);
+#define DEBUG_LOG(...) vice_helper_debug_log(__VA_ARGS__)
 #else
 void klog(const char *fmt,...);
 #define DEBUG_LOG(...) klog(__VA_ARGS__)
 #endif
+
+typedef struct vice_helper_file_s vice_helper_file_t;
+
+#define VICE_HELPER_EOF (-1)
+
+vice_helper_file_t *vice_helper_file_open(const char *path, const char *mode);
+vice_helper_file_t *vice_helper_stdin(void);
+vice_helper_file_t *vice_helper_stdout(void);
+vice_helper_file_t *vice_helper_stderr(void);
+size_t vice_helper_file_read(void *buffer, size_t size, size_t count,
+                             vice_helper_file_t *file);
+size_t vice_helper_file_write(const void *buffer, size_t size, size_t count,
+                              vice_helper_file_t *file);
+int vice_helper_file_close(vice_helper_file_t *file);
+int vice_helper_file_putc(int character, vice_helper_file_t *file);
+int vice_helper_file_puts(const char *string, vice_helper_file_t *file);
+int vice_helper_file_vprintf(vice_helper_file_t *file, const char *format,
+                             va_list args);
+int vice_helper_file_printf(vice_helper_file_t *file, const char *format, ...);
+int vice_helper_puts(const char *string);
+int vice_helper_file_flush(vice_helper_file_t *file);
+long vice_helper_file_tell(vice_helper_file_t *file);
+int vice_helper_file_error(vice_helper_file_t *file);
+int vice_helper_snprintf(char *buffer, size_t size, const char *format, ...);
 
 typedef signed int log_t;
 #define LOG_DEFAULT ((log_t)-1)
@@ -97,6 +123,8 @@ int vice_helper_output_error(void);
 const uint8_t *vice_helper_gfx_pixels(void);
 size_t vice_helper_gfx_rows(void);
 size_t vice_helper_gfx_width(void);
+unsigned int vice_helper_gfx_dpi_x(void);
+unsigned int vice_helper_gfx_dpi_y(void);
 void vice_helper_free_gfx_pixels(void);
 
 void *lib_malloc(size_t size);

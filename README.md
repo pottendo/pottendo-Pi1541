@@ -4,6 +4,8 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+- Preview of printpage, generation of .pdf for convenient postprocessing
+- Added printer drivers: mps801,mps802,mps803,nl10,1520,petlp
 - Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
@@ -282,8 +284,9 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
-| printer     | 0 or 1 | enable printer at start |0| can be activated/deactivated via the WebUI |
+| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID |0| can be activated/deactivated via the WebUI, 6 selects 1520 driver |
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
+| PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
 | netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||

@@ -33,8 +33,14 @@ class Printer
     IEC_Bus iec_bus;
     vector<u8> printerBuffer;
     bool run;
+    bool shoff;
+    string driver;
+    string spoolfn;
     uint16_t spoolnr;
     u8 last_secaddr;
+    u16 spoolfilenr;
+    bool dirty;
+    string lext;
 public:
     Printer(u8 deviceID, bool activate);
     ~Printer();
@@ -42,12 +48,14 @@ public:
     void emulate(void);
     void add2buffer(u8 byte, u8 sec_addr);
     void get_prspool(string &p, string ext, bool basename = false);
-    void flush(bool petscii, string &res);
-    void flush_petlp(void);
-    void flush_vice(void);
-    bool flush_raw(void);
+    void flush(string drv, string &res);
+    void flush_vice(string drv, string &res, bool gfx = false);
+    bool flush_raw(string &res);
     inline bool running(void) { return run; }
     inline void set_running(bool r) { run = r; }
+    inline bool shutoff(void) { return shoff; }
+    inline u8 get_deviceid(void) { return deviceID; }
+    inline string get_driver(void) { return driver; }
 };
 extern Printer *printer;
 

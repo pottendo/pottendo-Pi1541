@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
+#include <string.h>
 
 #include "types.h"
 #include "printer.h"
@@ -125,7 +126,7 @@ void pr_init_page (PRINTER *printer)
     printer->ps_state |= PS_PAGEHDR;
     printer->line = printer->mgn_top;		/* Move onto top of page */
 
-    //ps_outline (printer->FileDs);
+    /* ps_outline (printer->FileDs); */
 
     fprintf (printer->FileDs, "10 0 translate	%% merkki reunasta\n");
 
@@ -802,6 +803,7 @@ int writeps(PRINTER *printer, int width, int height, BYTE *string)
 {
     BYTE *p;
     int   col, n = 0;
+    int   string_length;
 
 
     if (!string)
@@ -809,35 +811,35 @@ int writeps(PRINTER *printer, int width, int height, BYTE *string)
 
 /*fprintf(stderr, "writeps %02x\n", printer->ps_state);*/
 
-
-    /* Check if page is full */
-
-    if ((printer->page_h - printer->mgn_top - (printer->line / 3)) <= 10) {
-	if (printer->ps_state & PS_SHOW)
-	    fprintf (printer->FileDs, ") show\n");
-
-	/*if (printer->ps_state & PS_DRAW)
-	    end_graphics();*/
-
-	fprintf (printer->FileDs, "showpage\n");
-	printer->ps_state &= ~(PS_SHOW | PS_DRAW | PS_PAGEHDR);
+    string_length = (int)strlen((char *)string);
+    if (string_length > 1
+	&& string_length <= printer->mgn_right - printer->mgn_left
+	&& printer->column + string_length > printer->mgn_right) {
+	do_newline(printer, 1);
     }
-
-
-    /* Confirm write mode */
-
-    if (!(printer->ps_state & PS_SHOW)) {
-	if (!(printer->ps_state & PS_PAGEHDR))
-	    pr_init_page(printer);
-
-	printer->ps_state |= PS_SHOW;
-	fprintf (printer->FileDs, "%d %d moveto (",
-		 printer->column * 7,
-		 printer->page_h - printer->mgn_top - (printer->line / 3) );
-    }
-
 
     for (col = printer->column, p = string; *p && n >= 0; col++, p++) {
+	if ((printer->page_h - printer->mgn_top
+	     - (printer->line / 3)) <= 10) {
+	    if (printer->ps_state & PS_SHOW)
+		fprintf (printer->FileDs, ") show\n");
+
+	    /*if (printer->ps_state & PS_DRAW)
+		end_graphics();*/
+
+	    fprintf (printer->FileDs, "showpage\n");
+	    printer->ps_state &= ~(PS_SHOW | PS_DRAW | PS_PAGEHDR);
+	}
+
+	if (!(printer->ps_state & PS_SHOW)) {
+	    if (!(printer->ps_state & PS_PAGEHDR))
+		pr_init_page(printer);
+
+	    printer->ps_state |= PS_SHOW;
+	    fprintf (printer->FileDs, "%d %d moveto (",
+		     col * 7,
+		     printer->page_h - printer->mgn_top - (printer->line / 3));
+	}
 
 	if (*p == '(' || *p == ')' || *p == '{' || *p == '}' ||
 	    *p == '[' || *p == ']' || *p == '\\')

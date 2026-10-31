@@ -428,8 +428,8 @@ int  str_to_lang(char *name)
 	return (-1);
 
     for (p = name; *p; p++) {
-	if (isalpha (*p))
-	    *p = tolower(*p);
+	if (isalpha ((unsigned char)*p))
+	    *p = (char)tolower((unsigned char)*p);
 	else if (*p == '_' || *p == '/')
 	    *p = '-';
     }

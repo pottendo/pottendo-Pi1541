@@ -15,6 +15,8 @@
 		table.dirs tr:nth-child(even) {background-color: #525c5c;}
 		table.dirs tr:nth-child(odd) {background-color: #657272;}
 		table.dirs tr:hover {background-color: #6a7575;}
+		table.preview { width: 100%; table-layout: fixed;}
+		table.preview img { display: block; width: 100%; height: auto; }
 		@font-face {
       		font-family: 'C64 Pro Mono';
       		src: url('C64_Pro_Mono.ttf') format('truetype');
@@ -105,6 +107,7 @@
                     </td>
                 </tr>
             </table>
+			<p>%s</p>
             <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<table style="width: 100%;">
                 <tr>
@@ -119,8 +122,11 @@
 			</table>
             <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<h4 style="text-align: left">Preview</h4>
-			<p style="font-size: 16px; font-family: 'C64 Pro Mono'; margin-left: 24px; padding-left: 24px; background-color: #2844c4; color: #9fade9; line-height:16px;">
-								%s</p>
+			<table class="preview">
+				<tr>
+					<td>%s</td>
+				</tr>
+			</table>
 		</div>
 		<p class="small">%s, %s</p>
 		<p class="small">Find the Pi1541 project resources here <a href="https://cbm-pi1541.firebaseapp.com/"

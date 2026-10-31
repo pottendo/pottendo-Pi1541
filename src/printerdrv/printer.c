@@ -105,7 +105,7 @@ static char *filetypes[] = {
 
 #define MAX_FT 6
 
-//#define INBUFSIZ  (1024*64)
+/* #define INBUFSIZ  (1024*64) */
 extern size_t bufferlen;
 size_t INBUFSIZ = (1024*64);
 
@@ -116,7 +116,11 @@ size_t INBUFSIZ = (1024*64);
 static PRINTER *PrinterData = NULL;
 static int   petcii = 1;
 
+#if defined(__CIRCLE__)
 int petlp_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
 {
 	FILE *source = stdin;
 	BYTE *s;
@@ -126,7 +130,9 @@ int petlp_main(int argc, char **argv)
 	int pi1541 = 0;
 
 	set_locale(NULL);
+#if defined(__CIRCLE__)	
 	INBUFSIZ = bufferlen;
+#endif	
 	initialize_printer(0, NULL, NULL);
 
 	fprintf(stderr, "\n\t%s V%4.2f -- Commodore Matrix Printer Emulator.\n",

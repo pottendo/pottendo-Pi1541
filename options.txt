@@ -85,11 +85,13 @@ ROM1581 = dos1581
 //ROM1581 = JiffyDOS_1581.bin
 
 // Printer
-// chose value > 0 to activate printer at startup
+// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to 1520 driver
 // if 0, printer can be enabled via the webui
 printer = 0
 // Spool directory, where prints are being stored using the webui
 PrinterPath = prn-out
+// Driver: petlp, mps803, mps802, mps801, nl10, 1520
+PrinterDriver = mps803
 
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1

@@ -230,6 +230,7 @@ struct mps_s {
     int begin_line;
     int mode_global;            /* global mode */
     int char_col_repeat;        /* how often to repeat cols in double-width mode */
+    int last_secondary;
 
     /* for SA = 5 */
     int custom_char_ptr;
@@ -653,8 +654,6 @@ static void warn_ctrl_code(int code)
 
 static void mps_engine_putc(mps_t *mps, unsigned int prnr, unsigned int secondary, const uint8_t c)
 {
-    static int last_secondary = -1;
-
     if (mps->tab) {     /* decode tab-number*/
         mps->tabc[2 - mps->tab] = c;
 
@@ -695,7 +694,7 @@ static void mps_engine_putc(mps_t *mps, unsigned int prnr, unsigned int secondar
                 for the last character.
     */
 
-    if (mps->begin_line || (last_secondary != secondary)) {
+    if (mps->begin_line || (mps->last_secondary != secondary)) {
         if (get_chargen_mode(mps, secondary) == MPS_BUSINESS) {
             unset_global_mode(mps, MPS_CRSRUP);
         } else {
@@ -708,7 +707,7 @@ static void mps_engine_putc(mps_t *mps, unsigned int prnr, unsigned int secondar
 #endif
     }
     mps->begin_line = 0;
-    last_secondary = secondary;
+    mps->last_secondary = secondary;
 
     /* handle user defined char #254 */
     if (secondary == 5) {
@@ -1412,13 +1411,25 @@ static int drv_mps803_select(unsigned int prnr)
 
 static int drv_first_open(unsigned int prnr)
 {
+    int first_open_type = drv_mps803[prnr].first_open_type;
+
     DBG(("drv_first_open(prnr:%u first_open_type:%d)", prnr, drv_mps803[prnr].first_open_type));
+
+    if (first_open_type == 0) {
+        return 0;
+    }
 
     if ((palette == NULL) && (mps803_palette_init() < 0)) {
         return -1;
     }
 
-    switch (drv_mps803[prnr].first_open_type) {
+    memset(&drv_mps803[prnr], 0, sizeof(drv_mps803[prnr]));
+    drv_mps803[prnr].first_open_type = first_open_type;
+    drv_mps803[prnr].begin_line = 1;
+    drv_mps803[prnr].char_col_repeat = 1;
+    drv_mps803[prnr].last_secondary = -1;
+
+    switch (first_open_type) {
         case 801:
             return drv_mps801_first_open(prnr);
         case 802:

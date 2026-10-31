@@ -21,7 +21,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,12 +28,6 @@
 #include "drv-mps803.h"
 #include "drv-1520.h"
 #include "vice-helper.h"
-#if defined(__CIRCLE__)
-#include <circle/types.h>
-#include <fatfs/ff.h>
-#else
-#include "ff-local.h"
-#endif
 
 #define TEST_GLYPHS_PER_LINE 5
 #define TEST_GLYPH_COUNT 192
@@ -42,11 +35,14 @@
 #define PNG_MAX_WIDTH 1920
 #define PNG_MAX_CONTENT_WIDTH VICE_HELPER_GFX_MAX_WIDTH
 #define PNG_MAX_BLOCK_SIZE 65535
+#define PDF_MARGIN 10
+#define PDF_HEX_LINE_LENGTH 32
 
 static driver_select_t *printer_driver;
 static int test_mode;
 static int stdout_enabled;
 static const char *gfx_path;
+static const char *pdf_path;
 
 static uint32_t png_crc_update(uint32_t crc, const uint8_t *data, size_t size)
 {
@@ -62,15 +58,7 @@ static uint32_t png_crc_update(uint32_t crc, const uint8_t *data, size_t size)
     return crc;
 }
 
-static int write_file(FIL *file, const void *data, UINT size)
-{
-    UINT bytes_written;
-
-    return f_write(file, data, size, &bytes_written) == FR_OK
-        && bytes_written == size;
-}
-
-static int write_png_chunk(FIL *file, const char *type,
+static int write_png_chunk(vice_helper_file_t *file, const char *type,
                            const uint8_t *data, uint32_t size)
 {
     uint8_t length[4], checksum[4];
@@ -87,16 +75,18 @@ static int write_png_chunk(FIL *file, const char *type,
     checksum[2] = (uint8_t)(crc >> 8);
     checksum[3] = (uint8_t)crc;
 
-    return write_file(file, length, sizeof(length))
-        && write_file(file, type, 4)
-        && (size == 0 || write_file(file, data, size))
-        && write_file(file, checksum, sizeof(checksum))
+    return vice_helper_file_write(length, 1, sizeof(length), file)
+               == sizeof(length)
+        && vice_helper_file_write(type, 1, 4, file) == 4
+        && (size == 0 || vice_helper_file_write(data, 1, size, file) == size)
+        && vice_helper_file_write(checksum, 1, sizeof(checksum), file)
+               == sizeof(checksum)
         ? 0 : -1;
 }
 
 static int write_gfx_png(void)
 {
-    FIL file;
+    vice_helper_file_t *file;
     uint8_t header[13], *raw = NULL, *compressed = NULL;
     const uint8_t *gfx_pixels = vice_helper_gfx_pixels();
     size_t gfx_rows = vice_helper_gfx_rows();
@@ -236,7 +226,8 @@ static int write_gfx_png(void)
     compressed[compressed_offset++] = (uint8_t)(adler_a >> 8);
     compressed[compressed_offset++] = (uint8_t)adler_a;
 
-    if (f_open(&file, gfx_path, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) {
+    file = vice_helper_file_open(gfx_path, "wb");
+    if (file == NULL) {
         DEBUG_LOG("Cannot open PNG output file '%s'.\n", gfx_path);
         goto cleanup;
     }
@@ -253,16 +244,17 @@ static int write_gfx_png(void)
     header[10] = 0;
     header[11] = 0;
     header[12] = 0;
-    if (write_file(&file, signature, sizeof(signature))
-        && write_png_chunk(&file, "IHDR", header, sizeof(header)) == 0
-        && write_png_chunk(&file, "IDAT", compressed,
+    if (vice_helper_file_write(signature, 1, sizeof(signature), file)
+            == sizeof(signature)
+        && write_png_chunk(file, "IHDR", header, sizeof(header)) == 0
+        && write_png_chunk(file, "IDAT", compressed,
                            (uint32_t)compressed_offset) == 0
-        && write_png_chunk(&file, "IEND", NULL, 0) == 0) {
+        && write_png_chunk(file, "IEND", NULL, 0) == 0) {
         result = 0;
     } else {
         DEBUG_LOG("Failed to write PNG output.");
     }
-    if (f_close(&file) != FR_OK) {
+    if (vice_helper_file_close(file) != 0) {
         DEBUG_LOG("Failed to close PNG output file.");
         result = -1;
     }
@@ -270,6 +262,209 @@ static int write_gfx_png(void)
 cleanup:
     free(raw);
     free(compressed);
+    return result;
+}
+
+static int write_gfx_pdf(void)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    vice_helper_file_t *file;
+    const uint8_t *gfx_pixels = vice_helper_gfx_pixels();
+    size_t gfx_rows = vice_helper_gfx_rows();
+    size_t gfx_width = vice_helper_gfx_width();
+    unsigned int dpi_x = vice_helper_gfx_dpi_x();
+    unsigned int dpi_y = vice_helper_gfx_dpi_y();
+    size_t left = gfx_width, right = 0, top = gfx_rows, bottom = 0;
+    size_t content_width, content_height, image_width, image_height;
+    size_t pixel_count, stream_length, line_count;
+    size_t source_x, source_y, pixel_index;
+    long offsets[6], xref_offset;
+    double page_width, page_height;
+    char content[160];
+    int content_length;
+    int found_pixel = 0;
+    int result = -1;
+
+    for (source_y = 0; source_y < gfx_rows; source_y++) {
+        for (source_x = 0; source_x < gfx_width; source_x++) {
+            if (gfx_pixels[source_y * gfx_width + source_x]
+                == OUTPUT_PIXEL_BLACK) {
+                if (!found_pixel || source_x < left) {
+                    left = source_x;
+                }
+                if (!found_pixel || source_x > right) {
+                    right = source_x;
+                }
+                if (!found_pixel || source_y < top) {
+                    top = source_y;
+                }
+                if (!found_pixel || source_y > bottom) {
+                    bottom = source_y;
+                }
+                found_pixel = 1;
+            }
+        }
+    }
+
+    if (dpi_x == 0 || dpi_y == 0) {
+        DEBUG_LOG("Invalid printer resolution for PDF output.");
+        return -1;
+    }
+
+    content_width = found_pixel ? right - left + 1 : 0;
+    content_height = found_pixel ? bottom - top + 1 : 0;
+    if (content_width > SIZE_MAX - 2 * PDF_MARGIN
+        || content_height > SIZE_MAX - 2 * PDF_MARGIN) {
+        DEBUG_LOG("PDF image is too large to encode.");
+        return -1;
+    }
+    image_width = content_width + 2 * PDF_MARGIN;
+    image_height = content_height + 2 * PDF_MARGIN;
+    if (image_width > SIZE_MAX / image_height) {
+        DEBUG_LOG("PDF image is too large to encode.");
+        return -1;
+    }
+    pixel_count = image_width * image_height;
+    if (pixel_count > (SIZE_MAX - 1) / 2) {
+        DEBUG_LOG("PDF image is too large to encode.");
+        return -1;
+    }
+    stream_length = pixel_count * 2 + 1;
+    line_count = pixel_count / PDF_HEX_LINE_LENGTH
+        + (pixel_count % PDF_HEX_LINE_LENGTH != 0);
+    if (line_count > SIZE_MAX - stream_length) {
+        DEBUG_LOG("PDF image is too large to encode.");
+        return -1;
+    }
+    stream_length += line_count;
+
+    page_width = image_width * 72.0 / dpi_x;
+    page_height = image_height * 72.0 / dpi_y;
+    content_length = vice_helper_snprintf(
+        content, sizeof(content),
+        "q %.3f 0 0 %.3f 0 0 cm /Im0 Do Q\n", page_width, page_height);
+    if (content_length < 0 || (size_t)content_length >= sizeof(content)) {
+        DEBUG_LOG("Cannot format PDF page content.");
+        return -1;
+    }
+
+    file = vice_helper_file_open(pdf_path, "wb");
+    if (file == NULL) {
+        DEBUG_LOG("Cannot open PDF output file '%s'.\n", pdf_path);
+        return -1;
+    }
+
+    if (vice_helper_file_puts("%PDF-1.4\n", file) == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    offsets[1] = vice_helper_file_tell(file);
+    if (offsets[1] < 0
+        || vice_helper_file_puts(
+            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+            file) == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    offsets[2] = vice_helper_file_tell(file);
+    if (offsets[2] < 0
+        || vice_helper_file_puts(
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n"
+            "endobj\n", file) == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    offsets[3] = vice_helper_file_tell(file);
+    if (offsets[3] < 0
+        || vice_helper_file_printf(
+            file,
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
+            "/MediaBox [0 0 %.3f %.3f] "
+            "/Resources << /XObject << /Im0 4 0 R >> >> "
+            "/Contents 5 0 R >>\nendobj\n",
+            page_width, page_height) < 0) {
+        goto write_error;
+    }
+    offsets[4] = vice_helper_file_tell(file);
+    if (offsets[4] < 0
+        || vice_helper_file_printf(
+            file,
+            "4 0 obj\n<< /Type /XObject /Subtype /Image "
+            "/Width %lu /Height %lu /ColorSpace /DeviceGray "
+            "/BitsPerComponent 8 /Filter /ASCIIHexDecode "
+            "/Length %lu >>\nstream\n",
+            (unsigned long)image_width, (unsigned long)image_height,
+            (unsigned long)stream_length) < 0) {
+        goto write_error;
+    }
+
+    for (pixel_index = 0; pixel_index < pixel_count; pixel_index++) {
+        size_t image_x = pixel_index % image_width;
+        size_t image_y = pixel_index / image_width;
+        uint8_t pixel = OUTPUT_PIXEL_WHITE;
+
+        if (found_pixel && image_x >= PDF_MARGIN
+            && image_x < PDF_MARGIN + content_width
+            && image_y >= PDF_MARGIN
+            && image_y < PDF_MARGIN + content_height) {
+            pixel = gfx_pixels[(top + image_y - PDF_MARGIN) * gfx_width
+                               + left + image_x - PDF_MARGIN];
+        }
+        if (vice_helper_file_putc(
+                hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
+                == VICE_HELPER_EOF
+            || vice_helper_file_putc(
+                hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
+                == VICE_HELPER_EOF) {
+            goto write_error;
+        }
+        if ((pixel_index + 1) % PDF_HEX_LINE_LENGTH == 0
+            && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
+            goto write_error;
+        }
+    }
+    if (pixel_count % PDF_HEX_LINE_LENGTH != 0
+        && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    if (vice_helper_file_puts(">\nendstream\nendobj\n", file)
+        == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    offsets[5] = vice_helper_file_tell(file);
+    if (offsets[5] < 0
+        || vice_helper_file_printf(
+            file, "5 0 obj\n<< /Length %d >>\nstream\n%sendstream\n"
+            "endobj\n", content_length, content) < 0) {
+        goto write_error;
+    }
+    xref_offset = vice_helper_file_tell(file);
+    if (xref_offset < 0 || (long long)xref_offset > 9999999999LL
+        || vice_helper_file_puts("xref\n0 6\n0000000000 65535 f \n", file)
+            == VICE_HELPER_EOF) {
+        goto write_error;
+    }
+    for (pixel_index = 1; pixel_index <= 5; pixel_index++) {
+        if (offsets[pixel_index] < 0
+            || (long long)offsets[pixel_index] > 9999999999LL
+            || vice_helper_file_printf(
+                file, "%010ld 00000 n \n", offsets[pixel_index]) < 0) {
+            goto write_error;
+        }
+    }
+    if (vice_helper_file_printf(
+            file,
+            "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%ld\n%%%%EOF\n",
+            xref_offset) < 0) {
+        goto write_error;
+    }
+    result = 0;
+    goto cleanup;
+
+write_error:
+    DEBUG_LOG("Failed to write PDF output.");
+cleanup:
+    if (vice_helper_file_close(file) != 0) {
+        DEBUG_LOG("Failed to close PDF output file.");
+        result = -1;
+    }
     return result;
 }
 
@@ -294,15 +489,21 @@ int main(int argc, char **argv)
     int status = EXIT_SUCCESS;
 
     for (arg = 1; arg < argc; arg++) {
-        DEBUG_LOG("%s: processing '%s'", __FUNCTION__, argv[arg]);
         if (strcmp(argv[arg], "--help") == 0) {
-            DEBUG_LOG("Usage: %s [--drv nl10|mps803|1520] [--test] [--stdout] "
-                   "[--gfx [path.png]] < input-bytes\n",
+            DEBUG_LOG("Usage: %s [--drv nl10|mps801|mps802|mps803|1520] "
+                   "[--test] [--stdout] "
+                   "[--gfx [path.png]] [--pdf [path.pdf]] < input-bytes\n",
                    argv[0]);
-            puts("  --drv    select nl10, mps803, or 1520 (default: nl10)");
-            puts("  --test   print CBM glyphs supported by the selected driver");
-            puts("  --stdout write the rendered raster to stdout");
-            puts("  --gfx   write PNG output to path, or printer.png if omitted");
+            vice_helper_puts(
+                "  --drv    select nl10, mps801, mps802, mps803, or 1520 "
+                "(default: nl10)");
+            vice_helper_puts(
+                "  --test   print CBM glyphs supported by the selected driver");
+            vice_helper_puts("  --stdout write the rendered raster to stdout");
+            vice_helper_puts(
+                "  --gfx   write PNG output to path, or printer.png if omitted");
+            vice_helper_puts(
+                "  --pdf   write PDF output to path, or printer.pdf if omitted");
             return EXIT_SUCCESS;
         } else if (strcmp(argv[arg], "--test") == 0) {
             test_mode = 1;
@@ -311,10 +512,13 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[arg], "--drv") == 0 && arg + 1 < argc) {
             driver_name = argv[++arg];
             if (strcmp(driver_name, "nl10") != 0
+                && strcmp(driver_name, "mps801") != 0
+                && strcmp(driver_name, "mps802") != 0
                 && strcmp(driver_name, "mps803") != 0
                 && strcmp(driver_name, "1520") != 0) {
                 DEBUG_LOG("Unsupported printer driver '%s'; "
-                        "choose nl10, mps803, or 1520.\n", driver_name);
+                        "choose nl10, mps801, mps802, mps803, or 1520.\n",
+                        driver_name);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[arg], "--gfx") == 0) {
@@ -322,9 +526,16 @@ int main(int argc, char **argv)
             if (arg + 1 < argc && argv[arg + 1][0] != '-') {
                 gfx_path = argv[++arg];
             }
+        } else if (strcmp(argv[arg], "--pdf") == 0) {
+            pdf_path = "printer.pdf";
+            if (arg + 1 < argc && argv[arg + 1][0] != '-') {
+                pdf_path = argv[++arg];
+            }
         } else {
-            DEBUG_LOG("Usage: %s [--drv nl10|mps803|1520] [--test] "
-                    "[--stdout] [--gfx [path.png]] < input-bytes\n",
+            DEBUG_LOG("Usage: %s [--drv nl10|mps801|mps802|mps803|1520] "
+                    "[--test] "
+                    "[--stdout] [--gfx [path.png]] [--pdf [path.pdf]] "
+                    "< input-bytes\n",
                     argv[0]);
             return EXIT_FAILURE;
         }
@@ -334,10 +545,12 @@ int main(int argc, char **argv)
         init_resources = drv_nl10_init_resources;
         init_driver = drv_nl10_init;
         shutdown_driver = drv_nl10_shutdown;
-        if (gfx_path != NULL) {
+        if (gfx_path != NULL || pdf_path != NULL) {
             drv_nl10_set_standalone_gfx_width(PNG_MAX_CONTENT_WIDTH);
         }
-    } else if (strcmp(driver_name, "mps803") == 0) {
+    } else if (strcmp(driver_name, "mps801") == 0
+               || strcmp(driver_name, "mps802") == 0
+               || strcmp(driver_name, "mps803") == 0) {
         init_resources = drv_mps803_init_resources;
         init_driver = drv_mps803_init;
         shutdown_driver = drv_mps803_shutdown;
@@ -347,7 +560,8 @@ int main(int argc, char **argv)
         shutdown_driver = drv_1520_shutdown;
     }
     vice_helper_select_driver(driver_name);
-    vice_helper_set_output_options(stdout_enabled, gfx_path != NULL);
+    vice_helper_set_output_options(stdout_enabled,
+                                   gfx_path != NULL || pdf_path != NULL);
 
     if (init_resources() < 0
         || (printer_driver = vice_helper_driver()) == NULL) {
@@ -395,8 +609,9 @@ int main(int argc, char **argv)
                   "from the character test.");
         saw_input = 1;
     } else {
-#if !defined (__CIRCLE__)        
-        while ((bytes_read = fread(input, 1, sizeof(input), stdin)) > 0) {
+#if !defined(__CIRCLE__)        
+        while ((bytes_read = vice_helper_file_read(
+                    input, 1, sizeof(input), vice_helper_stdin())) > 0) {
             for (i = 0; i < bytes_read; i++) {
                 if (printer_driver->drv_putc(0, 0, input[i]) < 0) {
                     DEBUG_LOG("The '%s' driver failed to process "
@@ -411,7 +626,7 @@ int main(int argc, char **argv)
                 break;
             }
         }
-        if (ferror(stdin)) {
+        if (vice_helper_file_error(vice_helper_stdin())) {
             DEBUG_LOG("Failed to read printer data from stdin.");
             status = EXIT_FAILURE;
         } else 
@@ -426,10 +641,11 @@ int main(int argc, char **argv)
             saw_input = 1;
             last_was_formfeed = prBuffer4vicedrv[i] == '\f';
         }
-#endif            
+#endif       
         if (saw_input && !last_was_formfeed
                    && printer_driver->drv_formfeed(0) < 0) {
-            DEBUG_LOG("The '%s' driver failed to finish the final page.", driver_name);
+            DEBUG_LOG("The '%s' driver failed to finish the final "
+                    "page.\n", driver_name);
             status = EXIT_FAILURE;
         }
     }
@@ -440,6 +656,9 @@ int main(int argc, char **argv)
         status = EXIT_FAILURE;
     }
     if (gfx_path != NULL && write_gfx_png() < 0) {
+        status = EXIT_FAILURE;
+    }
+    if (pdf_path != NULL && write_gfx_pdf() < 0) {
         status = EXIT_FAILURE;
     }
     vice_helper_free_gfx_pixels();
