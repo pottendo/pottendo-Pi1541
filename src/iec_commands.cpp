@@ -574,7 +574,8 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
  			
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
-				//DEBUG_LOG("%s: Listen for device %d", __FUNCTION__, deviceID);
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: Listen for device %d, secondaddr = %d", __FUNCTION__, deviceID, secondaryAddress);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_LISTEN;
 				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -582,12 +583,15 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 			else if (commandCode == 0x3f)	// Unlisten
 			{
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: UnListen for device %d, secondaddr = %d", __FUNCTION__, deviceID, secondaryAddress);
 				if (deviceRole == DEVICE_ROLE_LISTEN) deviceRole = DEVICE_ROLE_PASSIVE;
 				atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 			}
 			else if (commandCode == 0x40 + deviceID) // Talk
 			{
-				//DEBUG_LOG("%s: Talk for device %d", __FUNCTION__, deviceID);
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: Talk for device %d", __FUNCTION__, deviceID);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_TALK;
 				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
@@ -595,6 +599,8 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 			else if (commandCode == 0x5f)	// Untalk
 			{
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: UnTalk for device %d, secondaddr = %d", __FUNCTION__, deviceID, secondaryAddress);
 				if (deviceRole == DEVICE_ROLE_TALK) deviceRole = DEVICE_ROLE_PASSIVE;
 				atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
 			}
@@ -602,7 +608,8 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			{
 				secondaryAddress = commandCode & 0x0f;
 
-				//DEBUG_LOG("Close %02x %02x\r\n", commandCode, secondaryAddress);
+				//if (deviceID < 8)
+				//	DEBUG_LOG("Close, device = %d, %02x %02x\r\n", deviceID, commandCode, secondaryAddress);
 
 				//if (secondaryAddress == 0xf)
 				//{
@@ -637,7 +644,9 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			}
 		break;
 		case ATN_SEQUENCE_HANDLE_COMMAND_CODE:
-			//DEBUG_LOG("%s: role = %d, CC: 0x%02x sa=%d\r\n", __FUNCTION__, deviceRole, commandCode, secondaryAddress);
+			//if (deviceID < 8)
+			//	DEBUG_LOG("%s: handle command code, device = %d, role = %d, CC: 0x%02x sa=%d\r\n", __FUNCTION__, 
+			//		deviceID, deviceRole, commandCode, secondaryAddress);
 
 			//DEBUG_LOG("T sa=%d\r\n", secondaryAddress);
 
@@ -662,8 +671,12 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 			if (receivedCommand)
 			{
 				Channel& channelCommand = channels[15];
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: ATNSEQ complete, device = %d, role = %d, CC: 0x%02x sa=%d\r\n", __FUNCTION__, 
+				//		deviceID, deviceRole, commandCode, secondaryAddress);
 
-				//DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
+				//if (deviceID < 8)
+				//	DEBUG_LOG("%s: channelCommand = '%s' commandcode = 0x%02x, role = %d, sa = %d\n", __FUNCTION__, channelCommand.buffer, commandCode, deviceRole, secondaryAddress);
 
 				if (secondaryAddress == 0xf) //channel 0xf (15) is reserved as the command channel.
 				{
