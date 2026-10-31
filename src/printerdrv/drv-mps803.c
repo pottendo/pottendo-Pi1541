@@ -110,6 +110,7 @@ A4 paper is         8.25" x 11.75"
 
 #define MPS803_PAGE_WIDTH_DOTS     (MPS803_PAGE_WIDTH_CHARACTERS * 6)
 #define MPS803_PAGE_HEIGHT_DOTS    (MPS803_PAGE_HEIGHT_CHARACTERS * 10)
+#define MPS802_PAGE_HEIGHT_DOTS    822
 
 #define MPS802_BYTES_PER_CHAR   8
 #define MPS803_BYTES_PER_CHAR   6
@@ -1312,13 +1313,13 @@ static int drv_mps802_first_open(unsigned int prnr)
     drv_mps803[prnr].char_height = 8;
     drv_mps803[prnr].char_width = 8;
     drv_mps803[prnr].page_width_dots = 80 * 8;
-    drv_mps803[prnr].page_height_dots = 66 * 8;
+    drv_mps803[prnr].page_height_dots = MPS802_PAGE_HEIGHT_DOTS;
     drv_mps803[prnr].model_sa_features = SA_FEATURE_PROG_CHAR_254;
     drv_mps803[prnr].model_ctrl_features = CTRL_FEATURE_CR_WITHOUT_LF;
     drv_mps803[prnr].lookup_method = 1;
 
     output_parameter.maxcol = 80 * 8;
-    output_parameter.maxrow = 66 * 8;
+    output_parameter.maxrow = MPS802_PAGE_HEIGHT_DOTS;
     output_parameter.dpi_x = 72;
     output_parameter.dpi_y = 72;
     output_parameter.palette = palette;

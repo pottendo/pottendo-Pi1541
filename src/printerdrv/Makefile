@@ -6,4 +6,4 @@ petlp: printer.o petlp.o pchar.o charsets.o
 vicelp: vice-drv.o vice-helper.o drv-nl10.o drv-mps803.o drv-1520.o
 	cc -o vicelp $^
 clean: 
-	rm -f *.o *.d *.pdf *.png petlp vicelp
+	rm -f *.o *.d *.pdf *.png *.ps petlp vicelp

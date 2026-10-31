@@ -2150,6 +2150,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			printer->get_prspool(pv, ".png", true);
 			printer->get_prspool(p, "");
 			printer->get_prspool(pbn, "", true);
+			if (strcmp(options.GetPrDriver(), "1520") != 0)
+			{
+				size_t extension = pv.rfind(".png");
+				if (extension != string::npos)
+					pv.insert(extension, "-1");
+			}
 			if (strcmp(pParams, "[TOGGLE]") == 0)
 			{
 				bool pr = printer->running();

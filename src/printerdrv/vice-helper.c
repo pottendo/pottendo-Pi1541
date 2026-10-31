@@ -565,6 +565,10 @@ static uint8_t *gfx_pixels;
 static size_t gfx_width;
 static size_t gfx_rows;
 static size_t gfx_capacity;
+static size_t gfx_page_height;
+static size_t *gfx_page_ends;
+static size_t gfx_page_count;
+static size_t gfx_page_capacity;
 static unsigned int gfx_dpi_x;
 static unsigned int gfx_dpi_y;
 
@@ -609,6 +613,29 @@ static int append_gfx_row(const char *pixels, size_t width)
     }
     memcpy(gfx_pixels + gfx_rows * gfx_width, pixels, width);
     gfx_rows++;
+    return 0;
+}
+
+static int append_gfx_page_end(void)
+{
+    size_t *new_page_ends;
+    size_t new_capacity;
+
+    if (gfx_page_count == gfx_page_capacity) {
+        new_capacity = gfx_page_capacity == 0 ? 8 : gfx_page_capacity * 2;
+        if (new_capacity < gfx_page_capacity
+            || new_capacity > SIZE_MAX / sizeof(*gfx_page_ends)) {
+            return -1;
+        }
+        new_page_ends = realloc(gfx_page_ends,
+                                new_capacity * sizeof(*gfx_page_ends));
+        if (new_page_ends == NULL) {
+            return -1;
+        }
+        gfx_page_ends = new_page_ends;
+        gfx_page_capacity = new_capacity;
+    }
+    gfx_page_ends[gfx_page_count++] = gfx_rows;
     return 0;
 }
 
@@ -669,6 +696,12 @@ static void render_raster(void)
         }
     }
 
+    if (gfx_page_height != 0 && raster_y == raster_height
+        && append_gfx_page_end() < 0) {
+        DEBUG_LOG("Cannot store graphics page boundary.");
+        raster_error = 1;
+    }
+
     free(raster);
     raster = NULL;
 }
@@ -698,6 +731,9 @@ int output_select_open(unsigned int prnr, output_parameter_t *output_parameter)
     (void)prnr;
     raster_width = output_parameter->maxcol;
     raster_height = output_parameter->maxrow;
+    gfx_page_height = gfx_enabled && selected_driver_name != NULL
+            && strcmp(selected_driver_name, "1520") != 0
+        ? raster_height : 0;
     if (gfx_enabled) {
         if (gfx_width != 0 && gfx_width != raster_width && gfx_rows > 0) {
             DEBUG_LOG("Printer output dimensions changed during graphics "
@@ -796,6 +832,32 @@ size_t vice_helper_gfx_width(void)
     return gfx_width;
 }
 
+size_t vice_helper_gfx_page_height(void)
+{
+    return gfx_page_height;
+}
+
+size_t vice_helper_gfx_page_count(void)
+{
+    if (gfx_page_height == 0) {
+        return 1;
+    }
+    if (gfx_page_count == 0 || gfx_rows > gfx_page_ends[gfx_page_count - 1]) {
+        return gfx_page_count + 1;
+    }
+    return gfx_page_count;
+}
+
+size_t vice_helper_gfx_page_start(size_t page)
+{
+    return page == 0 ? 0 : gfx_page_ends[page - 1];
+}
+
+size_t vice_helper_gfx_page_end(size_t page)
+{
+    return page < gfx_page_count ? gfx_page_ends[page] : gfx_rows;
+}
+
 unsigned int vice_helper_gfx_dpi_x(void)
 {
     return gfx_dpi_x;
@@ -812,7 +874,12 @@ void vice_helper_free_gfx_pixels(void)
     gfx_pixels = NULL;
     gfx_rows = 0;
     gfx_capacity = 0;
+    free(gfx_page_ends);
+    gfx_page_ends = NULL;
+    gfx_page_count = 0;
+    gfx_page_capacity = 0;
     gfx_width = 0;
+    gfx_page_height = 0;
     gfx_dpi_x = 0;
     gfx_dpi_y = 0;
 }
