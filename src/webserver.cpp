@@ -958,7 +958,7 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 	return ret;
 }
 
-static FRESULT f_unlink_full(string path, string &msg)
+static FRESULT f_unlink_full(string path, string &msg, bool only_contents = false)
 {
 	DIR dir;
 	FILINFO fi;
@@ -989,7 +989,7 @@ static FRESULT f_unlink_full(string path, string &msg)
 			msg += (string("Deleted <i>") + npath + "</i><br />");
 		}			
 	}
-	if (res == FR_OK)
+	if ((res == FR_OK) && !only_contents)
 	{
 		//DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
 		msg += (string("Deleted <i>") + npath + "</i><br />");
@@ -2293,7 +2293,12 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			*ppContentType = "application/octet-stream";
 			return download_file(p, pBuffer, pLength);
 		}
-		
+		if (strcmp(pParams, "[DELSPOOL]") == 0)
+		{
+			DEBUG_LOG("%s: delete printer spooler", __FUNCTION__);
+			f_unlink_full(options.GetPrPath(), msg, true);
+			msg += "Deleted printer spooler";
+		}
 		generate_prpreview(pg, options.GetPrPath(), pv);
 		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
