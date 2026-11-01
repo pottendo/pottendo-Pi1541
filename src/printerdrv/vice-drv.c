@@ -842,6 +842,11 @@ int main(int argc, char **argv)
     int last_was_formfeed = 0;
     int status = EXIT_SUCCESS;
 
+    test_mode = 0;
+    stdout_enabled = 0;
+    gfx_path = NULL;
+    pdf_path = NULL;
+
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "--help") == 0) {
             DEBUG_LOG("Usage: %s [--drv nl10|mps801|mps802|mps803|1520] "

@@ -1674,13 +1674,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer (%d, %s): <i>%s</i>%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("Drive ID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer ID: <i>%d</i>, Driver: <i>%s</i>: %s%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
 				 (printer->get_deviceid()),
 				 (printer->get_driver().c_str()),
 				 (printer->running() ? "on" : "off"),
-				 (printer->running() ? (string(", spooldir: <i>") + (def_prefix + '/' + string(options.GetPrPath())) + "</i>").c_str() : ""),
+				 (printer->running() ? (string(", spooled: <i>") + to_string(printer->get_spooled()) + "b</i>").c_str() : ""),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -2146,7 +2146,15 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string pv = "";
 		if (printer)
 		{
-			printer->flush(options.GetPrDriver(), msg);	// driver ignored so far
+			if (printer->get_spooled() == 0)
+				msg = "Printer spool is empty<br />";
+			else
+				msg = "Printer spool contains <i>" + to_string(printer->get_spooled()) + "</i> bytes<br />";
+			if ((printer->get_spooled() != 0) && (strcmp(pParams, "[FLUSH]") == 0))
+			{
+				msg = "Flushing printer spool...<br />";
+				printer->flush(options.GetPrDriver(), msg);	// driver ignored so far
+			}
 			printer->get_prspool(pv, ".png", true);
 			printer->get_prspool(p, "");
 			printer->get_prspool(pbn, "", true);

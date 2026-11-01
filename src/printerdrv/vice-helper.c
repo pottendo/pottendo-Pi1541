@@ -801,8 +801,17 @@ int output_select_flush(unsigned int prnr)
 
 int output_select_formfeed(unsigned int prnr)
 {
+    int page_is_open;
+
     (void)prnr;
+    page_is_open = raster != NULL;
     render_raster();
+    if (page_is_open && gfx_page_height != 0
+        && append_gfx_page_end() < 0) {
+        DEBUG_LOG("Cannot store graphics page boundary.");
+        raster_error = 1;
+        return -1;
+    }
     return 0;
 }
 

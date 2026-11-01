@@ -56,6 +56,7 @@ public:
     inline bool shutoff(void) { return shoff; }
     inline u8 get_deviceid(void) { return deviceID; }
     inline string get_driver(void) { return driver; }
+    inline size_t get_spooled(void) { return printerBuffer.size(); }
 };
 extern Printer *printer;
 
