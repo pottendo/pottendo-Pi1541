@@ -185,6 +185,80 @@ static bool endsWith(const std::string& str, const std::string& suffix) {
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
+static bool glob_matches(const char* pattern, const char* filename)
+{
+	const char* star = nullptr;
+	const char* retry = nullptr;
+
+	while (*filename)
+	{
+		if (*pattern == '?' || *pattern == *filename)
+		{
+			++pattern;
+			++filename;
+		}
+		else if (*pattern == '*')
+		{
+			star = pattern++;
+			retry = filename;
+		}
+		else if (star)
+		{
+			pattern = star + 1;
+			filename = ++retry;
+		}
+		else
+			return false;
+	}
+
+	while (*pattern == '*')
+		++pattern;
+	return *pattern == '\0';
+}
+
+static int find_files_by_pattern(std::vector<std::string> &filenames, const std::string& path, const std::string& pattern)
+{
+	DIR dir;
+	FILINFO info;
+	FRESULT result = f_opendir(&dir, path.c_str());
+	if (result != FR_OK)
+	{
+		DEBUG_LOG("%s: failed to open directory '%s': %d",
+			__FUNCTION__, path.c_str(), result);
+		return -1;
+	}
+
+	while (true)
+	{
+		result = f_readdir(&dir, &info);
+		if (result != FR_OK)
+		{
+			FRESULT close_result;
+			DEBUG_LOG("%s: failed to read directory '%s': %d",
+				__FUNCTION__, path.c_str(), result);
+			close_result = f_closedir(&dir);
+			if (close_result != FR_OK)
+				DEBUG_LOG("%s: failed to close directory '%s': %d",
+					__FUNCTION__, path.c_str(), close_result);
+			return -1;
+		}
+		if (info.fname[0] == '\0')
+			break;
+		if (!(info.fattrib & AM_DIR)
+			&& glob_matches(pattern.c_str(), info.fname))
+			filenames.emplace_back(info.fname);
+	}
+
+	result = f_closedir(&dir);
+	if (result != FR_OK)
+	{
+		DEBUG_LOG("%s: failed to close directory '%s': %d",
+			__FUNCTION__, path.c_str(), result);
+		return -1;
+	}
+	return 0;
+}
+
 static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
     if(from.empty())
         return;
@@ -314,6 +388,27 @@ static int direntry_table(const string header, string &res, string &path, string
 
 	res += "</table>";
 	return 0;
+}
+
+static void generate_prpreview(string &res, string path, string &page)
+{
+	int cols = 0;
+	res = string("<table class=\"preview\">");
+	vector<string> png_files;
+	find_files_by_pattern(png_files, path, "*.png");
+	for (const auto& png_file : png_files)
+	{
+		if ((cols % 2) == 0)
+			res += "<tr>";
+		string png_path = path + "/" + png_file;
+		res += "<td><img src=\"" + urlEncode(png_path) + "\" style=\"height: 64px; width: 96px;\"></td>";
+		if ((cols % 2) == 0)
+		{
+			res += "</tr>";
+			cols++;
+		}
+	}
+	res += "</tr></table>";
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)
@@ -2180,7 +2275,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			*ppContentType = "application/octet-stream";
 			return download_file(p, pBuffer, pLength);
 		}
-		pg = "<img src=\"" + urlEncode(string("/") + options.GetPrPath() + "/" + pv) + "\">";
+		
+		generate_prpreview(pg, options.GetPrPath(), pv);
 		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
 		nLength = String.GetLength();
