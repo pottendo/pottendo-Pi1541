@@ -32,8 +32,4 @@ int drv_nl10_init(void);
 void drv_nl10_shutdown(void);
 void drv_nl10_reset(void);
 
-#ifdef NL10_STANDALONE
-void drv_nl10_set_standalone_gfx_width(unsigned int width);
-#endif
-
 #endif

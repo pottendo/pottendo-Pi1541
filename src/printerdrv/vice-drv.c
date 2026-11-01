@@ -28,15 +28,13 @@
 #include "drv-mps803.h"
 #include "drv-1520.h"
 #include "vice-helper.h"
+#include "../miniz.h"
 
 #define TEST_GLYPHS_PER_LINE 5
 #define TEST_GLYPH_COUNT 192
 #define PNG_MARGIN 10
-#define PNG_MAX_WIDTH 1920
-#define PNG_MAX_CONTENT_WIDTH VICE_HELPER_GFX_MAX_WIDTH
-#define PNG_MAX_BLOCK_SIZE 65535
+#define PNG_MAX_WIDTH 4096
 #define PDF_MARGIN 10
-#define PDF_HEX_LINE_LENGTH 32
 
 static driver_select_t *printer_driver;
 static int test_mode;
@@ -118,49 +116,84 @@ static int write_png_chunk(vice_helper_file_t *file, const char *type,
         ? 0 : -1;
 }
 
+typedef struct compressed_output_s {
+    vice_helper_file_t *file;
+    size_t length;
+    int png;
+} compressed_output_t;
+
+static mz_bool write_compressed_output(const void *data, int length,
+                                       void *user_data)
+{
+    compressed_output_t *output = user_data;
+    size_t bytes = (size_t)length;
+    int result;
+
+    if (length < 0 || bytes > SIZE_MAX - output->length) {
+        return MZ_FALSE;
+    }
+    if (output->png) {
+        result = write_png_chunk(output->file, "IDAT", data,
+                                 (uint32_t)bytes);
+        if (result < 0) {
+            return MZ_FALSE;
+        }
+    } else if (vice_helper_file_write(data, 1, bytes, output->file) != bytes) {
+        return MZ_FALSE;
+    }
+    output->length += bytes;
+    return MZ_TRUE;
+}
+
+static tdefl_compressor *start_image_compression(compressed_output_t *output)
+{
+    tdefl_compressor *compressor = tdefl_compressor_alloc();
+    int flags = tdefl_create_comp_flags_from_zip_params(
+        MZ_DEFAULT_COMPRESSION, MZ_DEFAULT_WINDOW_BITS, MZ_DEFAULT_STRATEGY)
+        | TDEFL_WRITE_ZLIB_HEADER | TDEFL_COMPUTE_ADLER32;
+
+    if (compressor == NULL) {
+        DEBUG_LOG("Cannot allocate image compressor.");
+        return NULL;
+    }
+    if (tdefl_init(compressor, write_compressed_output, output, flags)
+        != TDEFL_STATUS_OKAY) {
+        DEBUG_LOG("Cannot initialize image compressor.");
+        tdefl_compressor_free(compressor);
+        return NULL;
+    }
+    return compressor;
+}
+
+static int finish_image_compression(tdefl_compressor *compressor)
+{
+    tdefl_status status = tdefl_compress_buffer(
+        compressor, NULL, 0, TDEFL_FINISH);
+
+    if (status != TDEFL_STATUS_DONE) {
+        DEBUG_LOG("Image compression failed.");
+        return -1;
+    }
+    return 0;
+}
+
 static int write_gfx_png_page(size_t first_row, size_t last_row,
                               const char *output_path)
 {
-    vice_helper_file_t *file;
-    uint8_t header[13], *raw = NULL, *compressed = NULL;
+    vice_helper_file_t *file = NULL;
+    tdefl_compressor *compressor = NULL;
+    uint8_t header[13], *row_data = NULL;
     const uint8_t *gfx_pixels = vice_helper_gfx_pixels();
     size_t gfx_width = vice_helper_gfx_width();
-    size_t left = gfx_width, right = 0, top = last_row - first_row, bottom = 0;
-    size_t content_width, output_content_width, content_height;
+    size_t content_width = gfx_width;
+    size_t content_height = vice_helper_gfx_page_height();
     size_t image_width, image_height;
-    size_t raw_size, block_count, compressed_size, source_y, source_x;
-    size_t raw_offset = 0, compressed_offset = 0;
-    uint32_t adler_a = 1, adler_b = 0;
+    size_t row_size, source_y;
+    compressed_output_t compressed_output;
     uint8_t signature[] = { 137, 80, 78, 71, 13, 10, 26, 10 };
-    int found_pixel = 0;
     int result = -1;
 
-    for (source_y = first_row; source_y < last_row; source_y++) {
-        for (source_x = 0; source_x < gfx_width; source_x++) {
-            if (gfx_pixels[source_y * gfx_width + source_x]
-                == OUTPUT_PIXEL_BLACK) {
-                if (!found_pixel || source_x < left) {
-                    left = source_x;
-                }
-                if (!found_pixel || source_x > right) {
-                    right = source_x;
-                }
-                if (!found_pixel || source_y - first_row < top) {
-                    top = source_y - first_row;
-                }
-                if (!found_pixel || source_y - first_row > bottom) {
-                    bottom = source_y - first_row;
-                }
-                found_pixel = 1;
-            }
-        }
-    }
-
-    content_width = found_pixel ? right - left + 1 : 0;
-    output_content_width = content_width > PNG_MAX_CONTENT_WIDTH
-        ? PNG_MAX_CONTENT_WIDTH : content_width;
-    content_height = found_pixel ? bottom - top + 1 : 0;
-    image_width = output_content_width + 2 * PNG_MARGIN;
+    image_width = content_width + 2 * PNG_MARGIN;
     image_height = content_height + 2 * PNG_MARGIN;
     if (image_height > 0x7fffffffU
         || image_width > PNG_MAX_WIDTH
@@ -168,99 +201,16 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
         DEBUG_LOG("PNG dimensions exceed the supported size.");
         return -1;
     }
-    raw_size = (image_width + 1) * image_height;
-    block_count = raw_size / PNG_MAX_BLOCK_SIZE
-        + (raw_size % PNG_MAX_BLOCK_SIZE != 0);
-    if (raw_size > SIZE_MAX - 6
-        || block_count > (SIZE_MAX - raw_size - 6) / 5) {
-        DEBUG_LOG("PNG image is too large to encode.");
+    if (image_width == SIZE_MAX) {
+        DEBUG_LOG("PNG row is too large to encode.");
         return -1;
     }
-    compressed_size = 2 + raw_size + block_count * 5 + 4;
-    if (compressed_size > UINT32_MAX) {
-        DEBUG_LOG("PNG image exceeds the maximum chunk size.");
-        return -1;
-    }
-
-    raw = malloc(raw_size);
-    compressed = malloc(compressed_size);
-    if (raw == NULL || compressed == NULL) {
-        DEBUG_LOG("Cannot allocate PNG image data.");
+    row_size = image_width + 1;
+    row_data = malloc(row_size);
+    if (row_data == NULL) {
+        DEBUG_LOG("Cannot allocate PNG scanline.");
         goto cleanup;
     }
-    for (source_y = 0; source_y < image_height; source_y++) {
-        size_t x;
-        raw[raw_offset++] = 0;
-        for (x = 0; x < image_width; x++) {
-            uint8_t pixel = OUTPUT_PIXEL_WHITE;
-            size_t image_x = x;
-            size_t image_y = source_y;
-
-            if (found_pixel && image_x >= PNG_MARGIN
-                && image_x < PNG_MARGIN + output_content_width
-                && image_y >= PNG_MARGIN
-                && image_y < PNG_MARGIN + content_height) {
-                size_t output_x = image_x - PNG_MARGIN;
-                size_t source_start = left
-                    + output_x * content_width / output_content_width;
-                size_t source_end = left
-                    + (output_x + 1) * content_width / output_content_width;
-                size_t source_col;
-                size_t black_pixels = 0;
-                size_t source_count;
-
-                if (source_end == source_start) {
-                    source_end++;
-                }
-                for (source_col = source_start; source_col < source_end;
-                     source_col++) {
-                    if (gfx_pixels[(first_row + top + image_y - PNG_MARGIN)
-                                       * gfx_width
-                                   + source_col] == OUTPUT_PIXEL_BLACK) {
-                        black_pixels++;
-                    }
-                }
-                source_count = source_end - source_start;
-                raw[raw_offset++] = (uint8_t)(
-                    255 - black_pixels * 255 / source_count);
-                continue;
-            }
-            raw[raw_offset++] = pixel == OUTPUT_PIXEL_BLACK ? 0 : 255;
-        }
-    }
-
-    compressed[compressed_offset++] = 0x78;
-    compressed[compressed_offset++] = 0x01;
-    raw_offset = 0;
-    while (raw_offset < raw_size) {
-        size_t block_size = raw_size - raw_offset;
-        uint16_t length;
-        uint16_t inverse_length;
-
-        if (block_size > PNG_MAX_BLOCK_SIZE) {
-            block_size = PNG_MAX_BLOCK_SIZE;
-        }
-        length = (uint16_t)block_size;
-        inverse_length = (uint16_t)~length;
-        compressed[compressed_offset++] =
-            raw_offset + block_size == raw_size ? 1 : 0;
-        compressed[compressed_offset++] = (uint8_t)length;
-        compressed[compressed_offset++] = (uint8_t)(length >> 8);
-        compressed[compressed_offset++] = (uint8_t)inverse_length;
-        compressed[compressed_offset++] = (uint8_t)(inverse_length >> 8);
-        memcpy(compressed + compressed_offset, raw + raw_offset, block_size);
-        compressed_offset += block_size;
-        raw_offset += block_size;
-    }
-    for (raw_offset = 0; raw_offset < raw_size; raw_offset++) {
-        adler_a = (adler_a + raw[raw_offset]) % 65521;
-        adler_b = (adler_b + adler_a) % 65521;
-    }
-    compressed[compressed_offset++] = (uint8_t)(adler_b >> 8);
-    compressed[compressed_offset++] = (uint8_t)adler_b;
-    compressed[compressed_offset++] = (uint8_t)(adler_a >> 8);
-    compressed[compressed_offset++] = (uint8_t)adler_a;
-
     file = vice_helper_file_open(output_path, "wb");
     if (file == NULL) {
         DEBUG_LOG("Cannot open PNG output file '%s'.\n", output_path);
@@ -279,24 +229,65 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
     header[10] = 0;
     header[11] = 0;
     header[12] = 0;
+    compressed_output.file = file;
+    compressed_output.length = 0;
+    compressed_output.png = 1;
     if (vice_helper_file_write(signature, 1, sizeof(signature), file)
             == sizeof(signature)
-        && write_png_chunk(file, "IHDR", header, sizeof(header)) == 0
-        && write_png_chunk(file, "IDAT", compressed,
-                           (uint32_t)compressed_offset) == 0
-        && write_png_chunk(file, "IEND", NULL, 0) == 0) {
-        result = 0;
+        && write_png_chunk(file, "IHDR", header, sizeof(header)) == 0) {
+        compressor = start_image_compression(&compressed_output);
+        if (compressor == NULL) {
+            goto cleanup;
+        }
+        for (source_y = 0; source_y < image_height; source_y++) {
+            size_t x;
+            tdefl_status status;
+
+            row_data[0] = 0;
+
+            for (x = 0; x < image_width; x++) {
+                size_t image_y = source_y;
+                uint8_t pixel = OUTPUT_PIXEL_WHITE;
+
+                if (x >= PNG_MARGIN
+                    && x < PNG_MARGIN + content_width
+                    && image_y >= PNG_MARGIN
+                    && image_y < PNG_MARGIN + content_height) {
+                    size_t source_row = first_row + image_y - PNG_MARGIN;
+
+                    if (source_row < last_row) {
+                        pixel = gfx_pixels[source_row * gfx_width
+                                           + x - PNG_MARGIN];
+                    }
+                }
+                row_data[x + 1] = pixel == OUTPUT_PIXEL_BLACK ? 0 : 255;
+            }
+            status = tdefl_compress_buffer(
+                compressor, row_data, row_size, TDEFL_NO_FLUSH);
+            if (status < TDEFL_STATUS_OKAY) {
+                DEBUG_LOG("Failed to compress PNG scanline.");
+                goto cleanup;
+            }
+        }
+        if (finish_image_compression(compressor) == 0
+            && write_png_chunk(file, "IEND", NULL, 0) == 0) {
+            result = 0;
+        } else {
+            DEBUG_LOG("Failed to finish PNG compression or output.");
+        }
     } else {
-        DEBUG_LOG("Failed to write PNG output.");
-    }
-    if (vice_helper_file_close(file) != 0) {
-        DEBUG_LOG("Failed to close PNG output file.");
-        result = -1;
+        DEBUG_LOG("Failed to write PNG header.");
     }
 
 cleanup:
-    free(raw);
-    free(compressed);
+    if (compressor != NULL) {
+        tdefl_compressor_free(compressor);
+    }
+    if (file != NULL && vice_helper_file_close(file) != 0) {
+        DEBUG_LOG("Failed to close PNG output file.");
+        result = -1;
+    }
+    free(row_data);
     return result;
 }
 
@@ -337,41 +328,39 @@ static int write_gfx_png(void)
 
 typedef struct pdf_gfx_page_s {
     size_t first_row, last_row;
-    size_t left, right, top, bottom;
     size_t content_width, content_height, image_width, image_height;
-    size_t pixel_count, stream_length;
     double page_width, page_height;
     char content[160];
     int content_length;
-    int found_pixel;
 } pdf_gfx_page_t;
 
 static int write_gfx_pdf_multipage(void)
 {
-    static const char hex[] = "0123456789ABCDEF";
     vice_helper_file_t *file = NULL;
     const uint8_t *gfx_pixels = vice_helper_gfx_pixels();
     size_t gfx_width = vice_helper_gfx_width();
     size_t page_height = vice_helper_gfx_page_height();
+    size_t gfx_rows = vice_helper_gfx_rows();
     unsigned int dpi_x = vice_helper_gfx_dpi_x();
     unsigned int dpi_y = vice_helper_gfx_dpi_y();
-    size_t page_count = vice_helper_gfx_page_count();
+    size_t page_count = page_height == 0
+        ? 1 : vice_helper_gfx_page_count();
     size_t object_count, page_index, object_index;
-    size_t source_x, source_y, pixel_index;
     pdf_gfx_page_t *pages = NULL;
     long *offsets = NULL;
     long xref_offset;
+    uint8_t *row_data = NULL;
     int result = -1;
 
-    if (page_height == 0 || dpi_x == 0 || dpi_y == 0) {
+    if (page_count == 0 || dpi_x == 0 || dpi_y == 0) {
         DEBUG_LOG("Invalid printer page dimensions for PDF output.");
         return -1;
     }
-    if (page_count > (SIZE_MAX - 2) / 3) {
+    if (page_count > (SIZE_MAX - 2) / 4) {
         DEBUG_LOG("PDF contains too many pages.");
         return -1;
     }
-    object_count = 2 + page_count * 3;
+    object_count = 2 + page_count * 4;
     if (object_count > SIZE_MAX / sizeof(*offsets) - 1
         || page_count > SIZE_MAX / sizeof(*pages)) {
         DEBUG_LOG("PDF contains too many pages.");
@@ -383,47 +372,25 @@ static int write_gfx_pdf_multipage(void)
         DEBUG_LOG("Cannot allocate PDF page data.");
         goto cleanup;
     }
+    if (gfx_width > SIZE_MAX - 2 * PDF_MARGIN) {
+        DEBUG_LOG("PDF scanline is too wide.");
+        goto cleanup;
+    }
+    row_data = malloc(gfx_width + 2 * PDF_MARGIN);
+    if (row_data == NULL) {
+        DEBUG_LOG("Cannot allocate PDF scanline.");
+        goto cleanup;
+    }
 
     for (page_index = 0; page_index < page_count; page_index++) {
         pdf_gfx_page_t *page = &pages[page_index];
-        size_t page_rows, line_count;
+        page->first_row = page_height == 0
+            ? 0 : vice_helper_gfx_page_start(page_index);
+        page->last_row = page_height == 0
+            ? gfx_rows : vice_helper_gfx_page_end(page_index);
+        page->content_width = gfx_width;
+        page->content_height = page_height == 0 ? gfx_rows : page_height;
 
-        page->first_row = vice_helper_gfx_page_start(page_index);
-        page->last_row = vice_helper_gfx_page_end(page_index);
-        page_rows = page->last_row - page->first_row;
-        page->left = gfx_width;
-        page->right = 0;
-        page->top = page_rows;
-        page->bottom = 0;
-
-        for (source_y = page->first_row; source_y < page->last_row;
-             source_y++) {
-            for (source_x = 0; source_x < gfx_width; source_x++) {
-                if (gfx_pixels[source_y * gfx_width + source_x]
-                    == OUTPUT_PIXEL_BLACK) {
-                    if (!page->found_pixel || source_x < page->left) {
-                        page->left = source_x;
-                    }
-                    if (!page->found_pixel || source_x > page->right) {
-                        page->right = source_x;
-                    }
-                    if (!page->found_pixel
-                        || source_y - page->first_row < page->top) {
-                        page->top = source_y - page->first_row;
-                    }
-                    if (!page->found_pixel
-                        || source_y - page->first_row > page->bottom) {
-                        page->bottom = source_y - page->first_row;
-                    }
-                    page->found_pixel = 1;
-                }
-            }
-        }
-
-        page->content_width = page->found_pixel
-            ? page->right - page->left + 1 : 0;
-        page->content_height = page->found_pixel
-            ? page->bottom - page->top + 1 : 0;
         if (page->content_width > SIZE_MAX - 2 * PDF_MARGIN
             || page->content_height > SIZE_MAX - 2 * PDF_MARGIN) {
             DEBUG_LOG("PDF image is too large to encode.");
@@ -431,23 +398,6 @@ static int write_gfx_pdf_multipage(void)
         }
         page->image_width = page->content_width + 2 * PDF_MARGIN;
         page->image_height = page->content_height + 2 * PDF_MARGIN;
-        if (page->image_width > SIZE_MAX / page->image_height) {
-            DEBUG_LOG("PDF image is too large to encode.");
-            goto cleanup;
-        }
-        page->pixel_count = page->image_width * page->image_height;
-        if (page->pixel_count > (SIZE_MAX - 1) / 2) {
-            DEBUG_LOG("PDF image is too large to encode.");
-            goto cleanup;
-        }
-        page->stream_length = page->pixel_count * 2 + 1;
-        line_count = page->pixel_count / PDF_HEX_LINE_LENGTH
-            + (page->pixel_count % PDF_HEX_LINE_LENGTH != 0);
-        if (line_count > SIZE_MAX - page->stream_length) {
-            DEBUG_LOG("PDF image is too large to encode.");
-            goto cleanup;
-        }
-        page->stream_length += line_count;
         page->page_width = page->image_width * 72.0 / dpi_x;
         page->page_height = page->image_height * 72.0 / dpi_y;
         page->content_length = vice_helper_snprintf(
@@ -485,7 +435,7 @@ static int write_gfx_pdf_multipage(void)
     for (page_index = 0; page_index < page_count; page_index++) {
         if (vice_helper_file_printf(
                 file, "%lu 0 R ",
-                (unsigned long)(3 + page_index * 3)) < 0) {
+                (unsigned long)(3 + page_index * 4)) < 0) {
             goto write_error;
         }
     }
@@ -497,9 +447,13 @@ static int write_gfx_pdf_multipage(void)
 
     for (page_index = 0; page_index < page_count; page_index++) {
         pdf_gfx_page_t *page = &pages[page_index];
-        size_t page_object = 3 + page_index * 3;
+        size_t page_object = 3 + page_index * 4;
         size_t image_object = page_object + 1;
         size_t content_object = page_object + 2;
+        size_t length_object = page_object + 3;
+        compressed_output_t compressed_output;
+        tdefl_compressor *compressor;
+        size_t image_y;
 
         offsets[page_object] = vice_helper_file_tell(file);
         if (offsets[page_object] < 0
@@ -520,48 +474,56 @@ static int write_gfx_pdf_multipage(void)
                 file,
                 "%lu 0 obj\n<< /Type /XObject /Subtype /Image "
                 "/Width %lu /Height %lu /ColorSpace /DeviceGray "
-                "/BitsPerComponent 8 /Filter /ASCIIHexDecode "
-                "/Length %lu >>\nstream\n",
+                "/BitsPerComponent 8 /Filter /FlateDecode "
+                "/Length %lu 0 R >>\nstream\n",
                 (unsigned long)image_object,
                 (unsigned long)page->image_width,
                 (unsigned long)page->image_height,
-                (unsigned long)page->stream_length) < 0) {
+                (unsigned long)length_object) < 0) {
             goto write_error;
         }
 
-        for (pixel_index = 0; pixel_index < page->pixel_count;
-             pixel_index++) {
-            size_t image_x = pixel_index % page->image_width;
-            size_t image_y = pixel_index / page->image_width;
-            uint8_t pixel = OUTPUT_PIXEL_WHITE;
+        compressed_output.file = file;
+        compressed_output.length = 0;
+        compressed_output.png = 0;
+        compressor = start_image_compression(&compressed_output);
+        if (compressor == NULL) {
+            goto cleanup;
+        }
+        for (image_y = 0; image_y < page->image_height; image_y++) {
+            size_t image_x;
 
-            if (page->found_pixel && image_x >= PDF_MARGIN
-                && image_x < PDF_MARGIN + page->content_width
-                && image_y >= PDF_MARGIN
-                && image_y < PDF_MARGIN + page->content_height) {
-                pixel = gfx_pixels[
-                    (page->first_row + page->top + image_y - PDF_MARGIN)
-                        * gfx_width
-                    + page->left + image_x - PDF_MARGIN];
+            for (image_x = 0; image_x < page->image_width; image_x++) {
+                uint8_t pixel = OUTPUT_PIXEL_WHITE;
+
+                if (image_x >= PDF_MARGIN
+                    && image_x < PDF_MARGIN + page->content_width
+                    && image_y >= PDF_MARGIN
+                    && image_y < PDF_MARGIN + page->content_height) {
+                    size_t source_row =
+                        page->first_row + image_y - PDF_MARGIN;
+
+                    if (source_row < page->last_row) {
+                        pixel = gfx_pixels[source_row * gfx_width
+                                           + image_x - PDF_MARGIN];
+                    }
+                }
+                row_data[image_x] =
+                    pixel == OUTPUT_PIXEL_BLACK ? 0 : 255;
             }
-            if (vice_helper_file_putc(
-                    hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
-                    == VICE_HELPER_EOF
-                || vice_helper_file_putc(
-                    hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
-                    == VICE_HELPER_EOF) {
-                goto write_error;
-            }
-            if ((pixel_index + 1) % PDF_HEX_LINE_LENGTH == 0
-                && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
+            if (tdefl_compress_buffer(
+                    compressor, row_data, page->image_width,
+                    TDEFL_NO_FLUSH) < TDEFL_STATUS_OKAY) {
+                tdefl_compressor_free(compressor);
                 goto write_error;
             }
         }
-        if (page->pixel_count % PDF_HEX_LINE_LENGTH != 0
-            && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
+        if (finish_image_compression(compressor) < 0) {
+            tdefl_compressor_free(compressor);
             goto write_error;
         }
-        if (vice_helper_file_puts(">\nendstream\nendobj\n", file)
+        tdefl_compressor_free(compressor);
+        if (vice_helper_file_puts("\nendstream\nendobj\n", file)
             == VICE_HELPER_EOF) {
             goto write_error;
         }
@@ -571,6 +533,14 @@ static int write_gfx_pdf_multipage(void)
                 file, "%lu 0 obj\n<< /Length %d >>\nstream\n%sendstream\n"
                 "endobj\n", (unsigned long)content_object,
                 page->content_length, page->content) < 0) {
+            goto write_error;
+        }
+        offsets[length_object] = vice_helper_file_tell(file);
+        if (offsets[length_object] < 0
+            || vice_helper_file_printf(
+                file, "%lu 0 obj\n%lu\nendobj\n",
+                (unsigned long)length_object,
+                (unsigned long)compressed_output.length) < 0) {
             goto write_error;
         }
     }
@@ -608,218 +578,13 @@ cleanup:
     }
     free(pages);
     free(offsets);
-    return result;
-}
-
-static int write_gfx_pdf_single(void)
-{
-    static const char hex[] = "0123456789ABCDEF";
-    vice_helper_file_t *file;
-    const uint8_t *gfx_pixels = vice_helper_gfx_pixels();
-    size_t gfx_rows = vice_helper_gfx_rows();
-    size_t gfx_width = vice_helper_gfx_width();
-    unsigned int dpi_x = vice_helper_gfx_dpi_x();
-    unsigned int dpi_y = vice_helper_gfx_dpi_y();
-    size_t left = gfx_width, right = 0, top = gfx_rows, bottom = 0;
-    size_t content_width, content_height, image_width, image_height;
-    size_t pixel_count, stream_length, line_count;
-    size_t source_x, source_y, pixel_index;
-    long offsets[6], xref_offset;
-    double page_width, page_height;
-    char content[160];
-    int content_length;
-    int found_pixel = 0;
-    int result = -1;
-
-    for (source_y = 0; source_y < gfx_rows; source_y++) {
-        for (source_x = 0; source_x < gfx_width; source_x++) {
-            if (gfx_pixels[source_y * gfx_width + source_x]
-                == OUTPUT_PIXEL_BLACK) {
-                if (!found_pixel || source_x < left) {
-                    left = source_x;
-                }
-                if (!found_pixel || source_x > right) {
-                    right = source_x;
-                }
-                if (!found_pixel || source_y < top) {
-                    top = source_y;
-                }
-                if (!found_pixel || source_y > bottom) {
-                    bottom = source_y;
-                }
-                found_pixel = 1;
-            }
-        }
-    }
-
-    if (dpi_x == 0 || dpi_y == 0) {
-        DEBUG_LOG("Invalid printer resolution for PDF output.");
-        return -1;
-    }
-
-    content_width = found_pixel ? right - left + 1 : 0;
-    content_height = found_pixel ? bottom - top + 1 : 0;
-    if (content_width > SIZE_MAX - 2 * PDF_MARGIN
-        || content_height > SIZE_MAX - 2 * PDF_MARGIN) {
-        DEBUG_LOG("PDF image is too large to encode.");
-        return -1;
-    }
-    image_width = content_width + 2 * PDF_MARGIN;
-    image_height = content_height + 2 * PDF_MARGIN;
-    if (image_width > SIZE_MAX / image_height) {
-        DEBUG_LOG("PDF image is too large to encode.");
-        return -1;
-    }
-    pixel_count = image_width * image_height;
-    if (pixel_count > (SIZE_MAX - 1) / 2) {
-        DEBUG_LOG("PDF image is too large to encode.");
-        return -1;
-    }
-    stream_length = pixel_count * 2 + 1;
-    line_count = pixel_count / PDF_HEX_LINE_LENGTH
-        + (pixel_count % PDF_HEX_LINE_LENGTH != 0);
-    if (line_count > SIZE_MAX - stream_length) {
-        DEBUG_LOG("PDF image is too large to encode.");
-        return -1;
-    }
-    stream_length += line_count;
-
-    page_width = image_width * 72.0 / dpi_x;
-    page_height = image_height * 72.0 / dpi_y;
-    content_length = vice_helper_snprintf(
-        content, sizeof(content),
-        "q %.3f 0 0 %.3f 0 0 cm /Im0 Do Q\n", page_width, page_height);
-    if (content_length < 0 || (size_t)content_length >= sizeof(content)) {
-        DEBUG_LOG("Cannot format PDF page content.");
-        return -1;
-    }
-
-    file = vice_helper_file_open(pdf_path, "wb");
-    if (file == NULL) {
-        DEBUG_LOG("Cannot open PDF output file '%s'.\n", pdf_path);
-        return -1;
-    }
-
-    if (vice_helper_file_puts("%PDF-1.4\n", file) == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    offsets[1] = vice_helper_file_tell(file);
-    if (offsets[1] < 0
-        || vice_helper_file_puts(
-            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-            file) == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    offsets[2] = vice_helper_file_tell(file);
-    if (offsets[2] < 0
-        || vice_helper_file_puts(
-            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n"
-            "endobj\n", file) == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    offsets[3] = vice_helper_file_tell(file);
-    if (offsets[3] < 0
-        || vice_helper_file_printf(
-            file,
-            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
-            "/MediaBox [0 0 %.3f %.3f] "
-            "/Resources << /XObject << /Im0 4 0 R >> >> "
-            "/Contents 5 0 R >>\nendobj\n",
-            page_width, page_height) < 0) {
-        goto write_error;
-    }
-    offsets[4] = vice_helper_file_tell(file);
-    if (offsets[4] < 0
-        || vice_helper_file_printf(
-            file,
-            "4 0 obj\n<< /Type /XObject /Subtype /Image "
-            "/Width %lu /Height %lu /ColorSpace /DeviceGray "
-            "/BitsPerComponent 8 /Filter /ASCIIHexDecode "
-            "/Length %lu >>\nstream\n",
-            (unsigned long)image_width, (unsigned long)image_height,
-            (unsigned long)stream_length) < 0) {
-        goto write_error;
-    }
-
-    for (pixel_index = 0; pixel_index < pixel_count; pixel_index++) {
-        size_t image_x = pixel_index % image_width;
-        size_t image_y = pixel_index / image_width;
-        uint8_t pixel = OUTPUT_PIXEL_WHITE;
-
-        if (found_pixel && image_x >= PDF_MARGIN
-            && image_x < PDF_MARGIN + content_width
-            && image_y >= PDF_MARGIN
-            && image_y < PDF_MARGIN + content_height) {
-            pixel = gfx_pixels[(top + image_y - PDF_MARGIN) * gfx_width
-                               + left + image_x - PDF_MARGIN];
-        }
-        if (vice_helper_file_putc(
-                hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
-                == VICE_HELPER_EOF
-            || vice_helper_file_putc(
-                hex[pixel == OUTPUT_PIXEL_BLACK ? 0 : 15], file)
-                == VICE_HELPER_EOF) {
-            goto write_error;
-        }
-        if ((pixel_index + 1) % PDF_HEX_LINE_LENGTH == 0
-            && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
-            goto write_error;
-        }
-    }
-    if (pixel_count % PDF_HEX_LINE_LENGTH != 0
-        && vice_helper_file_putc('\n', file) == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    if (vice_helper_file_puts(">\nendstream\nendobj\n", file)
-        == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    offsets[5] = vice_helper_file_tell(file);
-    if (offsets[5] < 0
-        || vice_helper_file_printf(
-            file, "5 0 obj\n<< /Length %d >>\nstream\n%sendstream\n"
-            "endobj\n", content_length, content) < 0) {
-        goto write_error;
-    }
-    xref_offset = vice_helper_file_tell(file);
-    if (xref_offset < 0 || (long long)xref_offset > 9999999999LL
-        || vice_helper_file_puts("xref\n0 6\n0000000000 65535 f \n", file)
-            == VICE_HELPER_EOF) {
-        goto write_error;
-    }
-    for (pixel_index = 1; pixel_index <= 5; pixel_index++) {
-        if (offsets[pixel_index] < 0
-            || (long long)offsets[pixel_index] > 9999999999LL
-            || vice_helper_file_printf(
-                file, "%010ld 00000 n \n", offsets[pixel_index]) < 0) {
-            goto write_error;
-        }
-    }
-    if (vice_helper_file_printf(
-            file,
-            "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%ld\n%%%%EOF\n",
-            xref_offset) < 0) {
-        goto write_error;
-    }
-    result = 0;
-    goto cleanup;
-
-write_error:
-    DEBUG_LOG("Failed to write PDF output.");
-cleanup:
-    if (vice_helper_file_close(file) != 0) {
-        DEBUG_LOG("Failed to close PDF output file.");
-        result = -1;
-    }
+    free(row_data);
     return result;
 }
 
 static int write_gfx_pdf(void)
 {
-    if (vice_helper_gfx_page_height() != 0) {
-        return write_gfx_pdf_multipage();
-    }
-    return write_gfx_pdf_single();
+    return write_gfx_pdf_multipage();
 }
 
 #if defined(__CIRCLE__)
@@ -899,14 +664,10 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
     }
-
     if (strcmp(driver_name, "nl10") == 0) {
         init_resources = drv_nl10_init_resources;
         init_driver = drv_nl10_init;
         shutdown_driver = drv_nl10_shutdown;
-        if (gfx_path != NULL || pdf_path != NULL) {
-            drv_nl10_set_standalone_gfx_width(PNG_MAX_CONTENT_WIDTH);
-        }
     } else if (strcmp(driver_name, "mps801") == 0
                || strcmp(driver_name, "mps802") == 0
                || strcmp(driver_name, "mps803") == 0) {

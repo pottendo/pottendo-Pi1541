@@ -100,16 +100,6 @@ typedef struct nl10_s {
 
 
 static palette_t *palette = NULL;
-#ifdef NL10_STANDALONE
-static unsigned int standalone_gfx_width;
-
-void drv_nl10_set_standalone_gfx_width(unsigned int width)
-{
-    unsigned int max_width = MAX_COL - 2 * BORDERX;
-
-    standalone_gfx_width = width < max_width ? width : max_width;
-}
-#endif
 
 /* Logging goes here.  */
 static log_t drvnl10_log = LOG_DEFAULT;
@@ -246,12 +236,6 @@ static void reset(nl10_t *nl10)
     nl10->expand = 1;
     nl10->marg_l = BORDERX;
     nl10->marg_r = MAX_COL - BORDERX;
-#ifdef NL10_STANDALONE
-    if (standalone_gfx_width > 0
-        && nl10->marg_r > BORDERX + (int)standalone_gfx_width) {
-        nl10->marg_r = BORDERX + (int)standalone_gfx_width;
-    }
-#endif
     nl10->marg_t = 0;
     nl10->marg_b = 0;
     nl10->pos_x = nl10->marg_l;
@@ -1711,14 +1695,6 @@ static int handle_esc_control_sequence(nl10_t *nl10, unsigned int prnr, const ui
                     if (nl10->marg_r > MAX_COL - BORDERX) {
                         nl10->marg_r = MAX_COL - BORDERX;
                     }
-#ifdef NL10_STANDALONE
-                    if (standalone_gfx_width > 0
-                        && nl10->marg_r
-                           > BORDERX + (int)standalone_gfx_width) {
-                        nl10->marg_r =
-                            BORDERX + (int)standalone_gfx_width;
-                    }
-#endif
                     nl10->esc_ctr = 0;
                 }
                 break;

@@ -15,8 +15,6 @@
 #include "cbm1526-rom.h"
 #include "nl10-rom.h"
 
-#define PNG_MAX_CONTENT_WIDTH VICE_HELPER_GFX_MAX_WIDTH
-
 struct vice_helper_file_s {
 #if defined(__CIRCLE__)
     FIL stream;
@@ -559,6 +557,7 @@ static unsigned int raster_height;
 static unsigned int raster_x;
 static unsigned int raster_y;
 static int raster_error;
+static int raster_uses_gfx_buffer;
 static int stdout_enabled;
 static int gfx_enabled;
 static uint8_t *gfx_pixels;
@@ -572,14 +571,34 @@ static size_t gfx_page_capacity;
 static unsigned int gfx_dpi_x;
 static unsigned int gfx_dpi_y;
 
+static int reserve_gfx_rows(size_t required_rows);
+
 static int start_raster(void)
 {
-    size_t raster_size = (size_t)raster_width * raster_height;
+    size_t raster_size;
 
-    raster = malloc(raster_size);
-    if (raster == NULL) {
+    if (raster_width != 0 && raster_height > SIZE_MAX / raster_width) {
         raster_error = 1;
         return -1;
+    }
+    raster_size = (size_t)raster_width * raster_height;
+
+    if (gfx_enabled) {
+        if (gfx_rows > SIZE_MAX - raster_height
+            || reserve_gfx_rows(gfx_rows + raster_height) < 0) {
+            DEBUG_LOG("Cannot reserve graphics page buffer.");
+            raster_error = 1;
+            return -1;
+        }
+        raster = (char *)(gfx_pixels + gfx_rows * gfx_width);
+        raster_uses_gfx_buffer = 1;
+    } else {
+        raster = malloc(raster_size);
+        if (raster == NULL) {
+            raster_error = 1;
+            return -1;
+        }
+        raster_uses_gfx_buffer = 0;
     }
     memset(raster, OUTPUT_PIXEL_WHITE, raster_size);
     raster_x = 0;
@@ -587,32 +606,32 @@ static int start_raster(void)
     return 0;
 }
 
-static int append_gfx_row(const char *pixels, size_t width)
+static int reserve_gfx_rows(size_t required_rows)
 {
     size_t new_capacity;
     uint8_t *new_pixels;
 
-    if (gfx_rows == gfx_capacity) {
-        if (gfx_capacity > SIZE_MAX / 2 / gfx_width) {
-            return -1;
-        }
-        new_capacity = gfx_capacity == 0 ? 32 : gfx_capacity * 2;
-        new_pixels = realloc(gfx_pixels,
-                             new_capacity * gfx_width);
-        if (new_pixels == NULL) {
-            return -1;
-        }
-        gfx_pixels = new_pixels;
-        gfx_capacity = new_capacity;
+    if (required_rows <= gfx_capacity) {
+        return 0;
     }
 
-    memset(gfx_pixels + gfx_rows * gfx_width,
-           OUTPUT_PIXEL_WHITE, gfx_width);
-    if (width > gfx_width) {
-        width = gfx_width;
+    new_capacity = gfx_capacity == 0 ? required_rows : gfx_capacity;
+    while (new_capacity < required_rows) {
+        if (new_capacity > SIZE_MAX / 2) {
+            return -1;
+        }
+        new_capacity *= 2;
     }
-    memcpy(gfx_pixels + gfx_rows * gfx_width, pixels, width);
-    gfx_rows++;
+
+    if (gfx_width == 0 || new_capacity > SIZE_MAX / gfx_width) {
+        return -1;
+    }
+    new_pixels = realloc(gfx_pixels, new_capacity * gfx_width);
+    if (new_pixels == NULL) {
+        return -1;
+    }
+    gfx_pixels = new_pixels;
+    gfx_capacity = new_capacity;
     return 0;
 }
 
@@ -646,7 +665,6 @@ static void render_raster(void)
     unsigned int top = raster_height;
     unsigned int right = 0;
     unsigned int bottom = 0;
-
     if (raster == NULL) {
         return;
     }
@@ -674,13 +692,6 @@ static void render_raster(void)
         for (y = top; y <= bottom; y++) {
             unsigned int row_width = right - left + 1;
 
-            if (gfx_enabled
-                && append_gfx_row(raster + y * raster_width + left,
-                                  row_width) < 0) {
-                DEBUG_LOG("Cannot store raster for graphics output.");
-                raster_error = 1;
-                break;
-            }
             if (stdout_enabled
                 && (vice_helper_file_write(raster + y * raster_width + left,
                                            1, row_width,
@@ -696,14 +707,25 @@ static void render_raster(void)
         }
     }
 
+    if (gfx_enabled && gfx_rows == 0 && left > right) {
+        raster = NULL;
+        raster_uses_gfx_buffer = 0;
+        return;
+    }
+
+    if (raster_uses_gfx_buffer) {
+        gfx_rows += raster_height;
+    } else {
+        free(raster);
+    }
+    raster = NULL;
+    raster_uses_gfx_buffer = 0;
+
     if (gfx_page_height != 0 && raster_y == raster_height
         && append_gfx_page_end() < 0) {
         DEBUG_LOG("Cannot store graphics page boundary.");
         raster_error = 1;
     }
-
-    free(raster);
-    raster = NULL;
 }
 
 void driver_select_register(driver_select_t *driver_select)
@@ -731,9 +753,7 @@ int output_select_open(unsigned int prnr, output_parameter_t *output_parameter)
     (void)prnr;
     raster_width = output_parameter->maxcol;
     raster_height = output_parameter->maxrow;
-    gfx_page_height = gfx_enabled && selected_driver_name != NULL
-            && strcmp(selected_driver_name, "1520") != 0
-        ? raster_height : 0;
+    gfx_page_height = gfx_enabled ? raster_height : 0;
     if (gfx_enabled) {
         if (gfx_width != 0 && gfx_width != raster_width && gfx_rows > 0) {
             DEBUG_LOG("Printer output dimensions changed during graphics "
@@ -805,8 +825,13 @@ int output_select_formfeed(unsigned int prnr)
 
     (void)prnr;
     page_is_open = raster != NULL;
+    if (!page_is_open) {
+        return 0;
+    }
     render_raster();
-    if (page_is_open && gfx_page_height != 0
+    if (gfx_page_height != 0 && gfx_rows > 0
+        && (gfx_page_count == 0
+            || gfx_page_ends[gfx_page_count - 1] < gfx_rows)
         && append_gfx_page_end() < 0) {
         DEBUG_LOG("Cannot store graphics page boundary.");
         raster_error = 1;

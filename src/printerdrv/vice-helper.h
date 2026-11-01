@@ -105,8 +105,6 @@ typedef struct driver_select_s {
 #define OUTPUT_PIXEL_BLUE 'B'
 #define OUTPUT_NEWLINE '\n'
 
-#define VICE_HELPER_GFX_MAX_WIDTH 1900
-
 void driver_select_register(driver_select_t *driver_select);
 void vice_helper_select_driver(const char *driver_name);
 driver_select_t *vice_helper_driver(void);

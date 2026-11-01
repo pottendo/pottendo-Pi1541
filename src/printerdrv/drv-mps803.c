@@ -1466,11 +1466,21 @@ static void drv_mps803_close(unsigned int prnr, unsigned int secondary)
  * mode associated with SA=0 or 7.
  */
 
+static int drv_mps803_formfeed(unsigned int prnr);
+
 static int drv_mps803_putc(unsigned int prnr, unsigned int secondary, uint8_t b)
 {
+    mps_t *mps;
+
     DBG(("drv_mps803_putc(%u,%u:$%02x)", prnr, secondary, b));
     if (drv_first_open(prnr) < 0) {
         return -1;
+    }
+    mps = &drv_mps803[prnr];
+    if (b == 12
+        && (!get_global_mode(mps, MPS_QUOTED)
+            || get_global_mode(mps, MPS_BITMODE))) {
+        return drv_mps803_formfeed(prnr);
     }
     mps_engine_putc(&drv_mps803[prnr], prnr, secondary, b);
     return 0;
@@ -1496,13 +1506,20 @@ static int drv_mps803_flush(unsigned int prnr, unsigned int secondary)
 
 static int drv_mps803_formfeed(unsigned int prnr)
 {
+    mps_t *mps = &drv_mps803[prnr];
+
     DBG(("drv_mps803_formfeed(%u)", prnr));
 #if 0 /* do not auto-init on formfeed, avoid superflous init at shutdown */
     if (drv_first_open(prnr) < 0) {
         return -1;
     }
 #endif
-    return output_select_formfeed(prnr);;
+    if (mps->pos > 0) {
+        write_line(mps, prnr);
+        clear_buffer(mps);
+        mps->begin_line = 1;
+    }
+    return output_select_formfeed(prnr);
 }
 
 
