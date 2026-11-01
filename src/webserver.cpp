@@ -159,6 +159,21 @@ static std::string urlEncode(const std::string& value) {
     return encoded.str();
 }
 
+static std::string htmlEncode(const std::string& value) {
+    std::string encoded;
+    for (char c : value) {
+        switch (c) {
+        case '&': encoded += "&amp;"; break;
+        case '<': encoded += "&lt;"; break;
+        case '>': encoded += "&gt;"; break;
+        case '"': encoded += "&quot;"; break;
+        case '\'': encoded += "&#39;"; break;
+        default: encoded += c; break;
+        }
+    }
+    return encoded;
+}
+
 static std::string urlDecode(const std::string& value) {
     std::ostringstream decoded;
     size_t len = value.length();
@@ -393,22 +408,25 @@ static int direntry_table(const string header, string &res, string &path, string
 static void generate_prpreview(string &res, string path, string &page)
 {
 	int cols = 0;
-	res = string("<table class=\"preview\">");
+	res.clear();
 	vector<string> png_files;
 	find_files_by_pattern(png_files, path, "*.png");
+	sort(png_files.begin(), png_files.end());
 	for (const auto& png_file : png_files)
 	{
-		if ((cols % 2) == 0)
+		if (cols == 0)
 			res += "<tr>";
 		string png_path = path + "/" + png_file;
-		res += "<td><img src=\"" + urlEncode(png_path) + "\" style=\"height: 64px; width: 96px;\"></td>";
-		if ((cols % 2) == 0)
+		res += "<td style=\"vertical-align: top; text-align: left;\"><img src=\"" +
+			urlEncode(png_path) + "\"><div>" + htmlEncode(png_file) + "</div></td>";
+		if (++cols == 2)
 		{
 			res += "</tr>";
-			cols++;
+			cols = 0;
 		}
 	}
-	res += "</tr></table>";
+	if (cols != 0)
+		res += "</tr>";
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)

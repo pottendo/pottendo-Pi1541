@@ -15,7 +15,7 @@
 		table.dirs tr:nth-child(even) {background-color: #525c5c;}
 		table.dirs tr:nth-child(odd) {background-color: #657272;}
 		table.dirs tr:hover {background-color: #6a7575;}
-		table.preview { width: 100%; table-layout: fixed;}
+		table.preview { width: 100%; table-layout: fixed; text-align: left; vertical-align: top;}
 		table.preview img { display: block; width: 100%; height: auto; }
 		@font-face {
       		font-family: 'C64 Pro Mono';
@@ -124,9 +124,7 @@
             <hr style="border: 1px solid rgb(155, 155, 155); margin: 8px auto;">
 			<h4 style="text-align: left">Preview</h4>
 			<table class="preview">
-				<tr>
-					<td>%s</td>
-				</tr>
+				%s
 			</table>
 		</div>
 		<p class="small">%s, %s</p>
