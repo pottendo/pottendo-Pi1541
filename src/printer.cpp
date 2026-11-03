@@ -30,6 +30,7 @@ extern "C"
     int pi1541_printline(BYTE *line, int len);
     int pi1541_close(void);
     int vicepr_main(int argc, char **argv);
+    int vicepr_finish(void);
 }
 
 size_t bufferlen = 1024*64;
@@ -215,6 +216,7 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
             if (!gfx)
                 lext = ".pdf";
             get_prspool(output_path, gfx ? ".png" : ".pdf");
+            string secaddr = to_string(channel->secondaryAddress);
             char *argv[] = {
                 const_cast<char *>("vice-drv"),
                 const_cast<char *>(gfx ? "--gfx" : "--pdf"),
@@ -222,7 +224,7 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
                 const_cast<char *>("--drv"),
                 const_cast<char *>(d.c_str()),
                 const_cast<char *>("--secaddr"),
-                const_cast<char *>(to_string(channel->secondaryAddress).c_str()),
+                const_cast<char *>(secaddr.c_str()),
                 nullptr};
 
             ret = vicepr_main(7, argv);
@@ -241,6 +243,18 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
             " bytes, sec_addr=" + to_string(channel->secondaryAddress) + " to " + output_path;
         }
         res += "<br />";
+    }
+    if (d != "petlp")
+    {
+        ret = vicepr_finish();
+        if (ret != 0)
+        {
+            DEBUG_LOG("%s: failed to finish the final printer page, error %d",
+                      __FUNCTION__, ret);
+            res += string("printer driver failed to finish final page, error ")
+                + to_string(ret);
+            res += "<br />";
+        }
     }
 }
 

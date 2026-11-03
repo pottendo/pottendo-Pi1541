@@ -876,9 +876,6 @@ size_t vice_helper_gfx_page_count(void)
     if (gfx_page_height == 0) {
         return 1;
     }
-    if (gfx_page_count == 0 || gfx_rows > gfx_page_ends[gfx_page_count - 1]) {
-        return gfx_page_count + 1;
-    }
     return gfx_page_count;
 }
 
@@ -904,6 +901,16 @@ unsigned int vice_helper_gfx_dpi_y(void)
 
 void vice_helper_free_gfx_pixels(void)
 {
+    if (raster != NULL && !raster_uses_gfx_buffer) {
+        free(raster);
+    }
+    raster = NULL;
+    raster_uses_gfx_buffer = 0;
+    raster_width = 0;
+    raster_height = 0;
+    raster_x = 0;
+    raster_y = 0;
+    raster_error = 0;
     free(gfx_pixels);
     gfx_pixels = NULL;
     gfx_rows = 0;

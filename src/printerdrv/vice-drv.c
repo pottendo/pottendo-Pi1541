@@ -20,6 +20,7 @@
  * 02111-1307  USA.
  */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,57 @@ static int test_mode;
 static int stdout_enabled;
 static const char *gfx_path;
 static const char *pdf_path;
+#if defined(__CIRCLE__)
+static int vicepr_session_active;
+static char *vicepr_session_driver;
+static char *vicepr_session_gfx_path;
+static char *vicepr_session_pdf_path;
+static void (*vicepr_session_shutdown_driver)(void);
+static int vicepr_session_had_input;
+static int vicepr_session_last_was_formfeed;
+#endif
+
+#if defined(__CIRCLE__)
+static char *duplicate_string(const char *string)
+{
+    size_t length;
+    char *copy;
+
+    if (string == NULL) {
+        return NULL;
+    }
+    length = strlen(string) + 1;
+    copy = malloc(length);
+    if (copy != NULL) {
+        memcpy(copy, string, length);
+    }
+    return copy;
+}
+
+static int same_optional_string(const char *left, const char *right)
+{
+    return (left == NULL && right == NULL)
+        || (left != NULL && right != NULL && strcmp(left, right) == 0);
+}
+
+static void clear_vicepr_session(void)
+{
+    free(vicepr_session_driver);
+    free(vicepr_session_gfx_path);
+    free(vicepr_session_pdf_path);
+    vicepr_session_driver = NULL;
+    vicepr_session_gfx_path = NULL;
+    vicepr_session_pdf_path = NULL;
+    vicepr_session_shutdown_driver = NULL;
+    vicepr_session_active = 0;
+    vicepr_session_had_input = 0;
+    vicepr_session_last_was_formfeed = 0;
+    printer_driver = NULL;
+    gfx_path = NULL;
+    pdf_path = NULL;
+    vice_helper_free_gfx_pixels();
+}
+#endif
 
 static char *numbered_gfx_path(size_t page_number)
 {
@@ -299,6 +351,9 @@ static int write_gfx_png(void)
         ? 1 : vice_helper_gfx_page_count();
     size_t page;
 
+    if (page_count == 0) {
+        return 0;
+    }
     for (page = 0; page < page_count; page++) {
         size_t first_row = page_height == 0
             ? 0 : vice_helper_gfx_page_start(page);
@@ -352,7 +407,10 @@ static int write_gfx_pdf_multipage(void)
     uint8_t *row_data = NULL;
     int result = -1;
 
-    if (page_count == 0 || dpi_x == 0 || dpi_y == 0) {
+    if (page_count == 0) {
+        return 0;
+    }
+    if (dpi_x == 0 || dpi_y == 0) {
         DEBUG_LOG("Invalid printer page dimensions for PDF output.");
         return -1;
     }
@@ -590,21 +648,62 @@ static int write_gfx_pdf(void)
 #if defined(__CIRCLE__)
 extern const char *prBuffer4vicedrv;
 extern size_t bufferlen;
+
+int vicepr_finish(void)
+{
+    int status = EXIT_SUCCESS;
+
+    if (!vicepr_session_active) {
+        return EXIT_SUCCESS;
+    }
+
+    gfx_path = vicepr_session_gfx_path;
+    pdf_path = vicepr_session_pdf_path;
+    if (printer_driver == NULL
+        || (vicepr_session_had_input
+            && !vicepr_session_last_was_formfeed
+            && printer_driver->drv_formfeed(0) < 0)) {
+        DEBUG_LOG("The '%s' driver failed to finish the final page.\n",
+                  vicepr_session_driver);
+        status = EXIT_FAILURE;
+    }
+    vicepr_session_shutdown_driver();
+    if (vice_helper_output_error()) {
+        DEBUG_LOG("Failed to capture or write printer output.");
+        status = EXIT_FAILURE;
+    }
+    if (gfx_path != NULL && write_gfx_png() < 0) {
+        status = EXIT_FAILURE;
+    }
+    if (pdf_path != NULL && write_gfx_pdf() < 0) {
+        status = EXIT_FAILURE;
+    }
+    clear_vicepr_session();
+    return status;
+}
+
 int vicepr_main(int argc, char **argv)
 #else
 int main(int argc, char **argv)
 #endif
 {
+#if !defined(__CIRCLE__)
     uint8_t input[4096];
     size_t bytes_read;
+#endif
     size_t i;
     int arg;
+    char *end;
+    unsigned long parsed_secondary;
     const char *driver_name = "nl10";
+    unsigned int secondary_addr = 0;
     int (*init_resources)(void);
     int (*init_driver)(void);
     void (*shutdown_driver)(void);
+#if !defined(__CIRCLE__)
     int saw_input = 0;
     int last_was_formfeed = 0;
+#endif
     int status = EXIT_SUCCESS;
 
     test_mode = 0;
@@ -615,12 +714,14 @@ int main(int argc, char **argv)
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "--help") == 0) {
             DEBUG_LOG("Usage: %s [--drv nl10|mps801|mps802|mps803|1520] "
-                   "[--test] [--stdout] "
+                   "[--secaddr 0-15] [--test] [--stdout] "
                    "[--gfx [path.png]] [--pdf [path.pdf]] < input-bytes\n",
                    argv[0]);
             vice_helper_puts(
                 "  --drv    select nl10, mps801, mps802, mps803, or 1520 "
                 "(default: nl10)");
+            vice_helper_puts(
+                "  --secaddr select the printer secondary address (default: 0)");
             vice_helper_puts(
                 "  --test   print CBM glyphs supported by the selected driver");
             vice_helper_puts("  --stdout write the rendered raster to stdout");
@@ -645,6 +746,16 @@ int main(int argc, char **argv)
                         driver_name);
                 return EXIT_FAILURE;
             }
+        } else if (strcmp(argv[arg], "--secaddr") == 0 && arg + 1 < argc) {
+            errno = 0;
+            parsed_secondary = strtoul(argv[++arg], &end, 10);
+            if (argv[arg][0] < '0' || argv[arg][0] > '9' || *end != '\0'
+                || errno == ERANGE || parsed_secondary > 15) {
+                DEBUG_LOG("Invalid secondary address '%s'; "
+                          "choose a value from 0 to 15.\n", argv[arg]);
+                return EXIT_FAILURE;
+            }
+            secondary_addr = (unsigned int)parsed_secondary;
         } else if (strcmp(argv[arg], "--gfx") == 0) {
             gfx_path = "printer.png";
             if (arg + 1 < argc && argv[arg + 1][0] != '-') {
@@ -657,7 +768,7 @@ int main(int argc, char **argv)
             }
         } else {
             DEBUG_LOG("Usage: %s [--drv nl10|mps801|mps802|mps803|1520] "
-                    "[--test] "
+                    "[--secaddr 0-15] [--test] "
                     "[--stdout] [--gfx [path.png]] [--pdf [path.pdf]] "
                     "< input-bytes\n",
                     argv[0]);
@@ -680,6 +791,19 @@ int main(int argc, char **argv)
         shutdown_driver = drv_1520_shutdown;
     }
     vice_helper_select_driver(driver_name);
+#if defined(__CIRCLE__)
+    if (vicepr_session_active) {
+        if (strcmp(driver_name, vicepr_session_driver) != 0
+            || !same_optional_string(gfx_path, vicepr_session_gfx_path)
+            || !same_optional_string(pdf_path, vicepr_session_pdf_path)) {
+            DEBUG_LOG("Printer settings changed before finishing the "
+                      "current page.");
+            return EXIT_FAILURE;
+        }
+        gfx_path = vicepr_session_gfx_path;
+        pdf_path = vicepr_session_pdf_path;
+    }
+#endif
     vice_helper_set_output_options(stdout_enabled,
                                    gfx_path != NULL || pdf_path != NULL);
 
@@ -689,14 +813,54 @@ int main(int argc, char **argv)
                 driver_name);
         return EXIT_FAILURE;
     }
+#if defined(__CIRCLE__)
+    if (!vicepr_session_active) {
+        char *session_driver = duplicate_string(driver_name);
+        char *session_gfx_path = duplicate_string(gfx_path);
+        char *session_pdf_path = duplicate_string(pdf_path);
+        if (session_driver == NULL
+            || (gfx_path != NULL && session_gfx_path == NULL)
+            || (pdf_path != NULL && session_pdf_path == NULL)) {
+            free(session_driver);
+            free(session_gfx_path);
+            free(session_pdf_path);
+            DEBUG_LOG("Cannot retain printer session settings.");
+            return EXIT_FAILURE;
+        }
+        if (init_driver() < 0
+            || printer_driver->drv_open(0, DRIVER_FIRST_OPEN) < 0
+            || printer_driver->drv_flush(0, secondary_addr) < 0
+            || printer_driver->drv_open(0, secondary_addr) < 0) {
+            DEBUG_LOG("The '%s' driver failed to initialize.\n",
+                      driver_name);
+            shutdown_driver();
+            free(session_driver);
+            free(session_gfx_path);
+            free(session_pdf_path);
+            vice_helper_free_gfx_pixels();
+            return EXIT_FAILURE;
+        }
+        vicepr_session_driver = session_driver;
+        vicepr_session_gfx_path = session_gfx_path;
+        vicepr_session_pdf_path = session_pdf_path;
+        vicepr_session_shutdown_driver = shutdown_driver;
+        vicepr_session_active = 1;
+    } else if (printer_driver->drv_open(0, secondary_addr) < 0) {
+        DEBUG_LOG("The '%s' driver failed to open secondary address %u.\n",
+                  driver_name, secondary_addr);
+        return EXIT_FAILURE;
+    }
+#else
     if (init_driver() < 0
         || printer_driver->drv_open(0, DRIVER_FIRST_OPEN) < 0
-        || printer_driver->drv_flush(0, 0) < 0
-        || printer_driver->drv_open(0, 0) < 0) {
+        || printer_driver->drv_flush(0, secondary_addr) < 0
+        || printer_driver->drv_open(0, secondary_addr) < 0) {
         DEBUG_LOG("The '%s' driver failed to initialize.\n",
                 driver_name);
         status = EXIT_FAILURE;
-    } else if (test_mode) {
+    }
+#endif
+    if (status == EXIT_SUCCESS && test_mode) {
         unsigned int character, printed = 0;
 
         for (character = 0; character <= 255; character++) {
@@ -704,7 +868,8 @@ int main(int argc, char **argv)
             if (character < 0x20 || (character >= 0x80 && character < 0xa0)) {
                 continue;
             }
-            if (printer_driver->drv_putc(0, 0, (uint8_t)character) < 0) {
+            if (printer_driver->drv_putc(
+                    0, secondary_addr, (uint8_t)character) < 0) {
                 DEBUG_LOG("The '%s' driver failed during the "
                         "character test.\n", driver_name);
                 status = EXIT_FAILURE;
@@ -713,7 +878,7 @@ int main(int argc, char **argv)
             printed++;
             if (printed % TEST_GLYPHS_PER_LINE == 0
                 && printed < TEST_GLYPH_COUNT
-                && printer_driver->drv_putc(0, 0, '\r') < 0) {
+                && printer_driver->drv_putc(0, secondary_addr, '\r') < 0) {
                 DEBUG_LOG("The '%s' driver failed to advance the "
                         "test line.\n", driver_name);
                 status = EXIT_FAILURE;
@@ -727,13 +892,16 @@ int main(int argc, char **argv)
         }
         DEBUG_LOG("Printer control codes 0x00-0x1f and 0x80-0x9f are omitted "
                   "from the character test.");
+#if !defined(__CIRCLE__)
         saw_input = 1;
-    } else {
+#endif
+    } else if (status == EXIT_SUCCESS) {
 #if !defined(__CIRCLE__)        
         while ((bytes_read = vice_helper_file_read(
                     input, 1, sizeof(input), vice_helper_stdin())) > 0) {
             for (i = 0; i < bytes_read; i++) {
-                if (printer_driver->drv_putc(0, 0, input[i]) < 0) {
+                if (printer_driver->drv_putc(
+                        0, secondary_addr, input[i]) < 0) {
                     DEBUG_LOG("The '%s' driver failed to process "
                             "input.\n", driver_name);
                     status = EXIT_FAILURE;
@@ -752,24 +920,41 @@ int main(int argc, char **argv)
         } else 
 #else
         for (i = 0; i < bufferlen; i++) {
-            if (printer_driver->drv_putc(0, 0, prBuffer4vicedrv[i]) < 0) 
+            if (printer_driver->drv_putc(
+                    0, secondary_addr, prBuffer4vicedrv[i]) < 0)
             {
                 DEBUG_LOG("The '%s' driver failed to process input.", driver_name);
                     status = EXIT_FAILURE;
                     break;
             }
-            saw_input = 1;
-            last_was_formfeed = prBuffer4vicedrv[i] == '\f';
+            vicepr_session_had_input = 1;
+            vicepr_session_last_was_formfeed =
+                prBuffer4vicedrv[i] == '\f';
         }
 #endif       
+#if !defined(__CIRCLE__)
         if (saw_input && !last_was_formfeed
                    && printer_driver->drv_formfeed(0) < 0) {
             DEBUG_LOG("The '%s' driver failed to finish the final "
                     "page.\n", driver_name);
             status = EXIT_FAILURE;
         }
+#endif
     }
 
+#if defined(__CIRCLE__)
+    if (vice_helper_output_error()) {
+        DEBUG_LOG("Failed to capture or write printer output.");
+        status = EXIT_FAILURE;
+    }
+    if (gfx_path != NULL && write_gfx_png() < 0) {
+        status = EXIT_FAILURE;
+    }
+    if (pdf_path != NULL && write_gfx_pdf() < 0) {
+        status = EXIT_FAILURE;
+    }
+    return status;
+#else
     shutdown_driver();
     if (vice_helper_output_error()) {
         DEBUG_LOG("Failed to capture or write printer output.");
@@ -783,4 +968,5 @@ int main(int argc, char **argv)
     }
     vice_helper_free_gfx_pixels();
     return status;
+#endif
 }
