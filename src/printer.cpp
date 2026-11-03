@@ -34,6 +34,7 @@ extern "C"
 
 size_t bufferlen = 1024*64;
 unsigned const char *prBuffer4vicedrv;
+unsigned out_pr1 = 0;
 
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
@@ -109,6 +110,7 @@ void Printer::emulate(void)
         }
     } while (run);
     DEBUG_LOG("%s: printer emulation exited", __FUNCTION__);
+    out_pr1 = 0;
 }
 
 void Printer::get_prspool(string &p, string ext, bool basename)

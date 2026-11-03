@@ -678,8 +678,8 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
-		static unsigned out_pr1 = 0;
-		if (device_id < 8) 
+		extern unsigned out_pr1;
+		if (device_id < 8)
 		{
 			out_pr1 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);	
 			return;

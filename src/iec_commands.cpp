@@ -574,14 +574,33 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
  			
 			if (commandCode == 0x20 + deviceID)	// Listen
 			{
-				//if (deviceID < 8)
-				//	DEBUG_LOG("%s: Listen for device %d, secondaddr = %d", __FUNCTION__, deviceID, secondaryAddress);
 				secondaryAddress = commandCode & 0x0f;
 				deviceRole = DEVICE_ROLE_LISTEN;
-				if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
-				else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
+				if (iec_bus->IsAtnAsserted()) 
+				{
+					atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
+					if (deviceID < 8)
+					{
+						ReadIECSerialPort(commandCode);
+						if (commandCode == 0x00)
+						{
+							secondaryAddress = 0;
+							commandCode = 0x60;
+						}
+						goto cont;
+					}
+				}
+				else 
+					atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
+#if 0					
+				if (deviceID < 8)
+					DEBUG_LOG("%s: AtnSeq: %d, Listen for device %d, CC = 0x%02x, secondaddr = %d", 
+						__FUNCTION__, atnSequence, deviceID, commandCode, secondaryAddress);
+#endif						
+				break;
 			}
-			else if (commandCode == 0x3f)	// Unlisten
+cont:
+			if (commandCode == 0x3f)	// Unlisten
 			{
 				//if (deviceID < 8)
 				//	DEBUG_LOG("%s: UnListen for device %d, secondaddr = %d", __FUNCTION__, deviceID, secondaryAddress);
@@ -609,7 +628,7 @@ IEC_Commands::UpdateAction IEC_Commands::SimulateIECUpdate(void)
 				secondaryAddress = commandCode & 0x0f;
 
 				//if (deviceID < 8)
-				//	DEBUG_LOG("Close, device = %d, %02x %02x\r\n", deviceID, commandCode, secondaryAddress);
+				//	DEBUG_LOG("device = %d, CC=0x%02x secondaddr = 0x%02x\r\n", deviceID, commandCode, secondaryAddress);
 
 				//if (secondaryAddress == 0xf)
 				//{
