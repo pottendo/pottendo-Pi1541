@@ -39,11 +39,12 @@ unsigned out_pr1 = 0;
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
 , iec_bus(ID)
+, last_secaddr(255)
+, spooled(0)
 , run(activate)
 , shoff(false)
 , spoolfn(string("PrI1541"))
 , spoolnr(0)
-, last_secaddr(0)
 , spoolfilenr(0)
 , dirty(false)
 , lext(".pdf")
@@ -53,7 +54,7 @@ Printer::Printer(u8 ID, bool activate)
     string fp;
     iecCommands = new IEC_Commands(&iec_bus);
     fp = def_prefix + options.GetPrPath();
-    printerBuffer.reserve(128 * 1024);
+    
     res = f_stat(fp.c_str(), &fi);
     if (res == FR_INVALID_NAME)
         DEBUG_LOG("%s: invalid path '%s'", __FUNCTION__, fp.c_str());
@@ -86,6 +87,8 @@ Printer::Printer(u8 ID, bool activate)
 Printer::~Printer()
 {
     delete iecCommands;
+    for (auto channel : spoolChannels)
+        delete channel;
     DEBUG_LOG("%s: %d deleted", __FUNCTION__, deviceID);
 }
 
@@ -122,10 +125,17 @@ void Printer::get_prspool(string &p, string ext, bool basename)
         p = def_prefix + string(options.GetPrPath()) + '/' + p;
 }
 
-void Printer::add2buffer(u8 byte, u8 secondary_addr)
+void Printer::add2buffer(u8 byte, u8 sec_addr)
 {
-    last_secaddr = secondary_addr;
-    printerBuffer.push_back(byte);
+    if (sec_addr != last_secaddr)
+    {
+        //DEBUG_LOG("%s: secondary address changed from %d to %d", __FUNCTION__, last_secaddr, sec_addr);
+        last_secaddr = sec_addr;
+        curr_channel = new SpoolChannel(sec_addr);
+        spoolChannels.push_back(curr_channel);
+    }
+    curr_channel->printerBuffer.push_back(byte);
+    spooled++;
     if (!dirty)
     {
         dirty = true;
@@ -144,7 +154,14 @@ void Printer::flush(string drv, string &res)
     flush_vice(driver, res, false);
     res += "<br/ >";
     dirty = false;
-    printerBuffer.clear();
+    spooled = 0;
+    for (auto channel : spoolChannels)
+    {
+        channel->printerBuffer.clear();
+        delete channel;
+    }
+    spoolChannels.clear();
+    last_secaddr = 255;
 }
 
 void Printer::flush_vice(string drv, string &res, bool gfx)
@@ -155,69 +172,81 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
     if ((drv == "petlp") && gfx)
         d = "mps803";  // we don't have an gxf driver in petlp for Epson, use mps803 for preview
 
-    if (printerBuffer.empty())
+    if (spooled == 0)
         return;
-    bufferlen = printerBuffer.size();
-    prBuffer4vicedrv = printerBuffer.data();
-    if (d == "petlp")
+    for (auto channel : spoolChannels)
     {
-        lext = ".ps";
-        get_prspool(output_path, ".ps");
-        char *argv[] = { 
-            const_cast<char *>("pipetlpdrv"), 
-            const_cast<char *>("-o"), 
-            const_cast<char *>(output_path.c_str()), 
-            const_cast<char *>((last_secaddr == 7) ? "-lower" : "-upper"), 
-            const_cast<char *>("-lang"), 
-            const_cast<char *>("commodore"), 
-            const_cast<char *>("-F"), 
-            const_cast<char *>("PS"),
-            const_cast<char *>("-pi1541"),
-            nullptr 
-        };
-        ret = petlp_main(10, argv);
-        //DEBUG_LOG("%s: petlp_main allocated %dbytes", __FUNCTION__, ret);
-        ret = pi1541_printline(printerBuffer.data(), bufferlen);
-        if (ret < 0)
-            DEBUG_LOG("%s: petlp failed with error code %d", __FUNCTION__, ret);
+        bufferlen = channel->printerBuffer.size();
+        prBuffer4vicedrv = channel->printerBuffer.data();
+        if (d == "petlp")
+        {
+            lext = ".ps";
+            get_prspool(output_path, ".ps");
+            char *argv[] = {
+                const_cast<char *>("pipetlpdrv"),
+                const_cast<char *>("-o"),
+                const_cast<char *>(output_path.c_str()),
+                const_cast<char *>((last_secaddr == 7) ? "-lower" : "-upper"),
+                const_cast<char *>("-lang"),
+                const_cast<char *>("commodore"),
+                const_cast<char *>("-F"),
+                const_cast<char *>("PS"),
+                const_cast<char *>("-pi1541"),
+                nullptr};
+            ret = petlp_main(10, argv);
+            // DEBUG_LOG("%s: petlp_main allocated %dbytes", __FUNCTION__, ret);
+            ret = pi1541_printline(channel->printerBuffer.data(), bufferlen);
+            if (ret < 0)
+            {
+                DEBUG_LOG("%s: petlp failed with error code %d", __FUNCTION__, ret);
+                res += string("petlp failed, error ") + to_string(ret);
+            }
+            else
+            {
+                DEBUG_LOG("%s: Flushed %u bytes, sec_addr=%d to pi1541 printer '%s'", __FUNCTION__,
+                          bufferlen, channel->secondaryAddress, output_path.c_str());
+                res += string("flushed ") + to_string(channel->printerBuffer.size()) +
+                       " bytes, sec_addr=" + to_string(channel->secondaryAddress) + " to " + output_path;
+            }
+            pi1541_close();
+        }
         else
-            DEBUG_LOG("%s: Flushed %u bytes to pi1541 printer '%s", __FUNCTION__,
-                bufferlen, output_path.c_str());
-        pi1541_close();
-    }
-    else
-    {
-        if (!gfx)
-            lext = ".pdf";
-        get_prspool(output_path, gfx ? ".png" : ".pdf");
-        char *argv[] = {
-            const_cast<char *>("vice-drv"),
-            const_cast<char *>(gfx ? "--gfx" : "--pdf"),
-            const_cast<char *>(output_path.c_str()),
-            const_cast<char *>("--drv"),
-            const_cast<char *>(d.c_str()),
-            nullptr};
+        {
+            if (!gfx)
+                lext = ".pdf";
+            get_prspool(output_path, gfx ? ".png" : ".pdf");
+            char *argv[] = {
+                const_cast<char *>("vice-drv"),
+                const_cast<char *>(gfx ? "--gfx" : "--pdf"),
+                const_cast<char *>(output_path.c_str()),
+                const_cast<char *>("--drv"),
+                const_cast<char *>(d.c_str()),
+                const_cast<char *>("--secaddr"),
+                const_cast<char *>(to_string(channel->secondaryAddress).c_str()),
+                nullptr};
 
-        ret = vicepr_main(5, argv);
-    }
-    if (ret != 0)
-    {
-        DEBUG_LOG("%s: driver failed with error code %d",
-            __FUNCTION__, ret);
-        res += string("printer driver failed, error ") + to_string(ret);
-    }
-    else
-    {
-        DEBUG_LOG("%s: flushed %u bytes to pi1541 printer file '%s'",
-            __FUNCTION__, bufferlen, output_path.c_str());
-        res += string("flushed ") + to_string(printerBuffer.size())
-            + " bytes to " + output_path;
+            ret = vicepr_main(7, argv);
+        }
+        if (ret != 0)
+        {
+            DEBUG_LOG("%s: driver failed with error code %d",
+                      __FUNCTION__, ret);
+            res += string("printer driver failed, error ") + to_string(ret);
+        }
+        else
+        {
+            DEBUG_LOG("%s: flushed %u bytes, sec_addr=%d to pi1541 printer file '%s'",
+                      __FUNCTION__, bufferlen, channel->secondaryAddress, output_path.c_str());
+            res += string("flushed ") + to_string(channel->printerBuffer.size()) + 
+            " bytes, sec_addr=" + to_string(channel->secondaryAddress) + " to " + output_path;
+        }
+        res += "<br />";
     }
 }
 
 bool Printer::flush_raw(string &r)
 {
-    if (printerBuffer.empty())
+    if (spooled == 0)
         return true;
     string p = "";
     get_prspool(p, ".raw");
@@ -232,22 +261,26 @@ bool Printer::flush_raw(string &r)
     }
 
     size_t offset = 0;
-    while (offset < printerBuffer.size())
+    for (auto channel : spoolChannels)
     {
-        UINT bytesWritten = 0;
-        UINT bytesToWrite = static_cast<UINT>(
-            printerBuffer.size() - offset > 64 * 1024 ? 64 * 1024 : printerBuffer.size() - offset);
-        res = f_write(&fp, printerBuffer.data() + offset, bytesToWrite, &bytesWritten);
-        if (res != FR_OK || bytesWritten != bytesToWrite)
+        while (offset < channel->printerBuffer.size())
         {
-            DEBUG_LOG("%s: couldn't write '%s' (%d)", __FUNCTION__, p.c_str(), res);
-            f_close(&fp);
-            r += string("couldn't write ") + p + "(" + r + ")";
-            return false;
+            UINT bytesWritten = 0;
+            UINT bytesToWrite = static_cast<UINT>(
+                channel->printerBuffer.size() - offset > 64 * 1024 ? 64 * 1024 : channel->printerBuffer.size() - offset);
+            res = f_write(&fp, channel->printerBuffer.data() + offset, bytesToWrite, &bytesWritten);
+            if (res != FR_OK || bytesWritten != bytesToWrite)
+            {
+                DEBUG_LOG("%s: couldn't write '%s' (%d)", __FUNCTION__, p.c_str(), res);
+                f_close(&fp);
+                r += string("couldn't write ") + p + "(" + r + ")";
+                return false;
+            }
+            offset += bytesWritten;
         }
-        offset += bytesWritten;
+        offset = 0; // Reset offset for the next channel
     }
-
+    
     res = f_close(&fp);
     if (res != FR_OK)
     {
@@ -256,7 +289,7 @@ bool Printer::flush_raw(string &r)
     }
 
     DEBUG_LOG("%s: dumped %u bytes to '%s'", __FUNCTION__,
-        static_cast<unsigned>(printerBuffer.size()), p.c_str());
-    r += string("flushed ") + to_string(printerBuffer.size()) + " bytes to " + p;
+        static_cast<unsigned>(spooled), p.c_str());
+    r += string("flushed ") + to_string(spooled) + " bytes to " + p;
     return true;
 }

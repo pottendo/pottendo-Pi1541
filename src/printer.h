@@ -25,19 +25,29 @@
 #include "iec_bus.h"
 using namespace std;
 
+class SpoolChannel {
+public:
+    SpoolChannel(u8 secAddr) : secondaryAddress(secAddr) {}
+    ~SpoolChannel() { printerBuffer.clear(); }
+    u8 secondaryAddress;
+    vector<u8> printerBuffer;
+};
+
 class Printer
 {
     const string def_prefix = "SD:/1541/";
     u8 deviceID;
     IEC_Commands* iecCommands;
     IEC_Bus iec_bus;
-    vector<u8> printerBuffer;
+    vector<SpoolChannel *> spoolChannels;
+    u8 last_secaddr;
+    SpoolChannel *curr_channel;
+    uint32_t spooled;
     bool run;
     bool shoff;
     string driver;
     string spoolfn;
     uint16_t spoolnr;
-    u8 last_secaddr;
     u16 spoolfilenr;
     bool dirty;
     string lext;
@@ -56,7 +66,7 @@ public:
     inline bool shutoff(void) { return shoff; }
     inline u8 get_deviceid(void) { return deviceID; }
     inline string get_driver(void) { return driver; }
-    inline size_t get_spooled(void) { return printerBuffer.size(); }
+    inline size_t get_spooled(void) { return spooled; }
 };
 extern Printer *printer;
 
