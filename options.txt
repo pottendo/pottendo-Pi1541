@@ -90,7 +90,7 @@ ROM1581 = dos1581
 printer = 0
 // Spool directory, where prints are being stored using the webui
 PrinterPath = prn-out
-// Driver: petlp, mps803, mps802, mps801, nl10, 1520
+// Driver: petlp, mps803, mps802, mps801, nl10
 PrinterDriver = mps803
 
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000

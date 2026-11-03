@@ -233,9 +233,13 @@ Know Bugs/Observations:
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
 
-printer output files (postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+printer output files (PNG, PDF or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
 
 Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters.
+
+The Commodore 1520 plotter's PNG and PDF output supports black, blue, green, and red.
+
+**Note:** IEC drive emulation and printer doesn't work at the same time. Turn off the printer emulation, when navigating with buttons or FB64 or its variants.
 
 ## Compatibility
 

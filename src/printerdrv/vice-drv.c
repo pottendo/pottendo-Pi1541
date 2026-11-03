@@ -229,6 +229,37 @@ static int finish_image_compression(tdefl_compressor *compressor)
     return 0;
 }
 
+static void output_pixel_rgb(uint8_t pixel, uint8_t rgb[3])
+{
+    switch (pixel) {
+    case OUTPUT_PIXEL_BLACK:
+        rgb[0] = 0;
+        rgb[1] = 0;
+        rgb[2] = 0;
+        break;
+    case OUTPUT_PIXEL_BLUE:
+        rgb[0] = 0;
+        rgb[1] = 0;
+        rgb[2] = 255;
+        break;
+    case OUTPUT_PIXEL_GREEN:
+        rgb[0] = 0;
+        rgb[1] = 255;
+        rgb[2] = 0;
+        break;
+    case OUTPUT_PIXEL_RED:
+        rgb[0] = 255;
+        rgb[1] = 0;
+        rgb[2] = 0;
+        break;
+    default:
+        rgb[0] = 255;
+        rgb[1] = 255;
+        rgb[2] = 255;
+        break;
+    }
+}
+
 static int write_gfx_png_page(size_t first_row, size_t last_row,
                               const char *output_path)
 {
@@ -253,11 +284,11 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
         DEBUG_LOG("PNG dimensions exceed the supported size.");
         return -1;
     }
-    if (image_width == SIZE_MAX) {
+    if (image_width > (SIZE_MAX - 1) / 3) {
         DEBUG_LOG("PNG row is too large to encode.");
         return -1;
     }
-    row_size = image_width + 1;
+    row_size = image_width * 3 + 1;
     row_data = malloc(row_size);
     if (row_data == NULL) {
         DEBUG_LOG("Cannot allocate PNG scanline.");
@@ -277,7 +308,7 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
     header[6] = (uint8_t)(image_height >> 8);
     header[7] = (uint8_t)image_height;
     header[8] = 8;
-    header[9] = 0;
+    header[9] = 2;
     header[10] = 0;
     header[11] = 0;
     header[12] = 0;
@@ -300,6 +331,7 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
             for (x = 0; x < image_width; x++) {
                 size_t image_y = source_y;
                 uint8_t pixel = OUTPUT_PIXEL_WHITE;
+                uint8_t rgb[3];
 
                 if (x >= PNG_MARGIN
                     && x < PNG_MARGIN + content_width
@@ -312,7 +344,8 @@ static int write_gfx_png_page(size_t first_row, size_t last_row,
                                            + x - PNG_MARGIN];
                     }
                 }
-                row_data[x + 1] = pixel == OUTPUT_PIXEL_BLACK ? 0 : 255;
+                output_pixel_rgb(pixel, rgb);
+                memcpy(row_data + 1 + x * 3, rgb, sizeof(rgb));
             }
             status = tdefl_compress_buffer(
                 compressor, row_data, row_size, TDEFL_NO_FLUSH);
@@ -430,11 +463,11 @@ static int write_gfx_pdf_multipage(void)
         DEBUG_LOG("Cannot allocate PDF page data.");
         goto cleanup;
     }
-    if (gfx_width > SIZE_MAX - 2 * PDF_MARGIN) {
+    if (gfx_width > SIZE_MAX / 3 - 2 * PDF_MARGIN) {
         DEBUG_LOG("PDF scanline is too wide.");
         goto cleanup;
     }
-    row_data = malloc(gfx_width + 2 * PDF_MARGIN);
+    row_data = malloc((gfx_width + 2 * PDF_MARGIN) * 3);
     if (row_data == NULL) {
         DEBUG_LOG("Cannot allocate PDF scanline.");
         goto cleanup;
@@ -531,7 +564,7 @@ static int write_gfx_pdf_multipage(void)
             || vice_helper_file_printf(
                 file,
                 "%lu 0 obj\n<< /Type /XObject /Subtype /Image "
-                "/Width %lu /Height %lu /ColorSpace /DeviceGray "
+                "/Width %lu /Height %lu /ColorSpace /DeviceRGB "
                 "/BitsPerComponent 8 /Filter /FlateDecode "
                 "/Length %lu 0 R >>\nstream\n",
                 (unsigned long)image_object,
@@ -553,6 +586,7 @@ static int write_gfx_pdf_multipage(void)
 
             for (image_x = 0; image_x < page->image_width; image_x++) {
                 uint8_t pixel = OUTPUT_PIXEL_WHITE;
+                uint8_t rgb[3];
 
                 if (image_x >= PDF_MARGIN
                     && image_x < PDF_MARGIN + page->content_width
@@ -566,11 +600,11 @@ static int write_gfx_pdf_multipage(void)
                                            + image_x - PDF_MARGIN];
                     }
                 }
-                row_data[image_x] =
-                    pixel == OUTPUT_PIXEL_BLACK ? 0 : 255;
+                output_pixel_rgb(pixel, rgb);
+                memcpy(row_data + image_x * 3, rgb, sizeof(rgb));
             }
             if (tdefl_compress_buffer(
-                    compressor, row_data, page->image_width,
+                    compressor, row_data, (int)(page->image_width * 3),
                     TDEFL_NO_FLUSH) < TDEFL_STATUS_OKAY) {
                 tdefl_compressor_free(compressor);
                 goto write_error;
@@ -661,7 +695,8 @@ int vicepr_finish(void)
     pdf_path = vicepr_session_pdf_path;
     if (printer_driver == NULL
         || (vicepr_session_had_input
-            && !vicepr_session_last_was_formfeed
+            && (!vicepr_session_last_was_formfeed
+                || strcmp(vicepr_session_driver, "1520") == 0)
             && printer_driver->drv_formfeed(0) < 0)) {
         DEBUG_LOG("The '%s' driver failed to finish the final page.\n",
                   vicepr_session_driver);
