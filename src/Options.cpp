@@ -184,6 +184,7 @@ Options::Options(void)
 	, useDHCP(1)
 	, TZ(2.0)
 	, printer(0)
+	, PrinterSound(0)
 #endif	
 {
 	autoMountImageName[0] = 0;
@@ -298,6 +299,7 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
 		ELSE_CHECK_FLOAT_OPTION(TZ)
 		ELSE_CHECK_DECIMAL_OPTION(printer)
+		ELSE_CHECK_DECIMAL_OPTION(PrinterSound)
 		else if ((strcasecmp(pOption, "PrinterPath") == 0))
 		{
 			strncpy(prpath, pValue, 255);

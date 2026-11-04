@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -460,18 +461,35 @@ int main(int argc, char **argv)
 	return (0);
 }
 
-int pi1541_printline(BYTE *line, int len)
+int pi1541_printline(BYTE *line, size_t len, int secondary)
 {
+	size_t offset = 0;
+
 	if (!PrinterData)
 		return -1;
 
-	if (PrinterData->inptr + len > INBUFSIZ)
+	if (open_printer(PrinterData, NULL, 0, secondary) != SERIAL_OK)
 		return -1;
 
-	memcpy(PrinterData->inbuf + PrinterData->inptr, line, len);
-	PrinterData->inptr += len;
+	while (offset < len) {
+		size_t available = INBUFSIZ - (size_t)PrinterData->inptr;
+		size_t short_capacity =
+			(size_t)SHRT_MAX - (size_t)PrinterData->inptr;
+		size_t chunk = len - offset;
 
-	output_line(PrinterData);
+		if (chunk > available)
+			chunk = available;
+		if (chunk > short_capacity)
+			chunk = short_capacity;
+		if (!chunk)
+			return -1;
+
+		memcpy(PrinterData->inbuf + PrinterData->inptr,
+		       line + offset, chunk);
+		PrinterData->inptr += (short)chunk;
+		offset += chunk;
+		output_line(PrinterData);
+	}
 
 	return 0;
 }
@@ -480,7 +498,10 @@ int pi1541_close(void)
 {
 	if (!PrinterData)
 		return -1;
-	if (PrinterData->of_format == FT_PS)
+	if (PrinterData->inptr)
+		output_line(PrinterData);
+	if (PrinterData->of_format == FT_PS &&
+		(PrinterData->ps_state & PS_PAGEHDR))
 		do_formfeed(PrinterData); /* eject paper */
 
 	close_printer(PrinterData, 0);
@@ -1499,4 +1520,3 @@ static void do_formfeed (PRINTER *printer)
 
     printer->ps_state = PS_BLANK;
 }
-

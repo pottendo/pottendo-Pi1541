@@ -55,7 +55,7 @@
 #define VERTICAL_CLEARANCE      (10 * STEPS_PER_MM)     /* 10 mm */
 #define PIXELS_PER_STEP         5
 
-#define X_PIXELS                (PIXELS_PER_STEP * (MAX_COL+1))
+#define X_PIXELS                (PIXELS_PER_STEP * (MAX_COL+2))
 #define Y_PIXELS                (PIXELS_PER_STEP * (MAX_ROW+1))
 
 #define CR                      13
@@ -86,16 +86,22 @@ struct plot_s {
     uint8_t (*sheet)[Y_PIXELS][X_PIXELS];
     int colour;         /* sa = 2 */
     int colour_accu;
+    int colour_pending;
     int charsize;       /* sa = 3; segment multiplication */
     int charsize_accu;
+    int charsize_pending;
     int rotation;       /* sa = 4 */
     int rotation_accu;
+    int rotation_pending;
     int scribe;         /* sa = 5 */
     int scribe_accu;
+    int scribe_pending;
     int scribe_state;
     int lowercase;      /* sa = 6 */
     int lowercase_accu;
+    int lowercase_pending;
     int quote_mode;
+    int active_secondary;
     enum command_stage command_stage;   /* sa = 1 */
     int command;
     int command_x;
@@ -104,6 +110,7 @@ struct plot_s {
     int abs_origin_x, abs_origin_y;     /* steps relative to start of page */
     int rel_origin_x, rel_origin_y;     /* steps relative to abs_origin */
     int cur_x, cur_y;                   /* steps relative to abs_origin */
+    int highest_y;                      /* steps relative to start of page */
     int lowest_y;                       /* steps relative to start of page */
 
     int first_open_type;    /* if not 0, the driver will initialize itself (for the given type) if needed */
@@ -132,18 +139,30 @@ static void reset_scribe_state(plot_t *mps);
 /* ------------------------------------------------------------------------- */
 /* 1520 plotter engine. */
 
-static void write_lines(plot_t *mps, int lines)
+static void write_lines(plot_t *mps, int first_line, int lines)
 {
     int x, y;
     int prnr = mps->prnr;
 
 #if DEBUG1520
-    log_message(drv1520_log, "write_lines: %d lines", lines);
+    log_message(drv1520_log, "write_lines: %d lines from %d", lines, first_line);
 #endif
 
+    if (first_line < 0) {
+        lines += first_line;
+        first_line = 0;
+    }
+    if (first_line > MAX_ROW || lines <= 0) {
+        return;
+    }
+    if (lines > MAX_ROW + 1 - first_line) {
+        lines = MAX_ROW + 1 - first_line;
+    }
+
+    first_line *= PIXELS_PER_STEP;
     lines *= PIXELS_PER_STEP;
 
-    for (y = 0; y < lines; y++) {
+    for (y = first_line; y < first_line + lines; y++) {
         for (x = 0; x < X_PIXELS; x++) {
             output_select_putc(prnr, tochar[(*mps->sheet)[y][x]]);
         }
@@ -183,7 +202,7 @@ static void reset_abs_origin(plot_t *mps)
         log_message(drv1520_log, "reset_abs_origin: output and shift %d pixels (%d Y-coordinates)", y_pixels, y_steps);
 #endif
 
-        write_lines(mps, y_steps);
+        write_lines(mps, 0, y_steps);
         memmove(&(*mps->sheet)[0][0],                   /* destination */
                 &(*mps->sheet)[y_pixels][0],            /* source */
                 remaining_y_pixels * X_PIXELS);
@@ -193,6 +212,7 @@ static void reset_abs_origin(plot_t *mps)
                 y_pixels * X_PIXELS);
 
         mps->abs_origin_y += y_steps;
+        mps->highest_y += y_steps;
         mps->lowest_y += y_steps;
 #if DEBUG1520
         log_message(drv1520_log, "                 : abs_origin_y=%d lowest_y=%d", mps->abs_origin_y, mps->lowest_y);
@@ -211,10 +231,23 @@ static void set_rel_origin(plot_t *mps)
 
 static void eject(plot_t *mps)
 {
+    int first_line;
+    int last_line;
+
 #if DEBUG1520
     log_message(drv1520_log, "eject");
 #endif
-    write_lines(mps, -mps->lowest_y + 1);
+    first_line = MAX_Y_COORD - mps->highest_y - 1;
+    last_line = MAX_Y_COORD - mps->lowest_y + 1;
+    if (first_line < 0) {
+        first_line = 0;
+    }
+    if (last_line > MAX_ROW) {
+        last_line = MAX_ROW;
+    }
+    if (last_line >= first_line) {
+        write_lines(mps, first_line, last_line - first_line + 1);
+    }
 
     memset(&(*mps->sheet)[0][0], PIXEL_INDEX_WHITE, Y_PIXELS * X_PIXELS);
 
@@ -222,6 +255,7 @@ static void eject(plot_t *mps)
     mps->abs_origin_y = -VERTICAL_CLEARANCE;
     mps->cur_x = 0;
     mps->cur_y = 0;
+    mps->highest_y = mps->abs_origin_y;
     mps->lowest_y = mps->abs_origin_y;
 }
 
@@ -271,7 +305,7 @@ static void plot(plot_t *mps, int x, int y)
 #if DEBUG1520_A
     log_message(drv1520_log, "plot: (%4d,%4d) scribe=%d state=%d", x, y, mps->scribe, mps->scribe_state);
 #endif
-    if (x >= X_PIXELS || x < 0 || y > Y_PIXELS || y < 0) {
+    if (x >= X_PIXELS || x < 0 || y >= Y_PIXELS || y < 0) {
 #if DEBUG1520
         log_message(drv1520_log, "plot: (%4d,%4d) out of bounds", x, y);
 #endif
@@ -383,12 +417,6 @@ static void bresenham_par(plot_t *mps, int x0, int y0, int x1, int y1, int wd)
     }
 }
 
-#define Assert(val, expr) do {  \
-        if (!(expr)) {          \
-            log_error(drv1520_log, "%s %d: assertion %s failed: %d", __FILE__, __LINE__, #expr, val);\
-        }                       \
-    } while (0)
-
 static void draw(plot_t *mps, int from_x, int from_y, int to_x, int to_y)
 {
 #if DEBUG1520_C
@@ -404,27 +432,23 @@ static void draw(plot_t *mps, int from_x, int from_y, int to_x, int to_y)
       to_y += mps->abs_origin_y + 1;
 
     mps->lowest_y = vice_min(mps->lowest_y, vice_min(from_y, to_y));
+    if (from_y > mps->highest_y) {
+        mps->highest_y = from_y;
+    }
+    if (to_y > mps->highest_y) {
+        mps->highest_y = to_y;
+    }
 
 #if DEBUG1520_C
     log_message(drv1520_log, "draw: applied abs origin (%4d,%4d): (%4d,%4d)...(%4d,%4d) lowest_y=%d",  mps->abs_origin_x, mps->abs_origin_y, from_x, from_y, to_x, to_y, mps->lowest_y);
 #endif
-    /* Flip y-axis */
-    from_y = -from_y;
-      to_y = -  to_y;
+    /* Map the plotter's positive-up coordinate system into bitmap rows. */
+    from_y = MAX_Y_COORD - from_y;
+      to_y = MAX_Y_COORD - to_y;
 
 #if DEBUG1520_C
-    log_message(drv1520_log, "draw: flip y:                         (%4d,%4d)...(%4d,%4d)",  from_x, from_y, to_x, to_y);
+    log_message(drv1520_log, "draw: map y:                          (%4d,%4d)...(%4d,%4d)",  from_x, from_y, to_x, to_y);
 #endif
-
-    Assert(from_x, from_x > 0);
-    Assert(  to_x,   to_x > 0);
-    Assert(from_x, from_x <= MAX_COL);
-    Assert(  to_x,   to_x <= MAX_COL);
-
-    Assert(from_y, from_y > 0);
-    Assert(  to_y,   to_y > 0);
-    Assert(from_y, from_y <= MAX_ROW);
-    Assert(  to_y,   to_y <= MAX_ROW);
 
     /* Convert to bitmap resolution and coordinates */
 
@@ -861,6 +885,58 @@ done:
     return INCOMPLETE;
 }
 
+static void finish_channel_setting(plot_t *mps, unsigned int secondary)
+{
+    switch (secondary) {
+    case 2:
+        if (mps->colour_pending) {
+            mps->colour = mps->colour_accu % 4;
+            mps->colour_accu = 0;
+            mps->colour_pending = 0;
+        }
+        break;
+    case 3:
+        if (mps->charsize_pending) {
+            mps->charsize = 1 << (mps->charsize_accu % 4);
+            mps->charsize_accu = 0;
+            mps->charsize_pending = 0;
+        }
+        break;
+    case 4:
+        if (mps->rotation_pending) {
+            mps->rotation = mps->rotation_accu % 2;
+            mps->rotation_accu = 0;
+            mps->rotation_pending = 0;
+        }
+        break;
+    case 5:
+        if (mps->scribe_pending) {
+            mps->scribe = (mps->scribe_accu % 16) * PIXELS_PER_STEP;
+            mps->scribe_accu = 0;
+            mps->scribe_pending = 0;
+        }
+        break;
+    case 6:
+        if (mps->lowercase_pending) {
+            mps->lowercase = mps->lowercase_accu % 2;
+            mps->lowercase_accu = 0;
+            mps->lowercase_pending = 0;
+        }
+        break;
+    }
+}
+
+/* BASIC PRINT# statements may end selector values without sending CR. */
+static void select_secondary(plot_t *mps, unsigned int secondary)
+{
+    if (mps->active_secondary != (int)secondary) {
+        if (mps->active_secondary >= 0) {
+            finish_channel_setting(mps, mps->active_secondary);
+        }
+        mps->active_secondary = (int)secondary;
+    }
+}
+
 static void print_char_plot(plot_t *mps, const uint8_t c)
 {
     int value;
@@ -967,10 +1043,14 @@ static void print_char_select_colour(plot_t *mps, const uint8_t c)
 {
     int value;
 
+    if (c != CR) {
+        mps->colour_pending = 1;
+    }
     value = numparser(&mps->colour_accu, c);
 
     if (value != INCOMPLETE) {
         mps->colour = value % 4;
+        mps->colour_pending = 0;
     }
 }
 
@@ -978,10 +1058,14 @@ static void print_char_select_character_size(plot_t *mps, const uint8_t c)
 {
     int value;
 
+    if (c != CR) {
+        mps->charsize_pending = 1;
+    }
     value = numparser(&mps->charsize_accu, c);
 
     if (value != INCOMPLETE) {
         mps->charsize = 1 << (value % 4);
+        mps->charsize_pending = 0;
     }
 }
 
@@ -989,10 +1073,14 @@ static void print_char_select_character_rotation(plot_t *mps, const uint8_t c)
 {
     int value;
 
+    if (c != CR) {
+        mps->rotation_pending = 1;
+    }
     value = numparser(&mps->rotation_accu, c);
 
     if (value != INCOMPLETE) {
         mps->rotation = value % 2;
+        mps->rotation_pending = 0;
     }
 }
 
@@ -1000,10 +1088,14 @@ static void print_char_select_scribe(plot_t *mps, const uint8_t c)
 {
     int value;
 
+    if (c != CR) {
+        mps->scribe_pending = 1;
+    }
     value = numparser(&mps->scribe_accu, c);
 
     if (value != INCOMPLETE) {
         mps->scribe = (value % 16) * PIXELS_PER_STEP;
+        mps->scribe_pending = 0;
 #if DEBUG1520
         log_message(drv1520_log, "print_char_select_scribe: scribe = %d (%d)", mps->scribe, value);
 #endif
@@ -1018,10 +1110,14 @@ static void print_char_select_lowercase(plot_t *mps, const uint8_t c)
 {
     int value;
 
+    if (c != CR) {
+        mps->lowercase_pending = 1;
+    }
     value = numparser(&mps->lowercase_accu, c);
 
     if (value != INCOMPLETE) {
         mps->lowercase = value % 2;
+        mps->lowercase_pending = 0;
     }
 }
 
@@ -1068,6 +1164,9 @@ static void power_on_reset(plot_t *mps)
     mps->sheet = lib_calloc(Y_PIXELS, X_PIXELS * sizeof(uint8_t));
     mps->abs_origin_x = 0;
     mps->abs_origin_y = -VERTICAL_CLEARANCE;
+    mps->active_secondary = -1;
+    mps->highest_y = mps->abs_origin_y;
+    mps->lowest_y = mps->abs_origin_y;
 
     draw_four_squares(mps);
 }
@@ -1130,6 +1229,8 @@ static int drv_1520_first_open(unsigned int prnr)
 }
 static int drv_1520_open(unsigned int prnr, unsigned int secondary)
 {
+    plot_t *mps = &drv_1520[prnr];
+
 #if DEBUG1520
     log_message(drv1520_log, "drv_1520_open: sa=%u prnr=%u", secondary, prnr);
 #endif
@@ -1140,6 +1241,10 @@ static int drv_1520_open(unsigned int prnr, unsigned int secondary)
         return 0;
     } else if (secondary > 7) {
         return -1;
+    }
+
+    if (mps->sheet != NULL) {
+        select_secondary(mps, secondary);
     }
 
     return 0;
@@ -1180,6 +1285,9 @@ static void drv_1520_close(unsigned int prnr, unsigned int secondary)
         if (palette == NULL) {
             log_message(drv1520_log, "PALETTE ALREADY DEALLOCATED!!\n");
         }
+        if (mps->active_secondary >= 0) {
+            finish_channel_setting(mps, mps->active_secondary);
+        }
         eject(mps);
 
         if (mps->sheet) {
@@ -1200,6 +1308,7 @@ static int drv_1520_putc(unsigned int prnr, unsigned int secondary, uint8_t b)
     if (drv_first_open(prnr) < 0) {
         return -1;
     }
+    select_secondary(mps, secondary);
     switch (secondary) {
     case 0:
         print_char_text(mps, b);
@@ -1264,6 +1373,9 @@ static int drv_1520_formfeed(unsigned int prnr)
     }
 #endif
     if (mps->prnr == (int)prnr && mps->sheet != NULL) {
+        if (mps->active_secondary >= 0) {
+            finish_channel_setting(mps, mps->active_secondary);
+        }
         eject(mps);
     }
     output_select_formfeed(prnr);

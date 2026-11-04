@@ -704,15 +704,31 @@ TKernelTimerHandle CKernel::timer_start(unsigned delay, TKernelTimerHandler *pHa
 }
 
 #include "sample.h"
+#include "pr_mono_short_wav.h"
 //extern const long int Sample_bin_size;
 //extern const unsigned char *Sample_bin;
-void CKernel::playsound(void)
+void CKernel::playsound(int sound)
 {
+	void *s = nullptr;
+	unsigned long sz = 0;
 	if (no_pwm) return;
 #if RASPPI <= 4
 	if (m_PWMSoundDevice->PlaybackActive())
 		return;
-	m_PWMSoundDevice->Playback ((void *)Sample_bin, Sample_bin_size, 1, 8);
+	switch (sound) {
+		case 0:
+			s = (void *)Sample_bin;
+			sz = Sample_bin_size;
+			break;
+		case 1:
+			s = (void *)Pr_mono_short_wav;
+			sz = Pr_mono_short_wav_size;
+			break;
+		default:
+			Kernel.log("%s: unknown sound %d", __FUNCTION__, sound);
+			return;
+	}
+	m_PWMSoundDevice->Playback ((void *)s, sz, 1, 8);
 #endif	
 }
 

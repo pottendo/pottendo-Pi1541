@@ -173,6 +173,7 @@ public:
 	inline void SetPrinter(unsigned p) { printer = p; }
 	inline const char *GetPrPath(void) const { return prpath; }
 	inline const char *GetPrDriver(void) const { return prdriver; }
+	inline unsigned int GetPrSound(void) const { return PrinterSound; }
 #endif	
 
 	// Page up and down will jump a different amount based on the maximum number rows displayed.
@@ -298,6 +299,7 @@ private:
 	unsigned int printer;
 	char prpath[256];
 	char prdriver[16];
+	unsigned int PrinterSound;
 #endif	
 };
 #endif

@@ -121,7 +121,7 @@ public:
 	void run_tempmonitor(bool run = true);
 	CUSBKeyboardDevice *get_kbd(void) { return m_pKeyboard; }
 	inline void set_kbd(CUSBKeyboardDevice *kbd) { m_pKeyboard = kbd; }
-	void playsound(void);
+	void playsound(int sound = 0);
 	inline bool screen_available(void) { return screen_failed; }
 	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
 	char *get_version(void);

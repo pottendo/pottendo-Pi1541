@@ -4,6 +4,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+- Added printer DMA sound, see options below, how to activate
 - Preview of printpage, generation of .pdf for convenient postprocessing
 - Added printer drivers: mps801,mps802,mps803,nl10,1520,petlp
 - Support secondary address 7 to switch to secondary character set
@@ -178,10 +179,23 @@ Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the de
 When uploading directories, the browser may ask if you're sure. You still need to click the `Upload Directory` button to really upload!
 
 ![](docs/mount.png)
+
 <br />
+
 ![](docs/mount-cmdhd.png)
 
 Select image for preview and mount it.
+<br />
+
+![](docs/plotter.png)
+
+MPS1520 Driver
+
+![](docs/mps803.png)
+
+MPS803 Driver
+Printer page including preview.
+
 <br />
 
 ![](docs/edit-config.png)
@@ -232,6 +246,8 @@ Know Bugs/Observations:
 
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
+
+Petlp combines all buffered channels into one multipage PostScript file and finishes the final page when flushing.
 
 printer output files (PNG, PDF or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
 
@@ -291,6 +307,7 @@ The following options control new functions available:
 | printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID |0| can be activated/deactivated via the WebUI, 6 selects 1520 driver |
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
+| PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
 | netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||

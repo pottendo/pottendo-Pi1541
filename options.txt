@@ -92,6 +92,8 @@ printer = 0
 PrinterPath = prn-out
 // Driver: petlp, mps803, mps802, mps801, nl10
 PrinterDriver = mps803
+// Printer DMA Sound
+PrinterSound = 1
 
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1
