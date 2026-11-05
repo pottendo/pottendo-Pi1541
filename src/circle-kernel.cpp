@@ -704,7 +704,7 @@ TKernelTimerHandle CKernel::timer_start(unsigned delay, TKernelTimerHandler *pHa
 }
 
 #include "sample.h"
-#include "pr_mono_short_wav.h"
+#include "printer-sound.h"
 //extern const long int Sample_bin_size;
 //extern const unsigned char *Sample_bin;
 void CKernel::playsound(int sound)
@@ -721,8 +721,8 @@ void CKernel::playsound(int sound)
 			sz = Sample_bin_size;
 			break;
 		case 1:
-			s = (void *)Pr_mono_short_wav;
-			sz = Pr_mono_short_wav_size;
+			s = (void *)Printer_sound_bin;
+			sz = Printer_sound_bin_size;
 			break;
 		default:
 			Kernel.log("%s: unknown sound %d", __FUNCTION__, sound);

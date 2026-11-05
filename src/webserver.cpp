@@ -2267,6 +2267,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			{
 				msg = "Flushing printer spool...<br />";
 				printer->flush(options.GetPrDriver(), msg);	// driver ignored so far
+			    if (options.GetPrSound())
+			        Kernel.playsound(1);
 			}
 			printer->get_prspool(pv, ".png", true);
 			printer->get_prspool(p, "");

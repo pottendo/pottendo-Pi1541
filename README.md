@@ -46,7 +46,7 @@ V2.4 Beta1
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
 - PiCMD Emulator
-- Basic Printer emulator
+- Printer emulator. Check details below.
 - Manage Upload and SDCard
   - support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
   - support to rename of files/dirs on SDCard/USB via WebUI
@@ -245,17 +245,16 @@ Know Bugs/Observations:
 ## Printer Emulation
 
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
-One can download the page(s) and the petlp driver renders a postscipt file on the SDCard and downloads within your browser. Use your favorite postscript capable viewer on you host system to preview.
 
-Petlp combines all buffered channels into one multipage PostScript file and finishes the final page when flushing.
+Printer output files (raw, PNG, PDF or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+One can download the page(s) as png, pdf and postscript (.ps) files. The petlp driver renders a postscipt file on the SDCard. Use your favorite postscript capable viewer on you host system to preview.
 
-printer output files (PNG, PDF or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
-
-Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters.
-
+Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The 1520 driver selects colors depending on the secondary addres.
 The Commodore 1520 plotter's PNG and PDF output supports black, blue, green, and red.
 
-**Note:** IEC drive emulation and printer doesn't work at the same time. Turn off the printer emulation, when navigating with buttons or FB64 or its variants.
+**Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished.
+
+**Note:** As of now, the IEC drive emulation and printer do not work at the same time. Turn off the printer emulation, when navigating with buttons or FB64 or its variants.
 
 ## Compatibility
 
@@ -326,11 +325,15 @@ Here a snippet one can add to his `options.txt`:
 ```
 
 // Printer
-// chose value > 0 to activate printer at startup
+// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to 1520 plotter driver
 // if 0, printer can be enabled via the webui
 printer = 0
 // Spool directory, where prints are being stored using the webui
 PrinterPath = prn-out
+// Driver: petlp, mps803, mps802, mps801, nl10, ignored when printer = 6 (plotter)
+PrinterDriver = mps803  
+// Printer DMA Sound
+PrinterSound = 1
 
 // ---------------------------------------------------------------------------
 // CMD HD
