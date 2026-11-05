@@ -678,12 +678,16 @@ public:
 #else
 	inline void RefreshOuts1541(void)
 	{
+#if defined(__CIRCLE__)		
 		extern unsigned out_pr1;
 		if (device_id < 8)
 		{
 			out_pr1 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);	
 			return;
 		}
+#else
+		const unsigned out_pr1 = 0; // compiler optimization will take away OR below
+#endif		
 		if (!splitIECLines)
 		{
 			// time_fn_arm();
