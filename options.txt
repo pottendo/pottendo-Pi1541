@@ -86,8 +86,9 @@ ROM1581 = dos1581
 
 // Printer
 // chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to 1520 driver
-// if 0, printer can be enabled via the webui
-printer = 0
+// if 0, printer completely disabled, cannot be enabled (default)
+// chose value < 0 to prepare printer but don't startup, chose -4, -5 or -6 for the desired ID
+printer = -4
 // Spool directory, where prints are being stored using the webui
 PrinterPath = prn-out
 // Driver: petlp, mps803, mps802, mps801, nl10
@@ -195,7 +196,7 @@ HDMIDisplayIECActivity = 1    // only if HDMI is enabled
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
 TZ = 2.0    // 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
-// network setup: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later)
+// network setup: 0: no network, 1: enable at startup, 2: configure but don't start (use Enter longpress to enable later)
 netWifi = 0
 netEthernet = 0
 

@@ -374,12 +374,22 @@ TShutdownMode CKernel::Run(void)
 	if (options.GetHeadLess() == false)
 	{
 		logger.finished_booting("display core");
-		UpdateScreen(nullptr);
+		UpdateScreen(nullptr); // this doesn't return
 		DEBUG_LOG("%s: unexpected return of display thread on core %d", __FUNCTION__, 0);
-	} 
-	DEBUG_LOG("%s: running headless...", __FUNCTION__);
-	while (true)
-		Kernel.lcd_showheadless();
+	}
+	DEBUG_LOG("%s: running headless", __FUNCTION__);
+	if ((options.GetNetEthernet() == 0) && (options.GetNetWifi() == 0))
+	{
+		// no network, no core 2, update LCD 
+		while (true)
+		{
+			asm volatile ("WFE" ::: "memory");
+			MsDelay(100);
+			lcd_showheadless();
+		}
+	}
+	DEBUG_LOG("%s: halting core 0", __FUNCTION__);
+
 /*
 		// recover one day 
 		if (options.GetHealthMonitor() == 1)
@@ -525,15 +535,13 @@ bool CKernel::run_wifi(void)
 	return bOK;
 }
 
-static void display_temp(void)
+static void display_temp(unsigned int temp)
 {
-	unsigned temp = 0;
 	RGBA BkColour = RGBA(0, 0, 0, 0xFF);
 	RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
-	GetTemperature(temp);
 #if 1
 	char buf[128];
-	sprintf(buf, " %dC", temp / 1000);
+	sprintf(buf, " %dC", temp);
 	//core0RefreshingScreen.Acquire();
 	screenLCD->PrintText(false, 8 * 12, 0, buf, TextColour, BkColour);
 	screenLCD->SwapBuffers();
@@ -705,6 +713,7 @@ TKernelTimerHandle CKernel::timer_start(unsigned delay, TKernelTimerHandler *pHa
 
 #include "sample.h"
 #include "printer-sound.h"
+#include "printer-finish.h"
 //extern const long int Sample_bin_size;
 //extern const unsigned char *Sample_bin;
 void CKernel::playsound(int sound)
@@ -721,8 +730,26 @@ void CKernel::playsound(int sound)
 			sz = Sample_bin_size;
 			break;
 		case 1:
-			s = (void *)Printer_sound_bin;
-			sz = Printer_sound_bin_size;
+			{
+				switch(get_clock_ticks() % 3) {	// randomize the sound to avoid monotony
+					case 1:
+						s = (void *)&Printer_sound_bin[Printer_sound_bin_size / 2];
+						sz = Printer_sound_bin_size / 2;
+						break;
+					case 2:
+						s = (void *)Printer_sound_bin;
+						sz = Printer_sound_bin_size / 2;
+						break;
+					default:
+						s = (void *)Printer_sound_bin;
+						sz = Printer_sound_bin_size;
+						break;
+				}
+			}
+			break;
+		case 2:
+			s = (void *)Printer_finish_bin;
+			sz = Printer_finish_bin_size;
 			break;
 		default:
 			Kernel.log("%s: unknown sound %d", __FUNCTION__, sound);
@@ -745,38 +772,25 @@ char *CKernel::get_version(void)
 void CKernel::lcd_showheadless(void)
 {
 	static int temp_period = 0;
+	unsigned int temp = 0;
+	if (options.DisplayTemperature())
+		GetTemperature(temp);
 #if defined(CMDHD_SUPPORT)
 	extern EmulatingMode emulating;
 	extern void UpdateLCDLamps(void);
 	extern void UpdateLCD(const char *track, unsigned temp);
 
-	if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
+	if (emulating == EMULATING_CMDHD)
 	{
-		static unsigned temp = 0;
 
 		UpdateLCDLamps();
 		UpdateLCD(nullptr, temp / 1000);
-		//mScheduler.MsSleep(100);
-		MsDelay(100);
-		if (options.DisplayTemperature() &&
-			!(temp_period++ % 50)) // every 5 sec, display temp on LCD
-		{
-			CPUThrottle.Update();
-			GetTemperature(temp);
-		}
 		return;
 	}
-	else
 #endif
-		//mScheduler.MsSleep(100);
-		MsDelay(100);
-	if (options.DisplayTemperature() &&
-		options.GetHeadLess() &&
-		!(temp_period++ % 50)) // every 5 sec, display temp on LCD
-	{
-		CPUThrottle.Update();
-		display_temp();
-	}
+	if (options.DisplayTemperature() && 
+	    !(temp_period++ % 50)) // every 5 sec, display temp on LCD
+		display_temp(temp / 1000);
 }
 
 unsigned int CKernel::setup_network(unsigned int core)
@@ -876,11 +890,17 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		logger.finished_booting("network core");
 		while (run_net)
 		{
+			unsigned long ticks = 0;
 			while (core2activated == 0)
 			{
 				DataMemBarrier();
             	asm volatile ("wfe" ::: "memory");
 				wakes_net++;
+				if (options.GetHeadLess() && (Kernel.get_clock_ticks() - ticks) > (1000 * 100))
+				{
+					Kernel.lcd_showheadless();
+					ticks = Kernel.get_clock_ticks();
+				}
         	}
 	        DataMemBarrier();
 			DEBUG_LOG("%s: network & display core %d activated (%ld wakes)", __FUNCTION__, core, wakes_net);
@@ -888,34 +908,51 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			{
 				reboot_hook();
 				MsDelay_s(100);
+				if (options.GetHeadLess())
+					Kernel.lcd_showheadless();
 			}
 			core2activated = wakes_net = 0;
 		}
 		DEBUG_LOG("%s: halting network & display core %d", __FUNCTION__, core);
 		break;
-	case PRINTER_CORE:	/* other emulator */
-		Kernel.log("%s: other emulatore (printer) on core %d", __FUNCTION__, core);
-		logger.finished_booting("other emulator (printer) core");
-		core3activated = (options.GetPrinter() != 0);
-		printer = new Printer(options.GetPrinter(), core3activated);
+	case PRINTER_CORE: /* other emulator */
+	{
+		int8_t printerID;
+		Kernel.log("%s: other emulator (printer) on core %d", __FUNCTION__, core);
+		printerID = options.GetPrinter();
+		if (printerID == 0)
+		{
+			DEBUG_LOG("%s: printer core %d disabled by options", __FUNCTION__, core);
+			break;
+		}
+		if (printerID < 0)
+		{
+			core3activated = 0;
+			printerID *= -1;
+		}
+		else
+			core3activated = 1;
+		printer = new Printer(printerID, core3activated);
 
+		logger.finished_booting("other emulator (printer) core");
 		while (!printer->shutoff())
 		{
-	        // Core 3 waits here until activated.
-    	    while (core3activated == 0)
-        	{
-            	DataMemBarrier();
-            	asm volatile ("wfe" ::: "memory");
+			// Core 3 waits here until activated.
+			while (core3activated == 0)
+			{
+				DataMemBarrier();
+				asm volatile("wfe" ::: "memory");
 				wakes_prn++;
-        	}
-	        DataMemBarrier();
+			}
+			DataMemBarrier();
 			DEBUG_LOG("%s: printer wakeup (%ld wakes)", __FUNCTION__, wakes_prn);
 			printer->emulate();
 			core3activated = 0;
 		}
 		delete printer;
 		DEBUG_LOG("%s: unexpected return of other emulator (printer), halting core %d", __FUNCTION__, core);
-		break;
+	}
+	break;
 	default:
 		break;
 	}

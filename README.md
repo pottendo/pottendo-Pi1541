@@ -4,9 +4,12 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+V2.4 Beta3
+- Temperature optimization: headless LCD update is now done by network core and core 0 not used for pi1541
+- Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
 - Added printer DMA sound, see options below, how to activate
-- Preview of printpage, generation of .pdf for convenient postprocessing
-- Added printer drivers: mps801,mps802,mps803,nl10,1520,petlp
+- Preview of printpage(s), generation of .pdf for convenient postprocessing for new drivers
+- Added more printer drivers: mps801,mps802,mps803,nl10,1520
 - Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
@@ -187,6 +190,8 @@ When uploading directories, the browser may ask if you're sure. You still need t
 Select image for preview and mount it.
 <br />
 
+Printer page including preview.
+
 ![](docs/plotter.png)
 
 MPS1520 Driver
@@ -194,7 +199,10 @@ MPS1520 Driver
 ![](docs/mps803.png)
 
 MPS803 Driver
-Printer page including preview.
+
+![](docs/geosprint.png)
+
+GEOS printoutput
 
 <br />
 
@@ -252,7 +260,7 @@ One can download the page(s) as png, pdf and postscript (.ps) files. The petlp d
 Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The 1520 driver selects colors depending on the secondary addres.
 The Commodore 1520 plotter's PNG and PDF output supports black, blue, green, and red.
 
-**Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished.
+**Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished. In general if prints are long, this can happen - also with other drivers. There's a finish sound on the PWM sound output (3.5mm jack).
 
 **Note:** As of now, the IEC drive emulation and printer do not work at the same time. Turn off the printer emulation, when navigating with buttons or FB64 or its variants.
 
@@ -303,12 +311,12 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
-| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID |0| can be activated/deactivated via the WebUI, 6 selects 1520 driver |
+| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID, use -4, -5, -6 to intialize but don't start |0| can be activated/deactivated via the WebUI, 6 selects 1520 driver |
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
 | PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
-| netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
+| netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use ENTER longpress to enable later) |0||
 | netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
 | maxContentSize | value | max memory in kB for webserver | 1000 | range from 256 to 4000 |
 | maxMultipartSize | value | max memory in kB for multipart uploads | 20000| range from 1000 to 20000 |

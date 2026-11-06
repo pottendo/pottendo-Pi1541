@@ -1076,8 +1076,7 @@ void UpdateScreen(void *ip)
 		// Go back to sleep. The USB irq will wake us up again.
 #if defined (__CIRCLE__)
 		reboot_hook();
-		//MsDelay(20);		/* less CPU demanding */
-		MsDelay_s(20);
+		MsDelay(20);
 #else
 		__asm ("WFE");
 #endif
