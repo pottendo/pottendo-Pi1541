@@ -201,7 +201,7 @@ EOF
     echo "fetching CMD-HD emulator..."
     cd ${base}/..
     rm -rf pottendo-PiCMD
-    git clone https://github.com/pottendo/pottendo-PiCMD.git
+    git clone --branch cv2.3.1 https://github.com/pottendo/pottendo-PiCMD.git
     mkdir -p ${RELEASE}/1541/cmd-images
     echo "fetching roms..."
     cd ${RELEASE}
