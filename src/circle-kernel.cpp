@@ -918,11 +918,12 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 	case PRINTER_CORE: /* other emulator */
 	{
 		int8_t printerID;
-		Kernel.log("%s: other emulator (printer) on core %d", __FUNCTION__, core);
 		printerID = options.GetPrinter();
-		if (printerID == 0)
+		Kernel.log("%s: other emulator (printerID %d) on core %d", __FUNCTION__, printerID, core);
+		if ((printerID != 4) && (printerID != 5) && (printerID != 6) &&
+			(printerID != -4) && (printerID != -5) && (printerID != -6))
 		{
-			DEBUG_LOG("%s: printer core %d disabled by options", __FUNCTION__, core);
+			DEBUG_LOG("%s: invalid printer ID %d, core %d disabled by options", __FUNCTION__, printerID, core);
 			break;
 		}
 		if (printerID < 0)

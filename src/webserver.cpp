@@ -410,6 +410,7 @@ static void generate_prpreview(string &res, string path, string &page)
 	int cols = 0;
 	res.clear();
 	vector<string> png_files;
+	f_chdir(def_prefix.c_str());
 	find_files_by_pattern(png_files, path, "*.png");
 	sort(png_files.begin(), png_files.end());
 	for (const auto& png_file : png_files)

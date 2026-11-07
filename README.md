@@ -9,7 +9,7 @@ V2.4 Beta3
 - Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
 - Added printer DMA sound, see options below, how to activate
 - Preview of printpage(s), generation of .pdf for convenient postprocessing for new drivers
-- Added more printer drivers: mps801,mps802,mps803,nl10,1520
+- Added more printer drivers: mps801,mps802,mps803,nl10,1520 - credits to the Vice team for the drivers and Copilot GPT-6 Luna for merging support
 - Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)

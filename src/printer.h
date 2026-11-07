@@ -51,6 +51,7 @@ class Printer
     u16 spoolfilenr;
     bool dirty;
     string lext;
+    string fp;
 public:
     Printer(u8 deviceID, bool activate);
     ~Printer();
@@ -67,6 +68,7 @@ public:
     inline u8 get_deviceid(void) { return deviceID; }
     inline string get_driver(void) { return driver; }
     inline size_t get_spooled(void) { return spooled; }
+    inline string get_fullpath(void) { return fp; }
 };
 extern Printer *printer;
 

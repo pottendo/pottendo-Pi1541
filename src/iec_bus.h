@@ -34,6 +34,11 @@
 #endif
 //ROTARY: Removed for rotary encoder support - 12/23/2025 by hgryska
 //#include "dmRotary.h"
+#if defined(__CIRCLE__)
+	extern unsigned out_pr1;
+#else
+	const unsigned out_pr1 = 0;
+#endif
 
 #define INPUT_BUTTON_DEBOUNCE_THRESHOLD 20000
 #define INPUT_BUTTON_REPEAT_THRESHOLD 460000
@@ -679,14 +684,11 @@ public:
 	inline void RefreshOuts1541(void)
 	{
 #if defined(__CIRCLE__)		
-		extern unsigned out_pr1;
 		if (device_id < 8)
 		{
 			out_pr1 = AtnaDataSetToOut | DataSetToOut | (ClockSetToOut << 1);	
 			return;
 		}
-#else
-		const unsigned out_pr1 = 0; // compiler optimization will take away OR below
 #endif		
 		if (!splitIECLines)
 		{
@@ -809,13 +811,18 @@ public:
 		if (!splitIECLines)
 		{
 			unsigned outputs = 0;
-#if !defined (CIRCLE_GPIO)
-			if (AtnaDataSetToOut || DataSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_DATA - 10) * 3));
-			if (ClockSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3));
-			//if (SRQSetToOut) outputs |= (FS_OUTPUT << ((PIGPIO_SRQ - 10) * 3));			// For Option A hardware we should not support pulling more than 2 lines low at any one time!
+#if !defined(CIRCLE_GPIO)
+			static const unsigned outlist[4] = {
+				0,
+				FS_OUTPUT << ((PIGPIO_DATA - 10) * 3),
+				FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3),
+				FS_OUTPUT << ((PIGPIO_DATA - 10) * 3) |
+					FS_OUTPUT << ((PIGPIO_CLOCK - 10) * 3)};
+			unsigned sel =
+				AtnaDataSetToOut | DataSetToOut |
+				(ClockSetToOut << 1) | out_pr1;
 
-			unsigned nValue = (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outputs;
-			write32(ARM_GPIO_GPFSEL1, nValue);
+			write32(ARM_GPIO_GPFSEL1, (myOutsGPFSEL1 & PI_OUTPUT_MASK_GPFSEL1) | outlist[sel]);
 #else
 			u32 im = 0, om = 0;
 			if (AtnaDataSetToOut || DataSetToOut)
@@ -838,6 +845,42 @@ public:
 		}
 		else
 		{
+			unsigned srq = 0;
+			static const unsigned setlist[4] = {
+				0,
+				1 << PIGPIO_OUT_DATA,
+				1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_DATA | 1 << PIGPIO_OUT_CLOCK};
+			static const unsigned clearlist[4] = {
+				1 << PIGPIO_OUT_DATA | 1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_CLOCK,
+				1 << PIGPIO_OUT_DATA,
+				0};
+
+			unsigned sel =
+				AtnaDataSetToOut | DataSetToOut |
+				(ClockSetToOut << 1) | out_pr1;
+
+			if (SRQSetToOut) srq |= 1 << PIGPIO_OUT_SRQ;	// fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
+			else srq |= 1 << PIGPIO_OUT_SRQ;
+
+#if !defined(CIRCLE_GPIO)
+			if (invertIECOutputs)
+			{
+				/*7406 etal - inverters*/
+				write32(ARM_GPIO_GPCLR0, clearlist[sel] | srq);
+				write32(ARM_GPIO_GPSET0, setlist[sel] | srq);
+			}
+			else
+			{
+				/*7407 etal - buffers*/
+				write32(ARM_GPIO_GPCLR0, setlist[sel] | srq);
+				write32(ARM_GPIO_GPSET0, clearlist[sel] | srq);
+			}
+#else
+#error "RefreshOuts1581() not implemented for CIRCLE_GPIO"
+#endif
+#if 0			
 			if (AtnaDataSetToOut || DataSetToOut) set |= 1 << PIGPIO_OUT_DATA;
 			else clear |= 1 << PIGPIO_OUT_DATA;
 
@@ -852,6 +895,7 @@ public:
 				set = clear;
 				clear = tmp;
 			}
+#endif			
 		}
 #if !defined (CIRCLE_GPIO)
 		write32(ARM_GPIO_GPSET0, set);

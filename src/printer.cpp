@@ -49,12 +49,11 @@ Printer::Printer(u8 ID, bool activate)
 , spoolfilenr(0)
 , dirty(false)
 , lext(".pdf")
+, fp(def_prefix + options.GetPrPath())
 {
     FRESULT res;
     FILINFO fi;
-    string fp;
     iecCommands = new IEC_Commands(&iec_bus);
-    fp = def_prefix + options.GetPrPath();
     
     res = f_stat(fp.c_str(), &fi);
     if (res == FR_INVALID_NAME)
