@@ -138,17 +138,6 @@ void Printer::add2buffer(u8 byte, u8 sec_addr)
     spooled++;
     if (options.GetPrSound())
         Kernel.playsound(1);
-#if 0        
-    if (options.GetPrSound() && (Kernel.playback_active() == 0))
-    {
-        static uint32_t last_sound = 0;
-        if (Kernel.get_clock_ticks() - last_sound > 100*1000)
-        {
-            last_sound = Kernel.get_clock_ticks();
-            Kernel.playsound(1);
-        }
-    }
-#endif    
     if (!dirty)
     {
         dirty = true;

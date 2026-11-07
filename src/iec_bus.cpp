@@ -75,8 +75,10 @@ IEC_Bus::IEC_Bus(u8 deviceID, const uint32_t driveID) :
 #if defined(__CIRCLE__)
 	emuSpinLock.Release();
 #endif	
+/*	
 	DEBUG_LOG("%s: iecbus = %p, device %d - splitIECLines=%d, invertIECInputs=%d, invertIECOutputs=%d, ignoreReset=%d", 
 		__FUNCTION__, this, device_id, splitIECLines, invertIECInputs, invertIECOutputs, ignoreReset);
+*/
 	gplev0 = 0; // not needed as static is used for a working emulation
 	Initialise();
 

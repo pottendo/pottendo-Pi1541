@@ -28,6 +28,7 @@ static inline void delay_us(u32 usec) { Kernel.get_timer()->usDelay(usec); }
 static inline void usDelay(u32 usec) { Kernel.get_timer()->usDelay(usec); }
 static inline void MsDelay(u32 msec) { Kernel.get_timer()->usDelay(msec * 1000L); }
 static inline void MsDelay_s(u32 msec) { Kernel.get_scheduler()->MsSleep(msec); }
+static inline void MsDelay_core0pd(u32 msec) { Kernel.get_timer()->MsDelayPowerDown(msec); }
 
 void USPiInitialize(void);
 void TimerSystemInitialize(void);

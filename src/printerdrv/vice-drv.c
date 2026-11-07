@@ -1,7 +1,7 @@
 /*
  * vice-drv.c - Standalone printer-driver demonstration.
  *
- * This file is part of VICE, the Versatile Commodore Emulator.
+ * This file is part of pottendo-Pi1541
  * See README for copyright notice.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
  * 02111-1307  USA.
+ * 
+ * This code has been vibe-coded using GPT-6 Luna, prompted by pottendo
  */
 
 #include <errno.h>

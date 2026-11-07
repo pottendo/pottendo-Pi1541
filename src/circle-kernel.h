@@ -41,6 +41,7 @@
 #include <wlan/bcm4343.h>
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 #include <circle/net/netsubsystem.h>
+#include "CTimerEx.h"
 #include <stdio.h>
 #include <cstring>
 #include <string>
@@ -88,7 +89,7 @@ public:
 	inline void set_pixel(unsigned int x, unsigned int y, TScreenColor c) { mScreen.SetPixel(x, y, c); }
 
 	CInterruptSystem *get_isys(void) { return &mInterrupt; }
-	CTimer *get_timer(void) { return &mTimer; }
+	CTimerEx *get_timer(void) { return &mTimer; }
 	CLogger *get_logger(void) { return &mLogger; }
 	CScreenDevice *get_scrdevice(void) { return &mScreen; }
     CEMMCDevice &get_emmc(void) { return m_EMMC; }
@@ -142,7 +143,7 @@ private:
 	CSerialDevice		mSerial;
 	CExceptionHandler	mExceptionHandler;
 	CInterruptSystem	mInterrupt;
-	CTimer				mTimer;
+	CTimerEx			mTimer;
 	CLogger				mLogger;
 	CScheduler			mScheduler;
 	CUSBHCIDevice		m_USBHCI;

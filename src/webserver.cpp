@@ -1791,10 +1791,10 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		String.Format("Drive ID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer ID: <i>%d</i>, Driver: <i>%s</i>: %s%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
-				 (printer->get_deviceid()),
-				 (printer->get_driver().c_str()),
-				 (printer->running() ? "on" : "off"),
-				 (printer->running() ? (string(", spooled: <i>") + to_string(printer->get_spooled()) + "b</i>").c_str() : ""),
+				 (printer ? (printer->get_deviceid()) : 0),
+				 (printer ? (printer->get_driver().c_str()) : "disabled"),
+				 (printer ? (printer->running() ? "on" : "off") : "off"),
+				 (printer ? (printer->running() ? (string(", spooled: <i>") + to_string(printer->get_spooled()) + "b</i>").c_str() : "") : ""),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -2290,11 +2290,20 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 					printer->get_deviceid(), (pr ? "off" : "on"), options.GetPrPath());
 			}
 		}
+		else
+		{
+			msg = "Printer disabled from options<br />";
+			DEBUG_LOG("%s: %s, pParm = %s", __FUNCTION__, msg.c_str(), pParams);
+		}
 		if (strcmp(pParams, "[DOWNLOAD]") == 0)
 		{
-			DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
-			*ppContentType = "application/octet-stream";
-			return download_file(p, pBuffer, pLength);
+			if (printer) 
+			{
+				DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
+				*ppContentType = "application/octet-stream";
+				return download_file(p, pBuffer, pLength);
+			}
+			msg += string("Printer disabled<br />");
 		}
 		if (strcmp(pParams, "[DELSPOOL]") == 0)
 		{
