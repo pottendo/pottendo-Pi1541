@@ -231,17 +231,38 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
                 lext = ".pdf";
             get_prspool(output_path, gfx ? ".png" : ".pdf");
             string secaddr = to_string(channel->secondaryAddress);
-            char *argv[] = {
-                const_cast<char *>("vice-drv"),
-                const_cast<char *>(gfx ? "--gfx" : "--pdf"),
-                const_cast<char *>(output_path.c_str()),
-                const_cast<char *>("--drv"),
-                const_cast<char *>(d.c_str()),
-                const_cast<char *>("--secaddr"),
-                const_cast<char *>(secaddr.c_str()),
-                nullptr};
+            if (gfx)
+            {
+                char *argv[] = {
+                    const_cast<char *>("vice-drv"),
+                    const_cast<char *>("--gfx"),
+                    const_cast<char *>(output_path.c_str()),
+                    const_cast<char *>("--drv"),
+                    const_cast<char *>(d.c_str()),
+                    const_cast<char *>("--secaddr"),
+                    const_cast<char *>(secaddr.c_str()),
+                    nullptr};
 
-            ret = vicepr_main(7, argv);
+                ret = vicepr_main(7, argv);
+            }
+            else
+            {
+                string pwg_output_path;
+                get_prspool(pwg_output_path, ".pwg");
+                char *argv[] = {
+                    const_cast<char *>("vice-drv"),
+                    const_cast<char *>("--pdf"),
+                    const_cast<char *>(output_path.c_str()),
+                    const_cast<char *>("--drv"),
+                    const_cast<char *>(d.c_str()),
+                    const_cast<char *>("--secaddr"),
+                    const_cast<char *>(secaddr.c_str()),
+                    const_cast<char *>("--pwg"),
+                    const_cast<char *>(pwg_output_path.c_str()),
+                    nullptr};
+
+                ret = vicepr_main(9, argv);
+            }
         }
         if (ret != 0)
         {

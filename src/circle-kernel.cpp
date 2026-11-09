@@ -383,8 +383,7 @@ TShutdownMode CKernel::Run(void)
 		// no network, no core 2, update LCD 
 		while (true)
 		{
-			asm volatile ("WFE" ::: "memory");
-			MsDelay(100);
+			MsDelay_core0pd(100);
 			lcd_showheadless();
 		}
 	}
@@ -865,7 +864,7 @@ void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 		DataMemBarrier();
 
 		// Wake a core waiting with WFE.
-		asm volatile("sev" ::: "memory");
+		SendEvent();
 		return;
 	}
 
@@ -894,7 +893,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			while (core2activated == 0)
 			{
 				DataMemBarrier();
-            	asm volatile ("wfe" ::: "memory");
+				WaitForEvent();
 				wakes_net++;
 				if (options.GetHeadLess() && (Kernel.get_clock_ticks() - ticks) > (1000 * 100))
 				{
@@ -942,7 +941,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			while (core3activated == 0)
 			{
 				DataMemBarrier();
-				asm volatile("wfe" ::: "memory");
+				WaitForEvent();
 				wakes_prn++;
 			}
 			DataMemBarrier();

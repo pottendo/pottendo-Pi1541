@@ -4,6 +4,9 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 ## News V2.4 vs. V2.3.1
 
+V2.4 Beta4
+- Generate PWG Raster files to prepare for network printing
+
 V2.4 Beta3
 - Temperature optimization: headless LCD update is now done by network core and core 0 not used for pi1541
 - Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
@@ -254,11 +257,11 @@ Know Bugs/Observations:
 
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 
-Printer output files (raw, PNG, PDF or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
-One can download the page(s) as png, pdf and postscript (.ps) files. The petlp driver renders a postscipt file on the SDCard. Use your favorite postscript capable viewer on you host system to preview.
+Printer output files (raw, PNG, PDF, PWG Raster or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. It uses sRGB 8-bit color for the 1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
 
 Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The 1520 driver selects colors depending on the secondary addres.
-The Commodore 1520 plotter's PNG and PDF output supports black, blue, green, and red.
+The Commodore 1520 plotter's PNG, PDF, and PWG Raster output supports black, blue, green, and red.
 
 **Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished. In general if prints are long, this can happen - also with other drivers. There's a finish sound on the PWM sound output (3.5mm jack).
 
