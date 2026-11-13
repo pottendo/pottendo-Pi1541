@@ -5,6 +5,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News V2.4 vs. V2.3.1
 
 V2.4 Beta4
+- Fix to save images correctly, when printing has happend inbetween
 - Don't override spoolfiles, check only done for PDF extension.
 - Printer drivers can now be selected via the WebUI.
 - Direct print support, see below section printing, currently to be activated via WebUI.

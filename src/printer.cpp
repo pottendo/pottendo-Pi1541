@@ -134,9 +134,11 @@ void Printer::emulate(void)
 
 void Printer::get_prspool(string &p, string ext, bool basename)
 { 
+    char buf[8];
     if (ext == "")
         ext = lext;
-    p = spoolfn + '-' + to_string(spoolnr) + ext; 
+    snprintf(buf, 7, "%03d", spoolnr);
+    p = spoolfn + '-' + string(buf) + ext; 
     if (!basename)
         p = def_prefix + string(options.GetPrPath()) + '/' + p;
 }
@@ -168,7 +170,7 @@ void Printer::next_spoolnr(uint16_t spnr)
     int i;
     for (i = spnr; i < 4096; i++)
     {
-        snprintf(buf, 255, "%s%s/%s-%d.pdf", 
+        snprintf(buf, 255, "%s%s/%s-%03d.pdf", 
             def_prefix.c_str(), options.GetPrPath(), spoolfn.c_str(), i);
         if (f_stat(buf, &fi) != FR_OK)
             break;

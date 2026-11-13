@@ -410,6 +410,8 @@ static void generate_prpreview(string &res, string path, string &page)
 	int cols = 0;
 	res.clear();
 	vector<string> png_files;
+	char scwd[256];
+	f_getcwd(scwd, 255);
 	f_chdir(def_prefix.c_str());
 	find_files_by_pattern(png_files, path, "*.png");
 	sort(png_files.begin(), png_files.end());
@@ -428,6 +430,7 @@ static void generate_prpreview(string &res, string path, string &page)
 	}
 	if (cols != 0)
 		res += "</tr>";
+	f_chdir(scwd);
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)
@@ -2270,7 +2273,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		else if (strcmp(pParams, "[DELSPOOL]") == 0)
 		{
-			DEBUG_LOG("%s: delete printer spooler", __FUNCTION__);
+			DEBUG_LOG("%s: delete printer spooler: %s", __FUNCTION__, options.GetPrPath());
 			f_unlink_full(options.GetPrPath(), msg, true);
 			msg += "Deleted printer spooler";
 		}
