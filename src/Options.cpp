@@ -210,6 +210,7 @@ Options::Options(void)
 #if defined(__CIRCLE__)
 	strcpy(prpath, "prn-out");
 	strcpy(prdriver, "mps803");
+	strcpy(prhost, "");
 #endif
 }
 
@@ -307,6 +308,10 @@ void Options::Process(char* buffer)
 		else if ((strcasecmp(pOption, "PrinterDriver") == 0))
 		{
 			strncpy(prdriver, pValue, 15);
+		}
+		else if ((strcasecmp(pOption, "PrinterName") == 0))
+		{
+			strncpy(prhost, pValue, 31);
 		}
 #endif		
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))

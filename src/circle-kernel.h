@@ -41,6 +41,7 @@
 #include <wlan/bcm4343.h>
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 #include <circle/net/netsubsystem.h>
+#include <circle-mbedtls/tlssimplesupport.h>
 #include "CTimerEx.h"
 #include <stdio.h>
 #include <cstring>
@@ -83,6 +84,7 @@ class CKernel
 {
 public:
 	CKernel (void);
+	~CKernel() = default;
 	boolean Initialize (void);
 	TShutdownMode Run (void);
 	int Cleanup (void) { return 0; }
@@ -94,6 +96,8 @@ public:
 	CScreenDevice *get_scrdevice(void) { return &mScreen; }
     CEMMCDevice &get_emmc(void) { return m_EMMC; }
 	CScheduler *get_scheduler(void) { return &mScheduler; }
+	CNetSubSystem *get_mNet(void) { return m_Net; }
+	CircleMbedTLS::CTLSSimpleSupport *get_mTLSSimple(void) { return m_TLSSimple; }
 
 	void blink(int n) { m_ActLED.Blink(n); }
 	void tlog(int i) { char x[1024]; sprintf(x, "0x%08x", i); mLogger.Write("tlog:", LogNotice, x); }
@@ -158,6 +162,7 @@ private:
 	CBcm4343Device		m_WLAN;
 	CSynchronizationEvent	mEvent;
 	CNetSubSystem		*m_Net;
+	CircleMbedTLS::CTLSSimpleSupport  *m_TLSSimple;
 	CWPASupplicant		m_WPASupplicant;
 	Pi1541Cores		 	m_MCores;
 	char ip_address[32];

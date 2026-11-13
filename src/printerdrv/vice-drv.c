@@ -38,6 +38,7 @@
 #define PNG_MARGIN 10
 #define PNG_MAX_WIDTH 4096
 #define PDF_MARGIN 10
+#define PWG_LEFT_MARGIN_MM 5
 
 static driver_select_t *printer_driver;
 static int test_mode;
@@ -805,6 +806,8 @@ static int write_pwg_raster(const char *driver_name)
     size_t page_count = page_height == 0
         ? (gfx_rows == 0 ? 0 : 1) : vice_helper_gfx_page_count();
     size_t bytes_per_pixel = strcmp(driver_name, "1520") == 0 ? 3 : 1;
+    size_t left_margin;
+    size_t output_width;
     size_t compressed_capacity;
     size_t row_size;
     uint8_t *compressed = NULL;
@@ -817,17 +820,23 @@ static int write_pwg_raster(const char *driver_name)
     if (page_count == 0) {
         return 0;
     }
-    if (pixels == NULL || width == 0
-        || width > (SIZE_MAX - 1) / (bytes_per_pixel + 1)) {
+    if (pixels == NULL || width == 0 || dpi_x == 0) {
         DEBUG_LOG("Invalid page width for PWG Raster output.");
         return -1;
     }
-    if (width > SIZE_MAX / bytes_per_pixel) {
+    left_margin = ((uint64_t)dpi_x * PWG_LEFT_MARGIN_MM * 10 + 127) / 254;
+    if (left_margin > SIZE_MAX - width) {
+        DEBUG_LOG("PWG Raster page is too wide.");
+        return -1;
+    }
+    output_width = width + left_margin;
+    if (output_width > (SIZE_MAX - 1) / (bytes_per_pixel + 1)
+        || output_width > SIZE_MAX / bytes_per_pixel) {
         DEBUG_LOG("PWG Raster scanline is too large.");
         return -1;
     }
-    compressed_capacity = 1 + width * (bytes_per_pixel + 1);
-    row_size = width * bytes_per_pixel;
+    compressed_capacity = 1 + output_width * (bytes_per_pixel + 1);
+    row_size = output_width * bytes_per_pixel;
     compressed = malloc(compressed_capacity);
     row_data = malloc(row_size);
     if (compressed == NULL || row_data == NULL) {
@@ -861,24 +870,26 @@ static int write_pwg_raster(const char *driver_name)
         }
         height = last_row - first_row;
         if (height == 0
-            || write_pwg_page_header(file, width, height, dpi_x, dpi_y,
+            || write_pwg_page_header(file, output_width, height, dpi_x, dpi_y,
                                      page_count, bytes_per_pixel == 3) < 0) {
             goto cleanup;
         }
         for (row = first_row; row < last_row; row++) {
             const uint8_t *source = pixels + row * width;
             size_t column;
+            memset(row_data, 255, left_margin * bytes_per_pixel);
             if (bytes_per_pixel == 3) {
                 for (column = 0; column < width; column++) {
-                    output_pixel_rgb(source[column], row_data + column * 3);
+                    output_pixel_rgb(source[column],
+                                     row_data + (left_margin + column) * 3);
                 }
             } else {
                 for (column = 0; column < width; column++) {
-                    row_data[column] = source[column] == OUTPUT_PIXEL_BLACK
-                        ? 0 : 255;
+                    row_data[left_margin + column] =
+                        source[column] == OUTPUT_PIXEL_BLACK ? 0 : 255;
                 }
             }
-            if (write_pwg_row(file, row_data, width, bytes_per_pixel,
+            if (write_pwg_row(file, row_data, output_width, bytes_per_pixel,
                               compressed, compressed_capacity) < 0) {
                 DEBUG_LOG("Failed to write PWG Raster page data.");
                 goto cleanup;

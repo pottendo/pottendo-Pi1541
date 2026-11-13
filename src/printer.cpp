@@ -20,6 +20,7 @@
 #include "printer.h"
 #include "iec_bus.h"
 #include "Options.h"
+#include "ippclient.h"
 #include <fcntl.h>
 #include <unistd.h>
 extern Options options;
@@ -50,6 +51,8 @@ Printer::Printer(u8 ID, bool activate)
 , dirty(false)
 , lext(".pdf")
 , fp(def_prefix + options.GetPrPath())
+, dprint(false)
+, ipp_client(nullptr)
 {
     FRESULT res;
     FILINFO fi;
@@ -81,7 +84,10 @@ Printer::Printer(u8 ID, bool activate)
         DEBUG_LOG("%s: invalid printer device %d, disabling printer.", __FUNCTION__, deviceID);
         shoff = true;
     }
-    DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s'", __FUNCTION__, deviceID, driver.c_str(), fp.c_str());
+    if (!shoff && (strcmp(options.GetPrHost(), "") != 0) && options.NetworkOn())
+        dprint = true;
+    DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s', direct print: %s %s", 
+        __FUNCTION__, deviceID, driver.c_str(), fp.c_str(), (dprint ? "enabled" : "no"), (dprint ? options.GetPrHost() : ""));
 }
 
 Printer::~Printer()
@@ -89,6 +95,8 @@ Printer::~Printer()
     delete iecCommands;
     for (auto channel : spoolChannels)
         delete channel;
+    if (ipp_client)
+        delete ipp_client;
     DEBUG_LOG("%s: %d deleted", __FUNCTION__, deviceID);
 }
 
@@ -145,6 +153,7 @@ void Printer::add2buffer(u8 byte, u8 sec_addr)
     }
 }
 
+// normally called from web-server
 void Printer::flush(string drv, string &res)
 {
     if (!dirty)
@@ -161,6 +170,52 @@ void Printer::flush(string drv, string &res)
     }
     spoolChannels.clear();
     last_secaddr = 255;
+
+}
+
+static void open2print(IPPClient &ipp_client, string &f, string &msg)
+{
+    FIL fp;
+    FRESULT res;
+    FILINFO fi;
+    size_t nread = 0, br;
+
+    if ((res = f_stat(f.c_str(), &fi)) != FR_OK)
+    {
+        DEBUG_LOG("%s: can't stat '%s'(%d)", __FUNCTION__, f.c_str(), res);
+        msg += "f_stat failed for " + f;
+        return;
+    }
+    char *buf = new char[fi.fsize];
+    if (!buf)
+    {
+        DEBUG_LOG("%s: can't allocate memory for printing of '%s'(%d)", __FUNCTION__, f.c_str(), res);
+        msg += "Can't allocate memory for " + f;
+        return;
+    }
+    if ((res = f_open(&fp, f.c_str(), FA_READ)) != FR_OK)
+    {
+        DEBUG_LOG("%s: open failed for '%s'(%d)", __FUNCTION__, f.c_str(), res);
+        msg += "open failed for " + f;
+        goto out;
+    }
+
+    while (((res = f_read(&fp, &buf[nread], fi.fsize - nread, &br)) == FR_OK) && ((nread + br) < fi.fsize))
+        nread += br;
+    DEBUG_LOG("%s: successfully read %dbytes from %s", __FUNCTION__, fi.fsize);
+    if (ipp_client.Print(buf, fi.fsize))
+    {
+        msg += "<i>" + f + "</i> sent to printer";
+        DEBUG_LOG("%s: %s sent to printer", __FUNCTION__, f.c_str());
+    }
+    else
+    {
+        msg += "failed to send <i>" + f + "</i> to printer";
+        DEBUG_LOG("%s: failed to send %s to printer", __FUNCTION__, f.c_str());
+    }
+out:
+    delete[] buf;    
+    f_close(&fp);
 }
 
 void Printer::flush_vice(string drv, string &res, bool gfx)
@@ -302,6 +357,21 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
                       __FUNCTION__, channel_count[i], i, output_path.c_str());
             res += string("flushed ") + to_string(channel_count[i]) +
                    " bytes, sec_addr=" + to_string(i) + " to " + output_path + "<br />";
+        }
+    }
+    if (!gfx && dprint)
+    {
+        // direct print
+        IPPClient ipp_client(Kernel.get_mTLSSimple(), options.GetPrHost());
+        if (!ipp_client.Connect())
+            res += "Direct print: connect failed.";
+        else
+        {
+            size_t ext = output_path.rfind(".pdf");
+            output_path.replace(ext, 4, ".pwg");
+            res += "Direct print: printing... <i>" + output_path + "</i><br />";
+            open2print(ipp_client, output_path, res);
+            res += "<br />";
         }
     }
 }

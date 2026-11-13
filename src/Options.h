@@ -163,6 +163,7 @@ public:
 #if defined(__CIRCLE__)
 	inline unsigned int GetNetWifi() const { return netWifi; }
 	inline unsigned int GetNetEthernet() const { return netEthernet; }
+	inline bool NetworkOn(void) const { return GetNetWifi() | GetNetEthernet() ; }
 	inline unsigned GetMaxContentSize() const { return maxContentSize; }
 	inline unsigned GetMaxMultipartSize() const { return maxMultipartSize; }
 	inline void SetHeadLess(unsigned int h) { headLess = h; }
@@ -174,6 +175,7 @@ public:
 	inline const char *GetPrPath(void) const { return prpath; }
 	inline const char *GetPrDriver(void) const { return prdriver; }
 	inline unsigned int GetPrSound(void) const { return PrinterSound; }
+	inline const char *GetPrHost(void) const { return prhost; }
 #endif	
 
 	// Page up and down will jump a different amount based on the maximum number rows displayed.
@@ -300,6 +302,7 @@ private:
 	char prpath[256];
 	char prdriver[16];
 	unsigned int PrinterSound;
+	char prhost[32];
 #endif	
 };
 #endif

@@ -222,6 +222,7 @@ CKernel::CKernel(void) :
 #endif	
 	m_WLAN (_FIRMWARE_PATH),
 	m_Net(nullptr),
+	m_TLSSimple(nullptr),
 	m_WPASupplicant (_CONFIG_FILE),
 	m_MCores(CMemorySystem::Get()),
 	screen_failed(false),
@@ -371,14 +372,14 @@ TShutdownMode CKernel::Run(void)
 #endif
 	// launch everything
 	Kernel.launch_cores();
+	logger.finished_booting("display core");
 	if (options.GetHeadLess() == false)
 	{
-		logger.finished_booting("display core");
 		UpdateScreen(nullptr); // this doesn't return
 		DEBUG_LOG("%s: unexpected return of display thread on core %d", __FUNCTION__, 0);
 	}
 	DEBUG_LOG("%s: running headless", __FUNCTION__);
-	if ((options.GetNetEthernet() == 0) && (options.GetNetWifi() == 0))
+	if (!options.NetworkOn())
 	{
 		// no network, no core 2, update LCD 
 		while (true)
@@ -833,6 +834,7 @@ unsigned int CKernel::setup_network(unsigned int core)
 			break;
 		}
 	} while (true);
+	m_TLSSimple = new CircleMbedTLS::CTLSSimpleSupport(m_Net);
 	Kernel.log("launching webserver on core %d", core);
 	Kernel.run_webserver(run_wifi, startit);
 

@@ -55,6 +55,7 @@ extern "C" {
 	void UpdateScreen(void *iec_bus);
 }
 void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour, u32 backgroundColour);
+void hexdump(const char *buf, int len);
 
 /* I2C provided by Circle */
 #define RPI_I2CInit i2c_init

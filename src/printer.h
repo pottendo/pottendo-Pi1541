@@ -23,6 +23,8 @@
 #include <vector>
 #include "iec_commands.h"
 #include "iec_bus.h"
+#include "ippclient.h"
+
 using namespace std;
 
 class SpoolChannel {
@@ -52,6 +54,8 @@ class Printer
     bool dirty;
     string lext;
     string fp;
+    bool dprint;
+    IPPClient *ipp_client;
 public:
     Printer(u8 deviceID, bool activate);
     ~Printer();

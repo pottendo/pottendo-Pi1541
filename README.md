@@ -318,6 +318,7 @@ The following options control new functions available:
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
 | PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
+| PrinterName | string or IP | enables direct printing when specifying a printer name or its IP address |||
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use ENTER longpress to enable later) |0||
 | netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||

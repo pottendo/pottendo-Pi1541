@@ -578,53 +578,6 @@ static bool read_file(string &dfn, string &msg, string &fcontent, UINT *nLength 
 	return ret;
 }
 
-#if 0
-void hexdump(const unsigned char *buf, int len)
-{
-    int i;
-    int idx = 0;
-    int lines = 0;
-    char linestr[256] = {0};
-	char ta[12];
-	const unsigned char *tp = buf;
-    while (len > 0) {
-		snprintf(ta, 12, "%08lx: ", ((buf + idx) - tp));
-		strcat(linestr, ta);
-        for (i = 0; i < 16; i++) {
-            if (i < len) {
-                char t[4];
-                snprintf(t, 4, "%02x ", (uint8_t) buf[idx + i]);
-                strcat(linestr, t);
-            } else {
-                strcat(linestr, "   ");
-            }
-        }
-        strcat(linestr, "|");
-        for (i = 0; i < 16; i++) {
-            if (i < len) {
-                char t[2];
-                char c;
-                if (((unsigned char)buf[idx + i] > 31) && /* avoid tabs and other printable ctrl chars) */
-                    isprint((unsigned char)buf[idx + i])) {
-                    c= buf[idx + i];
-                } else {
-                    c = '.';
-                }
-                snprintf(t, 2, "%c", c);
-                strcat(linestr, t);
-            } else {
-                strcat(linestr, " ");
-            }
-        }
-        strcat(linestr, "|");
-        DEBUG_LOG("%s", linestr);
-		linestr[0] = '\0';
-        idx += 16;
-        len -= 16;
-    }
-}
-#endif
-
 static bool get_sector(unsigned char *img_buf, int track, int sector, unsigned char * &src)
 {
 	if ((track >= D81_TRACK_COUNT) || (sector >= 40))

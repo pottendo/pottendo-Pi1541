@@ -95,6 +95,8 @@ PrinterPath = prn-out
 PrinterDriver = mps803
 // Printer DMA Sound
 PrinterSound = 1
+// Direct print Support, network name or IP address of your printer
+// PrinterName = my-printer.echt.org
 
 // Enable RAMBoard emulation - 8k drive RAM expansion at 0x8000
 //RAMBOard = 1

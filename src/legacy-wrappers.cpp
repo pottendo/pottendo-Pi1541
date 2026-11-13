@@ -18,7 +18,7 @@
 #include <circle/startup.h>
 #include "circle-kernel.h"
 #include "rpi-gpio.h"
-
+#include "debug.h"
 u32 _ctb;
 
 /* wrappers */
@@ -63,3 +63,53 @@ extern "C" void klog(const char *fmt, ...)
 	Kernel.log(t);
 	va_end(args);
 }
+
+void hexdump(const char *buf, int len)
+{
+    int i;
+    int idx = 0;
+    int lines = 0;
+    char linestr[256] = {0};
+	char ta[12];
+	const char *tp = buf;
+    while (len > 0) {
+#if (AARCH == 64)		// avoid warning
+		snprintf(ta, 12, "%04lx: ", ((buf + idx) - tp));
+#else
+		snprintf(ta, 12, "%04x: ", ((buf + idx) - tp));
+#endif
+		strcat(linestr, ta);
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[4];
+                snprintf(t, 4, "%02x ", (uint8_t) buf[idx + i]);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, "   ");
+            }
+        }
+        strcat(linestr, "|");
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[2];
+                char c;
+                if (((unsigned char)buf[idx + i] > 31) && /* avoid tabs and other printable ctrl chars) */
+                    isprint((unsigned char)buf[idx + i])) {
+                    c= buf[idx + i];
+                } else {
+                    c = '.';
+                }
+                snprintf(t, 2, "%c", c);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, " ");
+            }
+        }
+        strcat(linestr, "|");
+        DEBUG_LOG("%s", linestr);
+		linestr[0] = '\0';
+        idx += 16;
+        len -= 16;
+    }
+}
+
