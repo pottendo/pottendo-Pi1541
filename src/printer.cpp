@@ -202,7 +202,7 @@ static void open2print(IPPClient &ipp_client, string &f, string &msg)
 
     while (((res = f_read(&fp, &buf[nread], fi.fsize - nread, &br)) == FR_OK) && ((nread + br) < fi.fsize))
         nread += br;
-    DEBUG_LOG("%s: successfully read %dbytes from %s", __FUNCTION__, fi.fsize);
+    DEBUG_LOG("%s: successfully read %dbytes from %s", __FUNCTION__, fi.fsize, f.c_str());
     if (ipp_client.Print(buf, fi.fsize))
     {
         msg += "<i>" + f + "</i> sent to printer";

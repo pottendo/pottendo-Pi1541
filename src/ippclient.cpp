@@ -33,7 +33,7 @@ bool IPPClient::Connect(void)
     socket.SetOptionReceiveTimeout(10 * 1000 * 1000);
     CIPAddress ipb(socket.GetForeignIP());
     ipb.Format(&ip);
-    DEBUG_LOG("%s: created for printer %s(%s)...", __FUNCTION__, printer, (const char*)ip);
+    DEBUG_LOG("%s: printer %s(IP: %s) connected", __FUNCTION__, printer, (const char*)ip);
 
     char pBuffer[nMaxSize];
  	size_t hsize, bsize;
@@ -68,6 +68,10 @@ bool IPPClient::Connect(void)
                 dprint_supported |= PR_COL;
                 prsup += "color";
             }
+            if (fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "iso_a4_210x297mm"))
+                DEBUG_LOG("%s: found A4 - iso_a4_210x297mm - support", __FUNCTION__);
+            else
+                DEBUG_LOG("%s: printer doesn't support A4 - iso_a4_210x297mm. Output may be cropped.", __FUNCTION__);
         }
         DEBUG_LOG("%s: direct print support: %s", __FUNCTION__, (dprint_supported ? prsup.c_str() : "none"));
 	}
@@ -112,7 +116,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         unsigned nAvailable = len - nReceived - 1;
         unsigned nToRead = nAvailable < sizeof(Temp) ? nAvailable : sizeof(Temp);
         int n = Socket.Receive(Temp, nToRead, 0);
-        DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
+        //DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
         if (n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
         {
             if (headerlen >= 0 && !hasContentLength)
@@ -141,7 +145,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             char *headerEnd = *response - 4;
             char saved = *headerEnd;
             *headerEnd = '\0';
-            DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
+            //DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
             tp = strstr(pBuffer, "Content-Length:");
             *headerEnd = saved;
             if (tp)
@@ -178,11 +182,12 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
     ipp_get_attr.push_back(IPPAttr(static_cast<uint16_t>(0x200)));  // IPP 2.0
     ipp_get_attr.push_back(IPPAttr(static_cast<uint16_t>(0x0B)));   // GetAttr
     ipp_get_attr.push_back(IPPAttr(static_cast<uint32_t>(0x01)));   // Req. ID
-    ipp_get_attr.push_back(IPPAttr(static_cast<uint8_t>(0x01)));    // Group OperationsTag
+    ipp_get_attr.push_back(IPPAttr(static_cast<uint8_t>(0x01)));    // Operations attibutes
     ipp_get_attr.push_back(IPPAttr(0x47, "attributes-charset", "utf-8"));
     ipp_get_attr.push_back(IPPAttr(0x48, "attributes-natural-language", "en"));
     ipp_get_attr.push_back(uri);
     ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-type-supported"));
+    ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-supported"));
     ipp_get_attr.push_back(IPPAttr(static_cast<uint8_t>(0x03)));    // end marker
     for (auto attr : ipp_get_attr)
     {
@@ -221,13 +226,15 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
     ipp_print_job.push_back(IPPAttr(static_cast<uint16_t>(0x200)));  // IPP 2.0
     ipp_print_job.push_back(IPPAttr(static_cast<uint16_t>(0x02)));   // Print Job
     ipp_print_job.push_back(IPPAttr(static_cast<uint32_t>(0x01)));   // Req. ID
-    ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x01)));    // Group OperationsTag
+    ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x01)));    // Operations attributes
     ipp_print_job.push_back(IPPAttr(0x47, "attributes-charset", "utf-8"));
     ipp_print_job.push_back(IPPAttr(0x48, "attributes-natural-language", "en"));
     ipp_print_job.push_back(uri);
     ipp_print_job.push_back(IPPAttr(0x42, "requesting-user-name", "pi1541"));
     ipp_print_job.push_back(IPPAttr(0x42, "job-name", "pi1541 raster job"));
     ipp_print_job.push_back(IPPAttr(0x49, "document-format", "image/pwg-raster"));
+    ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x02)));    // Job attributes
+    ipp_print_job.push_back(IPPAttr(0x44, "media", "iso_a4_210x297mm"));
     ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x03)));    // end marker
     for (auto attr : ipp_print_job)
     {
