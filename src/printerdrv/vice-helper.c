@@ -22,7 +22,7 @@
  * This code has been vibe-coded using GPT-6 Luna, prompted by pottendo
  */
 
- #include "vice-helper.h"
+#include "vice-helper.h"
 
 #include <stdarg.h>
 #include <stdio.h>

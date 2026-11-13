@@ -368,7 +368,7 @@ class IEC_Bus
 	static unsigned _mask;
 	static bool iec_initialized;
 #endif	
-	const u8 device_id;
+	u8 device_id;
 	const uint32_t drive_id;
 public:
 	IEC_Bus(u8 deviceID = 8, const uint32_t driveID = 0);
@@ -992,6 +992,7 @@ public:
 	inline bool IsClockReleased() { return !PI_Clock; }
 	inline bool GetPI_Reset() { return PI_Reset; }
 	inline u8 GetDeviceID() { return device_id; }
+	inline void SetDeviceID(u8 d) { device_id = d; }
 	inline bool IsDataSetToOut() { return DataSetToOut; }
 	//inline bool IsAtnaDataSetToOut() { return AtnaDataSetToOut; }
 	inline bool IsClockSetToOut() { return ClockSetToOut; }

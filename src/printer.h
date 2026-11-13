@@ -63,6 +63,7 @@ public:
     void emulate(void);
     void add2buffer(u8 byte, u8 sec_addr);
     void get_prspool(string &p, string ext, bool basename = false);
+    void next_spoolnr(uint16_t);
     void flush(string drv, string &res);
     void flush_vice(string drv, string &res, bool gfx = false);
     bool flush_raw(string &res);
@@ -73,6 +74,8 @@ public:
     inline string get_driver(void) { return driver; }
     inline size_t get_spooled(void) { return spooled; }
     inline string get_fullpath(void) { return fp; }
+
+    static uint16_t next_snr;
 };
 extern Printer *printer;
 

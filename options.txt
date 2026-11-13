@@ -85,7 +85,7 @@ ROM1581 = dos1581
 //ROM1581 = JiffyDOS_1581.bin
 
 // Printer
-// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to 1520 driver
+// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to mps1520 driver
 // if 0, printer completely disabled, cannot be enabled (default)
 // chose value < 0 to prepare printer but don't startup, chose -4, -5 or -6 for the desired ID
 printer = -4

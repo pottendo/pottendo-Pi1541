@@ -5,6 +5,10 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News V2.4 vs. V2.3.1
 
 V2.4 Beta4
+- Don't override spoolfiles, check only done for PDF extension.
+- Printer drivers can now be selected via the WebUI.
+- Direct print support, see below section printing, currently to be activated via WebUI.
+- Rename 1520 driver to mps1520 -> update your options.txt
 - Generate PWG Raster files to prepare for network printing
 
 V2.4 Beta3
@@ -12,7 +16,7 @@ V2.4 Beta3
 - Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
 - Added printer DMA sound, see options below, how to activate
 - Preview of printpage(s), generation of .pdf for convenient postprocessing for new drivers
-- Added more printer drivers: mps801,mps802,mps803,nl10,1520 - credits to the Vice team for the drivers and Copilot GPT-6 Luna for merging support
+- Added more printer drivers: mps801,mps802,mps803,nl10,mps1520 - credits to the Vice team for the drivers and Copilot GPT-6 Luna for merging support
 - Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
@@ -257,11 +261,15 @@ Know Bugs/Observations:
 
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 
-Printer output files (raw, PNG, PDF, PWG Raster or postscript) are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
-One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. It uses sRGB 8-bit color for the 1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
+Via WebUI one can flush the printer spooled which gnerates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
+One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. The download button retrieves the last generated PDF. Other files can be downloaded via the normal file browser WebUI by navigating to `SD:/1541/prn-out`.
+It uses sRGB 8-bit color for the mps1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
 
-Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The 1520 driver selects colors depending on the secondary addres.
-The Commodore 1520 plotter's PNG, PDF, and PWG Raster output supports black, blue, green, and red.
+Use `PrinterName` name to define a network printer, where pages are being sent for direct printing. Can be a hostname or an IP address. If the printer isn't reachable, it may take a few seconds until the driver runs into a timeout.
+Your printer must support IPP printing, A4 media and .PWG raster format - which is pretty standard. The mps1520 driver sends sRGB 8-bit raster format (color).
+
+Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The mps1520 driver selects colors depending on the secondary addres.
+The Commodore mps1520 plotter's PNG, PDF, and PWG Raster output supports black, blue, green, and red.
 
 **Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished. In general if prints are long, this can happen - also with other drivers. There's a finish sound on the PWM sound output (3.5mm jack).
 
@@ -314,7 +322,7 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
-| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID, use -4, -5, -6 to intialize but don't start |0| can be activated/deactivated via the WebUI, 6 selects 1520 driver |
+| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID, use -4, -5, -6 to intialize but don't start |0| can be activated/deactivated via the WebUI, 6 selects mps1520 driver |
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
 | PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
@@ -337,7 +345,7 @@ Here a snippet one can add to his `options.txt`:
 ```
 
 // Printer
-// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to 1520 plotter driver
+// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to mps1520 plotter driver
 // if 0, printer can be enabled via the webui
 printer = 0
 // Spool directory, where prints are being stored using the webui
@@ -346,6 +354,8 @@ PrinterPath = prn-out
 PrinterDriver = mps803  
 // Printer DMA Sound
 PrinterSound = 1
+// Direct print Support, network name or IP address of your printer
+// PrinterName = my-printer.echt.org
 
 // ---------------------------------------------------------------------------
 // CMD HD

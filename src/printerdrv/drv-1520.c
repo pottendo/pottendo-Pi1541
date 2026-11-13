@@ -1391,7 +1391,7 @@ int drv_1520_init_resources(void)
 #endif
 
     driver = (driver_select_t){
-        .drv_name     = "1520",
+        .drv_name     = "mps1520",
         .ui_name      = "Commodore 1520",
 
         .drv_open     = drv_1520_open,

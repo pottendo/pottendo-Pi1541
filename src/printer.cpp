@@ -37,6 +37,7 @@ extern "C"
 size_t bufferlen = 1024*64;
 unsigned const char *prBuffer4vicedrv;
 unsigned out_pr1 = 0;
+uint16_t Printer::next_snr = 1;
 
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)
@@ -69,12 +70,18 @@ Printer::Printer(u8 ID, bool activate)
         else if (res != FR_EXIST)
             DEBUG_LOG("%s: couldn't create printer spool directory: '%s'", __FUNCTION__, fp.c_str());
     }
+    driver = options.GetPrDriver();
     if (deviceID == 6)
-        driver = "1520";
+        driver = "mps1520";
+    if (driver == "mps1520")
+    {
+        deviceID = 6;
+        iec_bus.SetDeviceID(deviceID);
+    }
     else if ((deviceID == 4) || (deviceID == 5))
     {
-        driver = options.GetPrDriver();
-        if (driver != "mps801" && driver != "mps802" && driver != "mps803" && driver != "nl10" && driver != "1520" && driver != "petlp")
+        if (driver != "mps801" && driver != "mps802" && driver != "mps803" && 
+            driver != "nl10" && driver != "mps1520" && driver != "petlp")
         {
             DEBUG_LOG("%s: unsupported printer driver: %s, defaulting to 'mps803'", __FUNCTION__, driver.c_str());
         }
@@ -86,6 +93,7 @@ Printer::Printer(u8 ID, bool activate)
     }
     if (!shoff && (strcmp(options.GetPrHost(), "") != 0) && options.NetworkOn())
         dprint = true;
+    next_spoolnr(next_snr); // initialize next_snr with first free entry found
     DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s', direct print: %s %s", 
         __FUNCTION__, deviceID, driver.c_str(), fp.c_str(), (dprint ? "enabled" : "no"), (dprint ? options.GetPrHost() : ""));
 }
@@ -149,8 +157,24 @@ void Printer::add2buffer(u8 byte, u8 sec_addr)
     if (!dirty)
     {
         dirty = true;
-        spoolnr++;
+        spoolnr = next_snr;
     }
+}
+
+void Printer::next_spoolnr(uint16_t spnr)
+{
+    char buf[256];
+    FILINFO fi;
+    int i;
+    for (i = spnr; i < 4096; i++)
+    {
+        snprintf(buf, 255, "%s%s/%s-%d.pdf", 
+            def_prefix.c_str(), options.GetPrPath(), spoolfn.c_str(), i);
+        if (f_stat(buf, &fi) != FR_OK)
+            break;
+    }
+    next_snr = i;
+    DEBUG_LOG("%s: next spool nr = %d", __FUNCTION__, next_snr);
 }
 
 // normally called from web-server
@@ -170,7 +194,7 @@ void Printer::flush(string drv, string &res)
     }
     spoolChannels.clear();
     last_secaddr = 255;
-
+    next_spoolnr(spoolnr);
 }
 
 static void open2print(IPPClient &ipp_client, string &f, string &msg)

@@ -112,8 +112,21 @@
 			<table style="width: 100%;">
                 <tr>
 					<td>
+						<h4 style="text-align: left">Printer output</h4>
+					</td>
+					<td>
+						<select id="printer" onchange="selectPrinter(this.value)">
+							<option value="" selected disabled>Select Driver --></option>
+							<option value="mps801">Commodore MPS801</option>
+							<option value="mps802">Commodore MPS802</option>
+							<option value="mps803">Commodore MPS803</option>
+							<option value="nl10">Star NL10</option>
+							<option value="mps1520">Commodore 1520 Plotter</option>
+							<option value="petlp">Epson Text Printer</option>
+						</select>
+					</td>
+					<td>
 						<div style="display: flex; justify-content: space-between; width: 100%;">
-							<h4 style="text-align: left">Printer output</h4>
 							<a href="print.html?[TOGGLE]"><input type="submit" class="btn btn-success" value="Toggle Printer on/off"/></a>
 							<a href="print.html?[FLUSH]"><input type="submit" class="btn btn-success" value="Flush & Print"/></a>
 							<a href="print.html?[DELSPOOL]"><input type="submit" class="btn btn-success" onClick="return delConfirm(event)"
@@ -151,6 +164,13 @@
 					event.preventDefault();
 					return false;
 				}
+			};
+		</script>
+		<script>
+			function selectPrinter(printer) {
+				if (!printer) return;
+				window.location.href =
+					"print.html?[SELDRIVER]&" + encodeURIComponent(printer);
 			};
 		</script>
 		<script>

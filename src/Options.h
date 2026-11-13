@@ -174,6 +174,7 @@ public:
 	inline void SetPrinter(unsigned p) { printer = p; }
 	inline const char *GetPrPath(void) const { return prpath; }
 	inline const char *GetPrDriver(void) const { return prdriver; }
+	inline void SetPrDriver(char *drv) { strncpy(prdriver, drv, 15); }
 	inline unsigned int GetPrSound(void) const { return PrinterSound; }
 	inline const char *GetPrHost(void) const { return prhost; }
 #endif	

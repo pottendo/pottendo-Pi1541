@@ -805,7 +805,7 @@ static int write_pwg_raster(const char *driver_name)
     size_t page_height = vice_helper_gfx_page_height();
     size_t page_count = page_height == 0
         ? (gfx_rows == 0 ? 0 : 1) : vice_helper_gfx_page_count();
-    size_t bytes_per_pixel = strcmp(driver_name, "1520") == 0 ? 3 : 1;
+    size_t bytes_per_pixel = strcmp(driver_name, "mps1520") == 0 ? 3 : 1;
     size_t left_margin;
     size_t output_width;
     size_t compressed_capacity;
@@ -926,7 +926,7 @@ int vicepr_finish(void)
     if (printer_driver == NULL
         || (vicepr_session_had_input
             && (!vicepr_session_last_was_formfeed
-                || strcmp(vicepr_session_driver, "1520") == 0)
+                || strcmp(vicepr_session_driver, "mps1520") == 0)
             && printer_driver->drv_formfeed(0) < 0)) {
         DEBUG_LOG("The '%s' driver failed to finish the final page.\n",
                   vicepr_session_driver);
@@ -1013,7 +1013,7 @@ int main(int argc, char **argv)
                 && strcmp(driver_name, "mps801") != 0
                 && strcmp(driver_name, "mps802") != 0
                 && strcmp(driver_name, "mps803") != 0
-                && strcmp(driver_name, "1520") != 0) {
+                && strcmp(driver_name, "mps1520") != 0) {
                 DEBUG_LOG("Unsupported printer driver '%s'; "
                         "choose nl10, mps801, mps802, mps803, or 1520.\n",
                         driver_name);

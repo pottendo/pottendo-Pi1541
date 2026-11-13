@@ -1745,7 +1745,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
 				 (printer ? (printer->get_deviceid()) : 0),
-				 (printer ? (printer->get_driver().c_str()) : "disabled"),
+				 options.GetPrDriver(),
 				 (printer ? (printer->running() ? "on" : "off") : "off"),
 				 (printer ? (printer->running() ? (string(", spooled: <i>") + to_string(printer->get_spooled()) + "b</i>").c_str() : "") : ""),
 				 temp / 1000,
@@ -2227,28 +2227,38 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			printer->get_prspool(pv, ".png", true);
 			printer->get_prspool(p, "");
 			printer->get_prspool(pbn, "", true);
-			if (strcmp(options.GetPrDriver(), "1520") != 0)
+			if (strcmp(options.GetPrDriver(), "mps1520") != 0)
 			{
 				size_t extension = pv.rfind(".png");
 				if (extension != string::npos)
 					pv.insert(extension, "-1");
 			}
-			if (strcmp(pParams, "[TOGGLE]") == 0)
-			{
-				bool pr = printer->running();
-				printer->set_running(!pr);
-				if (!pr)
-					Kernel.activate_core(3);
-				DEBUG_LOG("%s: printer (%d) is %s, spooldir = '%s'", __FUNCTION__, 
-					printer->get_deviceid(), (pr ? "off" : "on"), options.GetPrPath());
-			}
 		}
 		else
 		{
-			msg = "Printer disabled from options<br />";
+			msg = "Printer off<br />";
 			DEBUG_LOG("%s: %s, pParm = %s", __FUNCTION__, msg.c_str(), pParams);
 		}
-		if (strcmp(pParams, "[DOWNLOAD]") == 0)
+		if (strncmp(pParams, "[SELDRIVER]&", 12) == 0)
+		{
+			const char *drv = &pParams[12]; // security issue
+			DEBUG_LOG("%s: selected '%s'", __FUNCTION__, drv);
+			options.SetPrDriver((char *)drv);
+			if (printer)
+			{
+				printer->set_running(false);
+				MsDelay(200);
+				Kernel.activate_core(3);
+			} 
+		}
+		if (strcmp(pParams, "[TOGGLE]") == 0)
+		{
+			if (printer)
+				printer->set_running(false);
+			else
+				Kernel.activate_core(3);
+		} 
+		else if (strcmp(pParams, "[DOWNLOAD]") == 0)
 		{
 			if (printer) 
 			{
@@ -2258,12 +2268,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			}
 			msg += string("Printer disabled<br />");
 		}
-		if (strcmp(pParams, "[DELSPOOL]") == 0)
+		else if (strcmp(pParams, "[DELSPOOL]") == 0)
 		{
 			DEBUG_LOG("%s: delete printer spooler", __FUNCTION__);
 			f_unlink_full(options.GetPrPath(), msg, true);
 			msg += "Deleted printer spooler";
 		}
+
 		generate_prpreview(pg, options.GetPrPath(), pv);
 		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;
