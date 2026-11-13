@@ -30,7 +30,9 @@
 #include "Petscii.h"
 #include "FileBrowser.h"
 #include "DiskImage.h"
+#if defined(__CIRCLE__)
 #include "printer.h"
+#endif
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>

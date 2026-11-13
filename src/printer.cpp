@@ -202,7 +202,7 @@ static void open2print(IPPClient &ipp_client, string &f, string &msg)
     FIL fp;
     FRESULT res;
     FILINFO fi;
-    size_t nread = 0, br;
+    unsigned int nread = 0, br;
 
     if ((res = f_stat(f.c_str(), &fi)) != FR_OK)
     {
