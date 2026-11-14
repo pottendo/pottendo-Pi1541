@@ -2250,7 +2250,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			if (printer)
 			{
 				printer->set_running(false);
-				MsDelay(200);
+				MsDelay(400);
 				Kernel.activate_core(3);
 			} 
 		}

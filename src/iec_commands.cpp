@@ -647,8 +647,7 @@ cont:
 
 					if (iec_bus->IsAtnAsserted()) atnSequence = ATN_SEQUENCE_RECEIVE_COMMAND_CODE;
 					else atnSequence = ATN_SEQUENCE_HANDLE_COMMAND_CODE;
-
-					//DEBUG_LOG("Cl %d %d\r\n", secondaryAddress, atnSequence);
+					//if (deviceID < 8) DEBUG_LOG("%s: Close %d %d", __FUNCTION__, secondaryAddress, atnSequence);
 				}
 				else	// Open
 				{
