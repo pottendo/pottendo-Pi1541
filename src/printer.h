@@ -37,7 +37,6 @@ public:
 
 class Printer
 {
-    const string def_prefix = "SD:/1541/";
     u8 deviceID;
     IEC_Commands* iecCommands;
     IEC_Bus iec_bus;
@@ -57,6 +56,7 @@ class Printer
     bool dprint;
     IPPClient *ipp_client;
 public:
+    static const string def_prefix;
     Printer(u8 deviceID, bool activate);
     ~Printer();
     IEC_Bus* GetIEC_Bus() { return &iec_bus; }

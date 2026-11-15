@@ -38,6 +38,7 @@ size_t bufferlen = 1024*64;
 unsigned const char *prBuffer4vicedrv;
 unsigned out_pr1 = 0;
 uint16_t Printer::next_snr = 1;
+const string Printer::def_prefix = "SD:/1541/";
 
 Printer::Printer(u8 ID, bool activate) 
 : deviceID(ID)

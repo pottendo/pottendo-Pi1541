@@ -79,4 +79,12 @@ inline void time_fn_eval(u32 ms_threshold, const char *t)
 	if ((delta = (_cta - _ctb)) > ms_threshold)
 		Kernel.log("%s: delta = %d", t, delta);
 }
+
+// presevers cwd over a block
+struct save_CD
+{
+	char scwd[256];
+	save_CD(const char *path);
+	~save_CD();
+};
 #endif /* __legacy_wrappers_h__ */

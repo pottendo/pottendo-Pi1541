@@ -414,7 +414,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
 - PiZero2W won't run stable with HDMI enabled @1400 Mhz -> keep HDMI disabled (`DisableHDMI = 1`) or reduce clock-speed in `config.txt`.
-- Printer preview is very limited, GFX printer output is not yet supported
+- Printer preview may not be visible, if user changed to another medium, like USB0. Switch back to SDCard before entering menu Print.
 
 # Checkout & Build
 

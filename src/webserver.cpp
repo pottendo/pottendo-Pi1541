@@ -410,9 +410,6 @@ static void generate_prpreview(string &res, string path, string &page)
 	int cols = 0;
 	res.clear();
 	vector<string> png_files;
-	char scwd[256];
-	f_getcwd(scwd, 255);
-	f_chdir(def_prefix.c_str());
 	find_files_by_pattern(png_files, path, "*.png");
 	sort(png_files.begin(), png_files.end());
 	for (const auto& png_file : png_files)
@@ -430,7 +427,6 @@ static void generate_prpreview(string &res, string path, string &page)
 	}
 	if (cols != 0)
 		res += "</tr>";
-	f_chdir(scwd);
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)
@@ -1425,7 +1421,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	mem_stat(pPath, mem, true);
 	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
-	
+
 	// serve content of /web
 	if (strncmp(pPath, "/web", 4) == 0)
 	{
@@ -2214,6 +2210,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string p = "";
 		string pbn = "";
 		string pv = "";
+		save_CD scwd(Printer::def_prefix.c_str());
+
 		if (printer)
 		{
 			if (printer->get_spooled() == 0)
@@ -2277,7 +2275,6 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			f_unlink_full(options.GetPrPath(), msg, true);
 			msg += "Deleted printer spooler";
 		}
-
 		generate_prpreview(pg, options.GetPrPath(), pv);
 		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
 		pContent = (const u8 *)(const char *)String;

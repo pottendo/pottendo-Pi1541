@@ -113,3 +113,17 @@ void hexdump(const char *buf, int len)
     }
 }
 
+save_CD::save_CD(const char *path)
+{
+    f_getcwd(scwd, 255);
+    if (!path)
+        return;
+    DEBUG_LOG("%d: preserve %s, CD to %s", __FUNCTION__, scwd, path);
+    f_chdir(path);
+}
+
+save_CD::~save_CD()
+{
+    DEBUG_LOG("%d: restoring %s", __FUNCTION__, scwd);
+    f_chdir(scwd);
+}
