@@ -63,7 +63,7 @@ public:
     void emulate(void);
     void add2buffer(u8 byte, u8 sec_addr);
     void get_prspool(string &p, string ext, bool basename = false);
-    void next_spoolnr(uint16_t);
+    void next_spoolnr(uint16_t spnr);
     void flush(string drv, string &res);
     void flush_vice(string drv, string &res, bool gfx = false);
     bool flush_raw(string &res);

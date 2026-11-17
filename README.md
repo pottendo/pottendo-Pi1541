@@ -5,7 +5,8 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News V2.4 vs. V2.3.1
 
 V2.5 Beta5
-- Fix printer menu and spool directory path handling.
+- PNG numbers are now 3 digit to be sorted properly when many pages are printed.
+- Fix printer menu spool directory path handling - finally.
 
 V2.4 Beta4
 - Fix to save images correctly, when printing has happened in-between.
@@ -265,8 +266,8 @@ Know Bugs/Observations:
 
 An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
 
-Via WebUI one can flush the printer spooled which gnerates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/`.
-One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. The download button retrieves the last generated PDF. Other files can be downloaded via the normal file browser WebUI by navigating to `SD:/1541/prn-out`.
+Via WebUI one can flush the printer spooled which gnerates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/` and cannot be placed on USB drives.
+One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. The download button retrieves the last generated PDF. Other files can be downloaded via the normal file browser WebUI by navigating to `SD:/1541/prn-out`. Printerfiles may not exceed 999 files in this directory, delete spool from time to time.
 It uses sRGB 8-bit color for the mps1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
 
 Use `PrinterName` name to define a network printer, where pages are being sent for direct printing. Can be a hostname or an IP address. If the printer isn't reachable, it may take a few seconds until the driver runs into a timeout.

@@ -964,7 +964,6 @@ static THTTPStatus download_file(const string &fullndir, u8 *pBuffer,
 	FSIZE_t fileSize;
 	unsigned length = 0;
 	unsigned capacity = *pLength;
-
 	if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
 	{
 		Kernel.log("%s: open of '%s' failed (%d)", __FUNCTION__,
@@ -2210,8 +2209,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		string p = "";
 		string pbn = "";
 		string pv = "";
-		save_CD scwd(Printer::def_prefix.c_str());
-
+		save_CD scwd(Printer::def_prefix.c_str(), def_prefix);
+		//DEBUG_LOG("%s: def_prefix web = %s", __FUNCTION__, def_prefix.c_str());
 		if (printer)
 		{
 			if (printer->get_spooled() == 0)
@@ -2263,7 +2262,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		{
 			if (printer) 
 			{
-				DEBUG_LOG("%s: printer page download, pParams = %s", __FUNCTION__, pParams);
+				DEBUG_LOG("%s: printer page download, pParams = %s, p = %s", __FUNCTION__, pParams, p.c_str());
 				*ppContentType = "application/octet-stream";
 				return download_file(p, pBuffer, pLength);
 			}
@@ -2310,7 +2309,9 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		UINT br;
 		string fn;
 		fn = urlDecode(string(pPath));
-		if (fn.find(def_prefix) == string::npos)
+		if (fn.find(options.GetPrPath()) != string::npos)
+			fn = Printer::def_prefix + fn;
+		else if (fn.find(def_prefix) == string::npos)
 			fn = def_prefix + fn;
 		//DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
 		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)

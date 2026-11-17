@@ -84,7 +84,8 @@ inline void time_fn_eval(u32 ms_threshold, const char *t)
 struct save_CD
 {
 	char scwd[256];
-	save_CD(const char *path);
+	std::string drive;
+	save_CD(const char *path, std::string &def_prefix);
 	~save_CD();
 };
 #endif /* __legacy_wrappers_h__ */

@@ -127,7 +127,7 @@ static char *numbered_gfx_path(size_t page_number)
     memcpy(path, gfx_path, prefix_length);
     path_length_written = vice_helper_snprintf(
         path + prefix_length, allocation_size - prefix_length,
-        "-%lu%s", (unsigned long)page_number, extension);
+        "-%03lu%s", (unsigned long)page_number, extension);
     if (path_length_written < 0
         || (size_t)path_length_written >= allocation_size - prefix_length) {
         free(path);

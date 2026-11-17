@@ -94,7 +94,7 @@ Printer::Printer(u8 ID, bool activate)
     }
     if (!shoff && (strcmp(options.GetPrHost(), "") != 0) && options.NetworkOn())
         dprint = true;
-    next_spoolnr(next_snr); // initialize next_snr with first free entry found
+    next_spoolnr(spoolnr); // initialize spoolnr
     DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s', direct print: %s %s", 
         __FUNCTION__, deviceID, driver.c_str(), fp.c_str(), (dprint ? "enabled" : "no"), (dprint ? options.GetPrHost() : ""));
 }
@@ -141,7 +141,7 @@ void Printer::get_prspool(string &p, string ext, bool basename)
     snprintf(buf, 7, "%03d", spoolnr);
     p = spoolfn + '-' + string(buf) + ext; 
     if (!basename)
-        p = def_prefix + string(options.GetPrPath()) + '/' + p;
+        p =  def_prefix + string(options.GetPrPath()) + '/' + p;
 }
 
 void Printer::add2buffer(u8 byte, u8 sec_addr)
@@ -168,8 +168,9 @@ void Printer::next_spoolnr(uint16_t spnr)
 {
     char buf[256];
     FILINFO fi;
-    int i;
-    for (i = spnr; i < 4096; i++)
+    int i, start;
+    start = spnr ? spnr : 1;
+    for (i = start; i < 1000; i++) // find first free entry
     {
         snprintf(buf, 255, "%s%s/%s-%03d.pdf", 
             def_prefix.c_str(), options.GetPrPath(), spoolfn.c_str(), i);
@@ -177,6 +178,8 @@ void Printer::next_spoolnr(uint16_t spnr)
             break;
     }
     next_snr = i;
+    if (spnr == 0)
+        spoolnr = next_snr - 1;
     DEBUG_LOG("%s: next spool nr = %d", __FUNCTION__, next_snr);
 }
 

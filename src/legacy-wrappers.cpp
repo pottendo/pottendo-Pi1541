@@ -17,6 +17,7 @@
 
 #include <circle/startup.h>
 #include "circle-kernel.h"
+#include <string>
 #include "rpi-gpio.h"
 #include "debug.h"
 u32 _ctb;
@@ -113,17 +114,37 @@ void hexdump(const char *buf, int len)
     }
 }
 
-save_CD::save_CD(const char *path)
+save_CD::save_CD(const char *path, std::string &def_prefix)
+: drive("")
 {
+    FRESULT res;
     f_getcwd(scwd, 255);
     if (!path)
         return;
-    DEBUG_LOG("%d: preserve %s, CD to %s", __FUNCTION__, scwd, path);
-    f_chdir(path);
+    std::string cwd(scwd);
+    if (cwd.find(def_prefix, 0) == std::string::npos)
+    {
+        DEBUG_LOG("%s: cwd %s differs from def_prefix %s", __FUNCTION__, cwd.c_str(), def_prefix.c_str());
+        // prefix and drive may be different, preserve drive
+        size_t colon = def_prefix.find(':');
+        drive = def_prefix.substr(0, colon);
+        if ((res = f_chdrive("SD")) != FR_OK)
+            DEBUG_LOG("%s: failed chdrive %d", __FUNCTION__, res);
+    }
+    DEBUG_LOG("%s: preserve %s %s, CD to %s", __FUNCTION__, def_prefix.c_str(), scwd, path);
+    if ((res = f_chdir(path)) != FR_OK)
+        DEBUG_LOG("%s: failed chdir %d", __FUNCTION__, res);
 }
 
 save_CD::~save_CD()
 {
-    DEBUG_LOG("%d: restoring %s", __FUNCTION__, scwd);
-    f_chdir(scwd);
+    FRESULT res;
+    DEBUG_LOG("%s: restoring %s: %s", __FUNCTION__, drive.c_str(), scwd);
+    if (drive != "")
+    {
+        if ((res = f_chdrive(drive.c_str())) != FR_OK)
+            DEBUG_LOG("%s: failed chdrive %d", __FUNCTION__, res);
+    }
+    if ((res = f_chdir(scwd)) != FR_OK)
+        DEBUG_LOG("%s: failed chdir %d", __FUNCTION__, res);
 }
