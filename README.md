@@ -1,22 +1,17 @@
-# pottendo-Pi1541 V2.4 Beta
+# pottendo-Pi1541 V2.4
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
 ## News V2.4 vs. V2.3.1
 
-V2.5 Beta5
 - PNG numbers are now 3 digit to be sorted properly when many pages are printed.
 - Fix printer menu spool directory path handling - finally.
-
-V2.4 Beta4
 - Fix to save images correctly, when printing has happened in-between.
 - Don't override spoolfiles, check only done for PDF extension.
 - Printer drivers can now be selected via the WebUI.
 - Direct print support, see below section printing, currently to be activated via WebUI.
 - Rename 1520 driver to mps1520 -> update your options.txt
 - Generate PWG Raster files to prepare for network printing
-
-V2.4 Beta3
 - Temperature optimization: headless LCD update is now done by network core and core 0 not used for pi1541
 - Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
 - Added printer DMA sound, see options below, how to activate
@@ -25,11 +20,7 @@ V2.4 Beta3
 - Support secondary address 7 to switch to secondary character set
 - Make printer buffer allocation dynamic
 - Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
-  
-V2.4 Beta2
 - Move network back to run on core 2 and implement toggle on/off via longpress ENTER in IEC Emulation Mode. See options below.
-
-V2.4 Beta1
 - default `config.txt` reduces overclocking to 1350MHz for PiZero2 to improve stability
 - Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
 - Run network on core 0 (along with HDMI output if activated)
