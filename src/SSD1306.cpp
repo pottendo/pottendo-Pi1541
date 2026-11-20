@@ -260,9 +260,17 @@ void SSD1306::PlotText(bool useCBMFont, bool petscii, int x, int y, char* str, b
 {
 // assumes 16 character width
 	int i;
+	int xstart = x;
 	i = 0;
 	while (str[i] && x < 16)
 	{
+		if (str[i] == '\n')
+		{
+			x = xstart;
+			i++;
+			y++;
+			continue;
+		}
 		PlotCharacter(useCBMFont, petscii, x++, y, str[i++], inverse);
 	}
 }

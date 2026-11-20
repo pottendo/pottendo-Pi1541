@@ -30,6 +30,7 @@
 #endif
 #include "debug.h"
 #include "DiskImage.h"
+#include "iec_bus.h"
 
 struct TimerMicroSeconds
 {
@@ -74,7 +75,7 @@ public:
 		RESET
 	};
 
-	IEC_Commands();
+	IEC_Commands(IEC_Bus* bus);
 	void Initialise();
 
 	void SetDeviceId(u8 id) { deviceID = id; }
@@ -212,6 +213,8 @@ protected:
 	bool cdSlashSlashToRoot;
 
 	DiskImage::DiskType newDiskType;
+
+	IEC_Bus* iec_bus;
 };
 #endif
 

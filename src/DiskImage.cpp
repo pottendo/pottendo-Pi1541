@@ -1480,7 +1480,7 @@ DiskImage::DiskType DiskImage::GetDiskImageTypeViaExtention(const char* diskImag
 #if defined (CMDHD_SUPPORT)			
 		else if (IsDiskImageCMDHDExtention(diskImageName))
 			return DHD;
-#endif			
+#endif
 		else if (toupper((char)ext[1]) == 'P' && toupper((char)ext[2]) == 'R' && toupper((char)ext[3]) == 'G')
 			return PRG;
 	}
@@ -1554,6 +1554,22 @@ bool DiskImage::IsDiskImageCMDHDExtention(const char* diskImageName)
 	if (ext)
 	{
 		if (strncasecmp(ext, ".dhd", 4) == 0)
+			return true;
+	}
+	return false;
+}
+#endif
+
+#if defined (__CIRCLE__)
+bool DiskImage::IsPrinterFileExtension(const char *file)
+{
+	char* ext = strrchr((char*)file, '.');
+
+	if (ext)
+	{
+		if (strncasecmp(ext, ".ps", 3) == 0)
+			return true;
+		if (strncasecmp(ext, ".raw", 4) == 0)
 			return true;
 	}
 	return false;

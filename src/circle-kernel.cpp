@@ -34,6 +34,7 @@
 #include <circle/usb/usbmassdevice.h>
 #include "Options.h"
 #include "webserver.h"
+#include "printer.h"
 #include "version.h"
 #include <list>
 #include <string>
@@ -45,6 +46,7 @@
 
 CCPUThrottle CPUThrottle;
 int reboot_req = 0;
+Printer *printer = nullptr;
 extern CKernel Kernel;
 extern Options options;
 
@@ -52,6 +54,8 @@ static u8 IPAddress[]      = {192, 168, 188, 31};
 static u8 NetMask[]        = {255, 255, 255, 0};
 static u8 DefaultGateway[] = {192, 168, 188, 1};
 static u8 DNSServer[]      = {192, 168, 188, 1};
+static CWebServer *webserver = nullptr;
+static CNTPDaemon *cntp = nullptr;
 
 bool parse_netaddr(const char* s, u8 *ip)
 {
@@ -142,6 +146,17 @@ void mem_stat(const char *func, std::string &mem, bool verb)
 	old = ms->GetHeapFreeSpace(HEAP_ANY);
 }
 
+void reboot_hook(void)
+{
+	if (reboot_req && reboot_req++ > 4)
+	{
+		DEBUG_LOG("%s: rebooting now...", __FUNCTION__);
+		DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
+		MsDelay(20);
+		reboot_now();
+	}
+}
+
 #ifdef HEAP_DEBUG	
 void mem_heapinit(void)
 {
@@ -207,11 +222,13 @@ CKernel::CKernel(void) :
 #endif	
 	m_WLAN (_FIRMWARE_PATH),
 	m_Net(nullptr),
+	m_TLSSimple(nullptr),
 	m_WPASupplicant (_CONFIG_FILE),
 	m_MCores(CMemorySystem::Get()),
 	screen_failed(false),
 	no_pwm(false),
-	arch("unknown")
+	arch("unknown"),
+	net_run(false)
 {
 	boolean serialOK;
 	
@@ -234,6 +251,7 @@ CKernel::CKernel(void) :
 	strcpy(ip_address, "<n/a>");
 	snprintf(pPi1541Version, 255, "pottendo-Pi1541 (%s)", PPI1541VERSION);
 	version_extra[0] = '\0';
+	IPString = "no IP";
 	DEBUG_LOG("%s: CKernel initialized, KERNEL_STACK_SIZE = 0x%08x, TASK_STACK_SIZE = 0x%08x", __FUNCTION__, KERNEL_STACK_SIZE, TASK_STACK_SIZE);
 }
 
@@ -285,6 +303,7 @@ boolean CKernel::Initialize (void)
 extern ScreenLCD *screenLCD;
 extern DiskCaddy diskCaddy;
 extern CSpinLock core0RefreshingScreen;
+CSpinLock emuSpinLock;
 
 TShutdownMode CKernel::Run(void)
 {
@@ -351,19 +370,36 @@ TShutdownMode CKernel::Run(void)
 	// pre-alloc mem to track potential losses more easily
 	mem_heapinit();
 #endif
-
 	// launch everything
 	Kernel.launch_cores();
 	logger.finished_booting("display core");
 	if (options.GetHeadLess() == false)
 	{
-		UpdateScreen();
-		DEBUG_LOG("%s: unexpected return of display thread, halting core %d", __FUNCTION__, 0);
-	} 
-	else 
-	{
-		DEBUG_LOG("%s: running headless, halting core %d...", __FUNCTION__, 0);
+		UpdateScreen(nullptr); // this doesn't return
+		DEBUG_LOG("%s: unexpected return of display thread on core %d", __FUNCTION__, 0);
 	}
+	DEBUG_LOG("%s: running headless", __FUNCTION__);
+	if (!options.NetworkOn())
+	{
+		// no network, no core 2, update LCD 
+		while (true)
+		{
+			MsDelay_core0pd(100);
+			lcd_showheadless();
+		}
+	}
+	DEBUG_LOG("%s: halting core 0", __FUNCTION__);
+
+/*
+		// recover one day 
+		if (options.GetHealthMonitor() == 1)
+			Kernel.log("disabling health monitoring on core %d", core);
+		else
+		{
+			Kernel.log("launching system monitoring on core %d", core);
+			Kernel.run_tempmonitor();
+		}
+*/
 	return ShutdownHalt;
 }
 
@@ -430,6 +466,26 @@ boolean CKernel::init_screen(u32 widthDesired, u32 heightDesired, u32 colourDept
 	return true;
 }
 
+void CKernel::toggle_network(void)
+{
+	 if (options.GetNetEthernet() | options.GetNetWifi())
+	 {
+		net_run = !net_run;
+		display_networkstat();
+		if (net_run)
+	 		m_MCores.toggle_network();
+		else
+			DEBUG_LOG("%s: network disabled", __FUNCTION__);
+	 }
+}
+
+void CKernel::display_networkstat(void)
+{
+	char buf[256];
+	snprintf(buf, 255, "Network %s\n%s", (net_run ? "on" : "off"), (const char *)IPString);
+	DisplayMessage(0, 24, true, buf, 0xffffffff, 0);
+}
+
 bool CKernel::run_ethernet(void)
 {
 	bool bOK;
@@ -479,15 +535,13 @@ bool CKernel::run_wifi(void)
 	return bOK;
 }
 
-static void display_temp(void)
+static void display_temp(unsigned int temp)
 {
-	unsigned temp = 0;
 	RGBA BkColour = RGBA(0, 0, 0, 0xFF);
 	RGBA TextColour = RGBA(0xff, 0xff, 0xff, 0xff);
-	GetTemperature(temp);
 #if 1
 	char buf[128];
-	sprintf(buf, " %dC", temp / 1000);
+	sprintf(buf, " %dC", temp);
 	//core0RefreshingScreen.Acquire();
 	screenLCD->PrintText(false, 8 * 12, 0, buf, TextColour, BkColour);
 	screenLCD->SwapBuffers();
@@ -496,9 +550,8 @@ static void display_temp(void)
 	//DEBUG_LOG("%s: temp = %d", __FUNCTION__, temp / 1000);
 }
 
-void CKernel::run_webserver(bool isWifi) 
+void CKernel::run_webserver(bool isWifi, unsigned int startit) 
 {
-	CString IPString;
 	while (!m_Net->IsRunning())
 	{
 		log("webserver waits for network... waiting 5s");
@@ -508,7 +561,9 @@ void CKernel::run_webserver(bool isWifi)
 	strcpy(ip_address, (const char *) IPString);
 	log ("Open \"http://%s/\" in your web browser!", ip_address);
 	mScheduler.MsSleep (1000);/* wait a bit, LCD output */
-	DisplayMessage(0, 24, true, (const char*) IPString, 0xffffff, 0x0);
+	if (startit == 1)
+		net_run = true;
+	display_networkstat();
 	if (isWifi)
 		DEBUG_LOG("%s: Wifi IsConnected = %d", __FUNCTION__, m_WPASupplicant.IsConnected());
 
@@ -517,7 +572,7 @@ void CKernel::run_webserver(bool isWifi)
 	else
 		DEBUG_LOG("%s: setting of timezone '%.0f'mins vs. UTC failed", __FUNCTION__, options.GetTZ() * 60.0);
 	{
-		CNTPDaemon CNTPDaemon("152.53.132.244", m_Net);
+		CNTPDaemon *cntp = new CNTPDaemon("152.53.132.244", m_Net);	// never deleted
 		unsigned max_cs = options.GetMaxContentSize();
 		unsigned max_mps = options.GetMaxMultipartSize();
 		if (max_cs < 256) { 
@@ -538,22 +593,7 @@ void CKernel::run_webserver(bool isWifi)
 		}
 		DEBUG_LOG("%s: launching webserver with: maxContentSize = %dkb, maxMultipartSize = %dkb", __FUNCTION__, max_cs, max_mps);
 		init_webserver();
-		CWebServer CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024);
-		logger.finished_booting("network core");
-		while (1)
-		{
-			if (reboot_req && reboot_req++ > 4)
-			{
-				log("%s: rebooting now...", __FUNCTION__);
-				DisplayMessage(0, 24, true, "Rebooting.......", 0xffffff, 0x0);
-				mScheduler.MsSleep(20);
-				reboot_now();
-			}
-			lcd_showheadless();
-			//if (!m_Net->IsRunning())
-			//	break;
-		}
-		DEBUG_LOG("%s: network down, restarting...", __FUNCTION__);
+		CWebServer *webserver = new CWebServer(m_Net, &m_ActLED, 0, max_cs * 1024, max_mps * 1024); // never deleted
 	}
 }
 
@@ -672,15 +712,50 @@ TKernelTimerHandle CKernel::timer_start(unsigned delay, TKernelTimerHandler *pHa
 }
 
 #include "sample.h"
+#include "printer-sound.h"
+#include "printer-finish.h"
 //extern const long int Sample_bin_size;
 //extern const unsigned char *Sample_bin;
-void CKernel::playsound(void)
+void CKernel::playsound(int sound)
 {
+	void *s = nullptr;
+	unsigned long sz = 0;
 	if (no_pwm) return;
 #if RASPPI <= 4
 	if (m_PWMSoundDevice->PlaybackActive())
 		return;
-	m_PWMSoundDevice->Playback ((void *)Sample_bin, Sample_bin_size, 1, 8);
+	switch (sound) {
+		case 0:
+			s = (void *)Sample_bin;
+			sz = Sample_bin_size;
+			break;
+		case 1:
+			{
+				switch(get_clock_ticks() % 3) {	// randomize the sound to avoid monotony
+					case 1:
+						s = (void *)&Printer_sound_bin[Printer_sound_bin_size / 2];
+						sz = Printer_sound_bin_size / 2;
+						break;
+					case 2:
+						s = (void *)Printer_sound_bin;
+						sz = Printer_sound_bin_size / 2;
+						break;
+					default:
+						s = (void *)Printer_sound_bin;
+						sz = Printer_sound_bin_size;
+						break;
+				}
+			}
+			break;
+		case 2:
+			s = (void *)Printer_finish_bin;
+			sz = Printer_finish_bin_size;
+			break;
+		default:
+			Kernel.log("%s: unknown sound %d", __FUNCTION__, sound);
+			return;
+	}
+	m_PWMSoundDevice->Playback ((void *)s, sz, 1, 8);
 #endif	
 }
 
@@ -697,103 +772,188 @@ char *CKernel::get_version(void)
 void CKernel::lcd_showheadless(void)
 {
 	static int temp_period = 0;
+	unsigned int temp = 0;
+	if (options.DisplayTemperature())
+		GetTemperature(temp);
 #if defined(CMDHD_SUPPORT)
 	extern EmulatingMode emulating;
 	extern void UpdateLCDLamps(void);
 	extern void UpdateLCD(const char *track, unsigned temp);
 
-	if (options.GetHeadLess() && (emulating == EMULATING_CMDHD))
+	if (emulating == EMULATING_CMDHD)
 	{
-		static unsigned temp = 0;
 
 		UpdateLCDLamps();
 		UpdateLCD(nullptr, temp / 1000);
-		mScheduler.MsSleep(100);
-		if (options.DisplayTemperature() &&
-			!(temp_period++ % 50)) // every 5 sec, display temp on LCD
-		{
-			CPUThrottle.Update();
-			GetTemperature(temp);
-		}
 		return;
 	}
-	else
 #endif
-		mScheduler.MsSleep(100);
-	if (options.DisplayTemperature() &&
-		options.GetHeadLess() &&
-		!(temp_period++ % 50)) // every 5 sec, display temp on LCD
+	if (options.DisplayTemperature() && 
+	    !(temp_period++ % 50)) // every 5 sec, display temp on LCD
+		display_temp(temp / 1000);
+}
+
+unsigned int CKernel::setup_network(unsigned int core)
+{
+#if RASPPI >= 3
+	int i = 0;
+	int startit = 0;
+	bool run_wifi;
+	if (!options.GetNetWifi() && !options.GetNetEthernet())
+		return 0;
+	do
 	{
-		CPUThrottle.Update();
-		display_temp();
+		run_wifi = false;
+		DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
+		if ((startit = options.GetNetEthernet())) // cable network has priority over Wifi
+		{
+			if (!Kernel.run_ethernet())
+			{
+				Kernel.log("setup ethernet failed");
+				i = 0;
+			}
+			else
+				i = 1;
+		}
+		if ((i == 0) && (startit = options.GetNetWifi()))
+		{
+			i = 10;
+			do
+			{
+				Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
+			} while (i-- && !Kernel.run_wifi());
+			run_wifi = true;
+		}
+		if (i == 0)
+		{
+			Kernel.log("network setup failed, retrying in 5s");
+			MsDelay(5 * 1000);
+		}
+		else
+		{
+			break;
+		}
+	} while (true);
+	m_TLSSimple = new CircleMbedTLS::CTLSSimpleSupport(m_Net);
+	Kernel.log("launching webserver on core %d", core);
+	Kernel.run_webserver(run_wifi, startit);
+
+	return startit;
+}
+#endif
+
+void Pi1541Cores::activate_core(unsigned int core)
+{
+	//DEBUG_LOG("%s: core %d", __FUNCTION__, core);
+	CMultiCoreSupport::SendIPI(core, IPI_ACTIVATE_CORE);
+}
+
+void Pi1541Cores::toggle_network(void)
+{
+	CMultiCoreSupport::SendIPI(NET_CORE, IPI_ACTIVATE_CORE);
+}
+
+// Called on the target core when an IPI arrives.
+void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
+{
+	if (nIPI == IPI_ACTIVATE_CORE)
+	{
+		DEBUG_LOG("%s: activating core %d", __FUNCTION__, nCore);
+		if (nCore == 2)
+			core2activated = 1;
+		if (nCore == 3)
+			core3activated = 1;
+		DataMemBarrier();
+
+		// Wake a core waiting with WFE.
+		SendEvent();
+		return;
 	}
+
+	// Preserve Circle's built-in IPI handling.
+	CMultiCoreSupport::IPIHandler(nCore, nIPI);
 }
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
-	int i = 0;
+	unsigned int run_net = 0;
+	unsigned long wakes_net = 0;
+	unsigned long wakes_prn = 0;
 	switch (core) {
-		case 1:
+		case EMULATOR_CORE:
 		Kernel.log("%s: emulator on core %d", __FUNCTION__, core);
 		logger.finished_booting("emulator core");
 		emulator();
 		break;
-	case 2:
-#if RASPPI >= 3
-		if (!options.GetNetWifi() && !options.GetNetEthernet()) goto out;
-		do
+	case NET_CORE:
+		run_net = Kernel.setup_network(core);
+		core2activated = (run_net == 1) ? 1 : 0;	// if options give value >1 then start disabled
+		logger.finished_booting("network core");
+		while (run_net)
 		{
-			bool run_wifi;
-
-			run_wifi = false;
-			DEBUG_LOG("%s: DHCP %s", __FUNCTION__, options.GetDHCP() ? "enabled" : "disabled");
-			if (options.GetNetEthernet()) // cable network has priority over Wifi
+			unsigned long ticks = 0;
+			while (core2activated == 0)
 			{
-				if (!Kernel.run_ethernet())
+				DataMemBarrier();
+				WaitForEvent();
+				wakes_net++;
+				if (options.GetHeadLess() && (Kernel.get_clock_ticks() - ticks) > (1000 * 100))
 				{
-					Kernel.log("setup ethernet failed");
-					i = 0;
+					Kernel.lcd_showheadless();
+					ticks = Kernel.get_clock_ticks();
 				}
-				else
-					i = 1;
-			}
-			if ((i == 0) && options.GetNetWifi())
+        	}
+	        DataMemBarrier();
+			DEBUG_LOG("%s: network & display core %d activated (%ld wakes)", __FUNCTION__, core, wakes_net);
+			while (Kernel.net_running())
 			{
-				i = 10;
-				do
-				{
-					Kernel.log("attempt %d to launch WiFi on core %d", 11 - i, core);
-				} while (i-- && !Kernel.run_wifi());
-				run_wifi = true;
+				reboot_hook();
+				MsDelay_s(100);
+				if (options.GetHeadLess())
+					Kernel.lcd_showheadless();
 			}
-			if (i == 0)
-			{
-				Kernel.log("network setup failed, retrying in 5s");
-				MsDelay(5 * 1000);
-			}
-			else
-			{
-				Kernel.log("launching webserver on core %d", core);
-				Kernel.run_webserver(run_wifi);
-			}
-		} while (true);
-		out:
-#endif	
-		Kernel.log("disabling network support on core %d", core);
-		logger.finished_booting("network core - disabled");
-		while (1)
-			Kernel.lcd_showheadless();
-		break;
-	case 3:	/* health monitoring */
-		logger.finished_booting("system monitor core");
-		if (options.GetHealthMonitor() == 1)
-			Kernel.log("disabling health monitoring on core %d", core);
-		else
-		{
-			Kernel.log("launching system monitoring on core %d", core);
-			Kernel.run_tempmonitor();
+			core2activated = wakes_net = 0;
 		}
+		DEBUG_LOG("%s: halting network & display core %d", __FUNCTION__, core);
 		break;
+	case PRINTER_CORE: /* other emulator */
+	{
+		int8_t printerID;
+		printerID = options.GetPrinter();
+		Kernel.log("%s: other emulator (printerID %d) on core %d", __FUNCTION__, printerID, core);
+		if ((printerID != 4) && (printerID != 5) && (printerID != 6) &&
+			(printerID != -4) && (printerID != -5) && (printerID != -6))
+		{
+			DEBUG_LOG("%s: invalid printer ID %d, core %d disabled by options", __FUNCTION__, printerID, core);
+			break;
+		}
+		if (printerID < 0)
+		{
+			core3activated = 0;
+			printerID *= -1;
+		}
+		else
+			core3activated = 1;
+		logger.finished_booting("other emulator (printer) core");
+		do {
+			// Core 3 waits here until activated.
+			while (core3activated == 0)
+			{
+				DataMemBarrier();
+				WaitForEvent();
+				wakes_prn++;
+			}
+			DataMemBarrier();
+			DEBUG_LOG("%s: printer wakeup (%ld wakes)", __FUNCTION__, wakes_prn);
+			printer = new Printer(printerID, core3activated);
+			printer->emulate();
+			core3activated = 0;
+			delete printer;
+			printer = nullptr;
+		} while (true);
+		DEBUG_LOG("%s: unexpected return of other emulator (printer), halting core %d", __FUNCTION__, core);
+	}
+	break;
 	default:
 		break;
 	}

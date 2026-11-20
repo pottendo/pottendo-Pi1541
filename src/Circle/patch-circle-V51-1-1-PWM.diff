@@ -1,0 +1,754 @@
+diff --git a/addon/fatfs/ffconf.h b/addon/fatfs/ffconf.h
+index 9011a9a8..4c7c722a 100644
+--- a/addon/fatfs/ffconf.h
++++ b/addon/fatfs/ffconf.h
+@@ -47,7 +47,7 @@
+ /  (0:Disable or 1:Enable) Also FF_FS_READONLY needs to be 0 to enable this option. */
+ 
+ 
+-#define FF_USE_LABEL	0
++#define FF_USE_LABEL	1
+ /* This option switches volume label API functions, f_getlabel() and f_setlabel().
+ /  (0:Disable or 1:Enable) */
+ 
+@@ -183,7 +183,7 @@
+ 
+ 
+ #define FF_STR_VOLUME_ID	1
+-#define FF_VOLUME_STRS		"SD","SD2","USB","USB2","USB3","FD","NVME"
++/*#define FF_VOLUME_STRS		"SD","SD2","USB","USB2","USB3","FD","NVME" */
+ /* FF_STR_VOLUME_ID switches support for volume ID in arbitrary strings.
+ /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
+ /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
+diff --git a/include/circle/net/httpclient.h b/include/circle/net/httpclient.h
+index 571a7752..60bace3b 100644
+--- a/include/circle/net/httpclient.h
++++ b/include/circle/net/httpclient.h
+@@ -38,7 +38,9 @@ public:
+ 
+ 	THTTPStatus Get (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			 u8	    *pBuffer,			// content will be returned here
+-			 unsigned   *pLength);			// in: buffer size, out: content length
++			 unsigned   *pLength,                   // in: buffer size, out: content length
++			 u8* pHeader = 0,
++			 unsigned *pHLen = 0);
+ 
+ 	THTTPStatus Post (const char *pPath,			// "/file[?name=value[&name=value...]]"
+ 			  u8	     *pBuffer,			// content will be returned here
+@@ -50,8 +52,9 @@ private:
+ 			     const char		*pPath,		// may include URL parameters
+ 			     u8			*pBuffer,	// content will be returned here
+ 			     unsigned		*pLength,	// in: buffer size, out: content length
+-			     const char		*pFormData = 0);// form data for POST or 0
+-
++			     const char		*pFormData = 0, // form data for POST or 0
++			     u8* pHeader = 0, // header content will be returned here
++			     unsigned *pHLen = 0); // len allocated for header content
+ private:
+ 	CNetSubSystem *m_pNetSubSystem;
+ 	CIPAddress     m_ServerIP;
+diff --git a/include/circle/net/httpdaemon.h b/include/circle/net/httpdaemon.h
+index f41b62e8..f4c8f9be 100644
+--- a/include/circle/net/httpdaemon.h
++++ b/include/circle/net/httpdaemon.h
+@@ -49,7 +49,8 @@ public:
+ 					const char  *pFormData, // form data from POST ("" for none)
+ 				        u8	    *pBuffer,	// copy your content here
+ 				        unsigned    *pLength,	// in: buffer size, out: content length
+-				        const char **ppContentType) = 0; // set this if not "text/html"
++				        const char **ppContentType, // set this if not "text/html"
++					const char **ppHeader = 0) = 0; 
+ 
+ 	// overwrite this to implement your own access logging
+ 	virtual void WriteAccessLog (const CIPAddress	&rRemoteIP,
+diff --git a/include/circle/sound/pwmsoundbasedevice.h b/include/circle/sound/pwmsoundbasedevice.h
+index d6ad58a3..2617db22 100644
+--- a/include/circle/sound/pwmsoundbasedevice.h
++++ b/include/circle/sound/pwmsoundbasedevice.h
+@@ -2,7 +2,7 @@
+ // pwmsoundbasedevice.h
+ //
+ // Circle - A C++ bare metal environment for Raspberry Pi
+-// Copyright (C) 2014-2026  R. Stange <rsta2@gmx.net>
++// Copyright (C) 2014-2024  R. Stange <rsta2@o2online.de>
+ // 
+ // This program is free software: you can redistribute it and/or modify
+ // it under the terms of the GNU General Public License as published by
+@@ -28,9 +28,20 @@
+ #include <circle/interrupt.h>
+ #include <circle/gpiopin.h>
+ #include <circle/gpioclock.h>
+-#include <circle/sound/dmasoundbuffers.h>
++#include <circle/dmachannel.h>
++#include <circle/spinlock.h>
+ #include <circle/types.h>
+ 
++enum TPWMSoundState
++{
++	PWMSoundIdle,
++	PWMSoundRunning,
++	PWMSoundCancelled,
++	PWMSoundTerminating,
++	PWMSoundError,
++	PWMSoundUnknown
++};
++
+ class CPWMSoundBaseDevice : public CSoundBaseDevice	/// Low level access to the PWM sound device
+ {
+ public:
+@@ -38,11 +49,9 @@ public:
+ 	/// \param nSampleRate	sample rate in Hz
+ 	/// \param nChunkSize	twice the number of samples (words) to be handled\n
+ 	///			with one call to GetChunk() (one word per stereo channel)
+-	/// \param bMSMode	Enable M/S mode? (see "BCM2835 ARM Peripherals")
+ 	CPWMSoundBaseDevice (CInterruptSystem *pInterrupt,
+ 			     unsigned	       nSampleRate = 44100,
+-			     unsigned	       nChunkSize  = 2048,
+-			     boolean	       bMSMode     = TRUE);
++			     unsigned	       nChunkSize  = 2048);
+ 
+ 	virtual ~CPWMSoundBaseDevice (void);
+ 
+@@ -63,9 +72,6 @@ public:
+ 	/// \return Is PWM and DMA operation running?
+ 	boolean IsActive (void) const;
+ 
+-	/// \brief Flush sound queue(s)
+-	void Flush (void);
+-
+ protected:
+ 	/// \brief May overload this to provide the sound samples!
+ 	/// \param pBuffer	buffer where the samples have to be placed
+@@ -82,21 +88,31 @@ private:
+ 	void RunPWM (void);
+ 	void StopPWM (void);
+ 
+-	static unsigned ChunkCompletedHandler (boolean bStatus, u32 *pBuffer,
+-					       unsigned nChunkSize, void *pParam);
++	void InterruptHandler (void);
++	static void InterruptStub (void *pParam);
++
++	void SetupDMAControlBlock (unsigned nID);
+ 
+ private:
++	CInterruptSystem *m_pInterruptSystem;
+ 	unsigned m_nChunkSize;
+-	boolean	 m_bMSMode;
+ 	unsigned m_nRange;
+ 
+ 	CGPIOPin   m_Audio1;
+ 	CGPIOPin   m_Audio2;
+ 	CGPIOClock m_Clock;
+ 
+-	volatile boolean m_bError;
++	boolean m_bIRQConnected;
++	volatile TPWMSoundState m_State;
++
++	unsigned m_nDMAChannel;
++	u32 *m_pDMABuffer[2];
++	u8 *m_pControlBlockBuffer[2];
++	TDMAControlBlock *m_pControlBlock[2];
++
++	unsigned m_nNextBuffer;			// 0 or 1
+ 
+-	CDMASoundBuffers m_DMABuffers;
++	CSpinLock m_SpinLock;
+ };
+ 
+ #endif
+diff --git a/include/circle/sysconfig.h b/include/circle/sysconfig.h
+index 566e6eb7..ee692de0 100644
+--- a/include/circle/sysconfig.h
++++ b/include/circle/sysconfig.h
+@@ -35,14 +35,14 @@
+ // increase this value. The value must be a multiple of 16 KByte.
+ 
+ #ifndef KERNEL_MAX_SIZE
+-#define KERNEL_MAX_SIZE		(2 * MEGABYTE)
++#define KERNEL_MAX_SIZE		(8 * MEGABYTE)
+ #endif
+ 
+ // KERNEL_STACK_SIZE is the size of the stack set on startup for the
+ // main thread.  This must be a multiple of 16 KByte.
+ 
+ #ifndef KERNEL_STACK_SIZE
+-#define KERNEL_STACK_SIZE	0x20000
++#define KERNEL_STACK_SIZE	(0x100000 * 4)
+ #endif
+ 
+ // HEAP_DEFAULT_NEW defines the default heap to be used for the "new"
+@@ -85,7 +85,7 @@
+ // multiple of 64. Up to 20 sizes can be defined.
+ 
+ #ifndef HEAP_BLOCK_BUCKET_SIZES
+-#define HEAP_BLOCK_BUCKET_SIZES	0x40,0x400,0x1000,0x4000,0x10000,0x40000,0x80000
++#define HEAP_BLOCK_BUCKET_SIZES	0x40,0x400,0x1000,0x4000,0x10000,0x40000,0x80000,0x100000*4,0x100000*20
+ #endif
+ 
+ ///////////////////////////////////////////////////////////////////////
+@@ -155,7 +155,7 @@
+ // single core applications, because this may slow down the system
+ // because multiple cores may compete for bus time without use.
+ 
+-//#define ARM_ALLOW_MULTI_CORE
++#define ARM_ALLOW_MULTI_CORE
+ 
+ #endif
+ 
+@@ -273,13 +273,13 @@
+ // MAX_TASKS is the maximum number of tasks in the system.
+ 
+ #ifndef MAX_TASKS
+-#define MAX_TASKS		20
++#define MAX_TASKS		(4*20)
+ #endif
+ 
+ // TASK_STACK_SIZE is the stack size for each task.
+ 
+ #ifndef TASK_STACK_SIZE
+-#define TASK_STACK_SIZE		0x8000
++#define TASK_STACK_SIZE		KERNEL_STACK_SIZE
+ #endif
+ 
+ // NO_BUSY_WAIT deactivates busy waiting in the EMMC, SDHOST and USB
+diff --git a/lib/net/httpclient.cpp b/lib/net/httpclient.cpp
+index 29aec901..12345eed 100644
+--- a/lib/net/httpclient.cpp
++++ b/lib/net/httpclient.cpp
+@@ -46,9 +46,10 @@ CHTTPClient::~CHTTPClient (void)
+ 	m_pNetSubSystem = 0;
+ }
+ 
+-THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength)
++extern "C" void  mylog(const char *str, ...);
++THTTPStatus CHTTPClient::Get (const char *pPath, u8 *pBuffer, unsigned *pLength, u8 *pHeader, unsigned *pHLen)
+ {
+-	return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength);
++    return Request (HTTPRequestMethodGet, pPath, pBuffer, pLength, 0, pHeader, pHLen);
+ }
+ 
+ THTTPStatus CHTTPClient::Post (const char *pPath, u8 *pBuffer, unsigned *pLength, const char *pFormData)
+@@ -61,7 +62,9 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				  const char	     *pPath,
+ 				  u8		     *pBuffer,
+ 				  unsigned	     *pLength,
+-				  const char	     *pFormData)
++				  const char	     *pFormData,
++				  u8* pHeader,
++				  unsigned *pHLen)
+ {
+ 	// connect to server
+ 	assert (m_pNetSubSystem != 0);
+@@ -134,9 +137,12 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 	unsigned nLength = 0;
+ 	boolean bChunked = FALSE;
+ 	unsigned long ulBytes = 0;
++	unsigned ulHLen = 0;
+ 
+ 	char Buffer[FRAME_BUFFER_SIZE];
+ 	char Line[HTTP_MAX_REQUEST_LINE];
++	char Line0[HTTP_MAX_REQUEST_LINE];
++	Line0[0] = '\0';
+ 	int nResult;
+ 	char *pSavePtr;
+ 
+@@ -159,12 +165,43 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 				{
+ 					if (nChar == 0)		// empty line is end of header
+ 					{
++					    char *pToken;
+ 						nState = bChunked ? 2 : 1;
+ 						nChar = 0;
++						*pHLen = strlen((const char *)pHeader);
++						//mylog("%s: first line = '%s'", __FUNCTION__, Line0);
++						if (   (pToken = strtok_r ((char *) Line0, "/", &pSavePtr)) == 0
++						    || strcmp (pToken, "HTTP") != 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || (pToken = strtok_r (0, " ", &pSavePtr)) == 0
++						    || strcmp (pToken, "200") != 0)
++						{
++						    char *pEnd;
++						    unsigned long ulStatus;
++						    ulStatus = strtoul (pToken, &pEnd, 10);
++						    if (   pEnd != 0
++							   && *pEnd != '\0')
++						    {
++							ulStatus = HTTPInvalidResponseCode;
++						    }
++						    
++						    delete m_pSocket;
++						    m_pSocket = 0;
++						    //mylog("%s: sending back %d", __FUNCTION__, ulStatus);
++						    return (THTTPStatus) ulStatus;
++						}
+ 					}
+ 					else
+ 					{
++					    ulHLen += strlen(Line) + 2;
++					    if ((*pHLen) > ulHLen)
++					    {
++						strcat((char *)pHeader, Line);
++						strcat((char *)pHeader, "\r\n");
++					    }
+ 						if (nLine++ == 0)	// first line?
++						    strcat(Line0, Line); // save first Line
++#if 0						
+ 						{
+ 							// "HTTP/1.x 200 OK" expected
+ 							char *pToken;
+@@ -190,6 +227,7 @@ THTTPStatus CHTTPClient::Request (THTTPRequestMethod  Method,
+ 							}
+ 						}
+ 						else
++#endif						    
+ 						{
+ 							// check for transfer encoding option
+ 							char *pToken = strtok_r (Line, ": ", &pSavePtr);
+diff --git a/lib/net/httpdaemon.cpp b/lib/net/httpdaemon.cpp
+index e9a5a458..d19d2607 100644
+--- a/lib/net/httpdaemon.cpp
++++ b/lib/net/httpdaemon.cpp
+@@ -96,6 +96,8 @@ void CHTTPDaemon::Run (void)
+ 	}
+ }
+ 
++extern "C" void  mylog(const char *str, ...);
++
+ void CHTTPDaemon::WriteAccessLog (const CIPAddress &rRemoteIP, THTTPRequestMethod RequestMethod,
+ 				  const char *pRequestURI, THTTPStatus Status,
+ 				  unsigned nContentLength)
+@@ -190,13 +192,15 @@ void CHTTPDaemon::Worker (void)
+ 	const char *pContentType = "text/html";
+ 
+ 	const char *pStatusMsg = "OK";
++	const char *pHeader = "";
+ 
+ 	if (Status == HTTPOK)
+ 	{
+ 		// get content
+ 		assert (m_pContentBuffer != 0);
+ 		Status = GetContent (m_RequestPath, m_RequestParams, m_RequestFormData,
+-				     m_pContentBuffer, &nContentLength, &pContentType);
++				     m_pContentBuffer, &nContentLength, &pContentType,
++				     &pHeader);
+ 		assert (nContentLength <= m_nMaxContentSize);
+ 		assert (pContentType != 0);
+ 
+@@ -251,12 +255,20 @@ void CHTTPDaemon::Worker (void)
+ 
+ 	// send HTTP response header
+ 	CString Header;
+-	Header.Format ("HTTP/1.1 %u %s\r\n"
+-		       "Server: " SERVER "\r\n"
+-		       "Content-Type: %s\r\n"
+-		       "Content-Length: %u\r\n"
+-		       "Connection: close\r\n"
+-		       "\r\n", Status, pStatusMsg, pContentType, nContentLength);
++	if (pHeader[0] == '\0')
++	{
++	    Header.Format ("HTTP/1.1 %u %s\r\n"
++			   "Server: " SERVER "\r\n"
++			   "Content-Type: %s\r\n"
++			   "Content-Length: %u\r\n"
++			   "Connection: close\r\n"
++			   "\r\n", Status, pStatusMsg, pContentType, nContentLength);
++	}
++	else
++	{
++	    mylog("%s: sending alternative header: %s", __FUNCTION__, pHeader);
++	    Header = CString(pHeader);
++	}
+ 
+ 	if (m_pSocket->Send ((const char *) Header, Header.GetLength (), MSG_DONTWAIT) < 0)
+ 	{
+diff --git a/lib/sound/pwmsoundbasedevice.cpp b/lib/sound/pwmsoundbasedevice.cpp
+index 8d4ec8ea..a221de88 100644
+--- a/lib/sound/pwmsoundbasedevice.cpp
++++ b/lib/sound/pwmsoundbasedevice.cpp
+@@ -2,7 +2,7 @@
+ // pwmsoundbasedevice.cpp
+ //
+ // Circle - A C++ bare metal environment for Raspberry Pi
+-// Copyright (C) 2016-2026  R. Stange <rsta2@gmx.net>
++// Copyright (C) 2016-2022  R. Stange <rsta2@o2online.de>
+ //
+ // Information to implement PWM sound is from:
+ //	"Bare metal sound" by Joeboy (RPi forum)
+@@ -24,9 +24,13 @@
+ #include <circle/sound/pwmsoundbasedevice.h>
+ #include <circle/devicenameservice.h>
+ #include <circle/bcm2835.h>
++#include <circle/bcm2835int.h>
+ #include <circle/memio.h>
+ #include <circle/timer.h>
+ #include <circle/synchronize.h>
++#include <circle/machineinfo.h>
++#include <circle/util.h>
++#include <circle/new.h>
+ #include <assert.h>
+ 
+ //
+@@ -99,13 +103,12 @@
+ 
+ CPWMSoundBaseDevice::CPWMSoundBaseDevice (CInterruptSystem *pInterrupt,
+ 					  unsigned	    nSampleRate,
+-					  unsigned	    nChunkSize,
+-					  boolean	    bMSMode)
++					  unsigned	    nChunkSize)
+ :	CSoundBaseDevice (SoundFormatUnsigned32,
+ 			  (CLOCK_RATE + nSampleRate/2) / nSampleRate, nSampleRate,
+ 			  CMachineInfo::Get ()->ArePWMChannelsSwapped ()),
++	m_pInterruptSystem (pInterrupt),
+ 	m_nChunkSize (nChunkSize),
+-	m_bMSMode (bMSMode),
+ 	m_nRange ((CLOCK_RATE + nSampleRate/2) / nSampleRate),
+ #ifdef USE_GPIO18_FOR_LEFT_PWM_ON_ZERO
+ 	m_Audio1 (GPIOPinAudioLeft, GPIOModeAlternateFunction5),
+@@ -118,24 +121,89 @@ CPWMSoundBaseDevice::CPWMSoundBaseDevice (CInterruptSystem *pInterrupt,
+ 	m_Audio2 (GPIOPinAudioRight, GPIOModeAlternateFunction0),
+ #endif // USE_GPIO19_FOR_RIGHT_PWM_ON_ZERO
+ 	m_Clock (GPIOClockPWM),
+-	m_bError (FALSE),
+-	m_DMABuffers (TRUE, PWM_FIF1, DREQ_SOURCE, nChunkSize, pInterrupt)
++	m_bIRQConnected (FALSE),
++	m_State (PWMSoundIdle),
++	m_nDMAChannel (CMachineInfo::Get ()->AllocateDMAChannel (DMA_CHANNEL_LITE))
+ {
++	assert (m_pInterruptSystem != 0);
+ 	assert (m_nChunkSize > 0);
+ 	assert ((m_nChunkSize & 1) == 0);
+ 
++	// setup and concatenate DMA buffers and control blocks
++	SetupDMAControlBlock (0);
++	SetupDMAControlBlock (1);
++	m_pControlBlock[0]->nNextControlBlockAddress = BUS_ADDRESS ((uintptr) m_pControlBlock[1]);
++	m_pControlBlock[1]->nNextControlBlockAddress = BUS_ADDRESS ((uintptr) m_pControlBlock[0]);
++
+ 	// start clock and PWM device
+ 	RunPWM ();
+ 
++	// enable and reset DMA channel
++	PeripheralEntry ();
++
++	assert (m_nDMAChannel <= DMA_CHANNEL_MAX);
++	write32 (ARM_DMA_ENABLE, read32 (ARM_DMA_ENABLE) | (1 << m_nDMAChannel));
++	CTimer::SimpleusDelay (1000);
++
++	write32 (ARM_DMACHAN_CS (m_nDMAChannel), CS_RESET);
++	while (read32 (ARM_DMACHAN_CS (m_nDMAChannel)) & CS_RESET)
++	{
++		// do nothing
++	}
++
++	PeripheralExit ();
++
+ 	CDeviceNameService::Get ()->AddDevice ("sndpwm", this, FALSE);
+ }
+ 
+ CPWMSoundBaseDevice::~CPWMSoundBaseDevice (void)
+ {
++	assert (m_State == PWMSoundIdle);
++
+ 	CDeviceNameService::Get ()->RemoveDevice ("sndpwm", FALSE);
+ 
+ 	// stop PWM device and clock
+ 	StopPWM ();
++
++	// reset and disable DMA channel
++	PeripheralEntry ();
++
++	assert (m_nDMAChannel <= DMA_CHANNEL_MAX);
++
++	write32 (ARM_DMACHAN_CS (m_nDMAChannel), CS_RESET);
++	while (read32 (ARM_DMACHAN_CS (m_nDMAChannel)) & CS_RESET)
++	{
++		// do nothing
++	}
++
++	write32 (ARM_DMA_ENABLE, read32 (ARM_DMA_ENABLE) & ~(1 << m_nDMAChannel));
++
++	PeripheralExit ();
++
++	// disconnect IRQ
++	assert (m_pInterruptSystem != 0);
++	if (m_bIRQConnected)
++	{
++		m_pInterruptSystem->DisconnectIRQ (ARM_IRQ_DMA0+m_nDMAChannel);
++	}
++
++	m_pInterruptSystem = 0;
++
++	// free DMA channel
++	CMachineInfo::Get ()->FreeDMAChannel (m_nDMAChannel);
++
++	// free buffers
++	m_pControlBlock[0] = 0;
++	m_pControlBlock[1] = 0;
++	delete [] m_pControlBlockBuffer[0];
++	m_pControlBlockBuffer[0] = 0;
++	delete [] m_pControlBlockBuffer[1];
++	m_pControlBlockBuffer[1] = 0;
++
++	delete [] m_pDMABuffer[0];
++	m_pDMABuffer[0] = 0;
++	delete [] m_pDMABuffer[1];
++	m_pDMABuffer[1] = 0;
+ }
+ 
+ int CPWMSoundBaseDevice::GetRangeMin (void) const
+@@ -150,11 +218,29 @@ int CPWMSoundBaseDevice::GetRangeMax (void) const
+ 
+ boolean CPWMSoundBaseDevice::Start (void)
+ {
+-	if (m_bError)
++	assert (m_State == PWMSoundIdle);
++
++	// fill buffer 0
++	m_nNextBuffer = 0;
++
++	if (!GetNextChunk ())
+ 	{
+ 		return FALSE;
+ 	}
+ 
++	m_State = PWMSoundRunning;
++
++	// connect IRQ
++	assert (m_nDMAChannel <= DMA_CHANNEL_MAX);
++
++	if (!m_bIRQConnected)
++	{
++		assert (m_pInterruptSystem != 0);
++		m_pInterruptSystem->ConnectIRQ (ARM_IRQ_DMA0+m_nDMAChannel, InterruptStub, this);
++
++		m_bIRQConnected = TRUE;
++	}
++
+ 	// enable PWM DMA operation
+ 	PeripheralEntry ();
+ 
+@@ -168,11 +254,37 @@ boolean CPWMSoundBaseDevice::Start (void)
+ 	PeripheralExit ();
+ 
+ 	// start DMA
+-	if (!m_DMABuffers.Start (ChunkCompletedHandler, this))
++	PeripheralEntry ();
++
++	assert (!(read32 (ARM_DMACHAN_CS (m_nDMAChannel)) & CS_INT));
++	assert (!(read32 (ARM_DMA_INT_STATUS) & (1 << m_nDMAChannel)));
++
++	assert (m_pControlBlock[0] != 0);
++	write32 (ARM_DMACHAN_CONBLK_AD (m_nDMAChannel), BUS_ADDRESS ((uintptr) m_pControlBlock[0]));
++
++
++	write32 (ARM_DMACHAN_CS (m_nDMAChannel),   CS_WAIT_FOR_OUTSTANDING_WRITES
++					         | (DEFAULT_PANIC_PRIORITY << CS_PANIC_PRIORITY_SHIFT)
++					         | (DEFAULT_PRIORITY << CS_PRIORITY_SHIFT)
++					         | CS_ACTIVE);
++
++	PeripheralExit ();
++
++	// fill buffer 1
++	if (!GetNextChunk ())
+ 	{
+-		m_bError = TRUE;
++		m_SpinLock.Acquire ();
+ 
+-		return FALSE;
++		if (m_State == PWMSoundRunning)
++		{
++			PeripheralEntry ();
++			write32 (ARM_DMACHAN_NEXTCONBK (m_nDMAChannel), 0);
++			PeripheralExit ();
++
++			m_State = PWMSoundTerminating;
++		}
++
++		m_SpinLock.Release ();
+ 	}
+ 
+ 	return TRUE;
+@@ -180,26 +292,42 @@ boolean CPWMSoundBaseDevice::Start (void)
+ 
+ void CPWMSoundBaseDevice::Cancel (void)
+ {
+-	m_DMABuffers.Cancel ();
++	m_SpinLock.Acquire ();
++
++	if (m_State == PWMSoundRunning)
++	{
++		m_State = PWMSoundCancelled;
++	}
++
++	m_SpinLock.Release ();
+ }
+ 
+ boolean CPWMSoundBaseDevice::IsActive (void) const
+ {
+-	return m_DMABuffers.IsActive ();
++	return m_State != PWMSoundIdle ? TRUE : FALSE;
+ }
+ 
+-void CPWMSoundBaseDevice::Flush(void)
++boolean CPWMSoundBaseDevice::GetNextChunk (void)
+ {
+-	CSoundBaseDevice::Flush ();
++	assert (m_pDMABuffer[m_nNextBuffer] != 0);
++	unsigned nChunkSize = GetChunk (m_pDMABuffer[m_nNextBuffer], m_nChunkSize);
++	if (nChunkSize == 0)
++	{
++		return FALSE;
++	}
++
++	unsigned nTransferLength = nChunkSize * sizeof (u32);
++	assert (nTransferLength <= TXFR_LEN_MAX_LITE);
++
++	assert (m_pControlBlock[m_nNextBuffer] != 0);
++	m_pControlBlock[m_nNextBuffer]->nTransferLength = nTransferLength;
++
++	CleanAndInvalidateDataCacheRange ((uintptr) m_pDMABuffer[m_nNextBuffer], nTransferLength);
++	CleanAndInvalidateDataCacheRange ((uintptr) m_pControlBlock[m_nNextBuffer], sizeof (TDMAControlBlock));
+ 
+-	// Clear PWM FIFO
+-	PeripheralEntry();
+-	write32(PWM_CTL, read32(PWM_CTL) | ARM_PWM_CTL_CLRF1);
+-	CTimer::Get()->usDelay(10);
+-	PeripheralExit();
++	m_nNextBuffer ^= 1;
+ 
+-	// Zero both DMA buffers directly
+-	m_DMABuffers.ZeroBuffers ();
++	return TRUE;
+ }
+ 
+ void CPWMSoundBaseDevice::RunPWM (void)
+@@ -219,7 +347,6 @@ void CPWMSoundBaseDevice::RunPWM (void)
+ 
+ 	write32 (PWM_CTL,   ARM_PWM_CTL_PWEN1 | ARM_PWM_CTL_USEF1
+ 			  | ARM_PWM_CTL_PWEN2 | ARM_PWM_CTL_USEF2
+-			  | (m_bMSMode ? ARM_PWM_CTL_MSEN1 | ARM_PWM_CTL_MSEN2 : 0)
+ 			  | ARM_PWM_CTL_CLRF1);
+ 	CTimer::SimpleusDelay (2000);
+ 
+@@ -240,18 +367,98 @@ void CPWMSoundBaseDevice::StopPWM (void)
+ 	PeripheralExit ();
+ }
+ 
+-unsigned CPWMSoundBaseDevice::ChunkCompletedHandler (boolean bStatus, u32 *pBuffer,
+-						     unsigned nChunkSize, void *pParam)
++void CPWMSoundBaseDevice::InterruptHandler (void)
+ {
+-	CPWMSoundBaseDevice *pThis = (CPWMSoundBaseDevice *) pParam;
+-	assert (pThis != 0);
++	assert (m_State != PWMSoundIdle);
++	assert (m_nDMAChannel <= DMA_CHANNEL_MAX);
++
++	PeripheralEntry ();
+ 
+-	if (!bStatus)
++#ifndef NDEBUG
++	u32 nIntStatus = read32 (ARM_DMA_INT_STATUS);
++#endif
++	u32 nIntMask = 1 << m_nDMAChannel;
++	assert (nIntStatus & nIntMask);
++	write32 (ARM_DMA_INT_STATUS, nIntMask);
++
++	u32 nCS = read32 (ARM_DMACHAN_CS (m_nDMAChannel));
++	assert (nCS & CS_INT);
++	write32 (ARM_DMACHAN_CS (m_nDMAChannel), nCS);	// reset CS_INT
++
++	PeripheralExit ();
++
++	if (nCS & CS_ERROR)
+ 	{
+-		pThis->m_bError = TRUE;
++		m_State = PWMSoundError;
++
++		return;
++	}
+ 
+-		return 0;
++	m_SpinLock.Acquire ();
++
++	switch (m_State)
++	{
++	case PWMSoundRunning:
++		if (GetNextChunk ())
++		{
++			break;
++		}
++		// fall through
++
++	case PWMSoundCancelled:
++		PeripheralEntry ();
++		write32 (ARM_DMACHAN_NEXTCONBK (m_nDMAChannel), 0);
++		PeripheralExit ();
++
++		// avoid clicks
++		PeripheralEntry ();
++		write32 (PWM_CTL, read32 (PWM_CTL) | ARM_PWM_CTL_RPTL1 | ARM_PWM_CTL_RPTL2);
++		PeripheralExit ();
++
++		m_State = PWMSoundTerminating;
++		break;
++
++	case PWMSoundTerminating:
++		m_State = PWMSoundIdle;
++		break;
++
++	default:
++		assert (0);
++		break;
+ 	}
+ 
+-	return pThis->GetChunk (pBuffer, nChunkSize);
++	m_SpinLock.Release ();
++}
++
++void CPWMSoundBaseDevice::InterruptStub (void *pParam)
++{
++	CPWMSoundBaseDevice *pThis = (CPWMSoundBaseDevice *) pParam;
++	assert (pThis != 0);
++
++	pThis->InterruptHandler ();
++}
++
++void CPWMSoundBaseDevice::SetupDMAControlBlock (unsigned nID)
++{
++	assert (nID <= 1);
++
++	m_pDMABuffer[nID] = new (HEAP_DMA30) u32[m_nChunkSize];
++	assert (m_pDMABuffer[nID] != 0);
++
++	m_pControlBlockBuffer[nID] = new (HEAP_DMA30) u8[sizeof (TDMAControlBlock) + 31];
++	assert (m_pControlBlockBuffer[nID] != 0);
++	m_pControlBlock[nID] = (TDMAControlBlock *) (((uintptr) m_pControlBlockBuffer[nID] + 31) & ~31);
++
++	m_pControlBlock[nID]->nTransferInformation     =   (DREQ_SOURCE << TI_PERMAP_SHIFT)
++						         | (DEFAULT_BURST_LENGTH << TI_BURST_LENGTH_SHIFT)
++						         | TI_SRC_WIDTH
++						         | TI_SRC_INC
++						         | TI_DEST_DREQ
++						         | TI_WAIT_RESP
++						         | TI_INTEN;
++	m_pControlBlock[nID]->nSourceAddress           = BUS_ADDRESS ((uintptr) m_pDMABuffer[nID]);
++	m_pControlBlock[nID]->nDestinationAddress      = (PWM_FIF1 & 0xFFFFFF) + GPU_IO_BASE;
++	m_pControlBlock[nID]->n2DModeStride            = 0;
++	m_pControlBlock[nID]->nReserved[0]	       = 0;
++	m_pControlBlock[nID]->nReserved[1]	       = 0;
+ }
+diff --git a/lib/usb/usbstring.cpp b/lib/usb/usbstring.cpp
+index ae567ada..cf5e437e 100644
+--- a/lib/usb/usbstring.cpp
++++ b/lib/usb/usbstring.cpp
+@@ -126,6 +126,10 @@ boolean CUSBString::GetFromDescriptor (u8 ucID, u16 usLanguageID)
+ 		}
+ 	}
+ 
++	// accept broken USB sticks
++	if (m_pUSBString->bLength <= 2)
++	    return FALSE;
++
+ 	// convert into ASCII string
+ 	assert (m_pUSBString->bLength > 2);
+ 	assert ((m_pUSBString->bLength & 1) == 0);

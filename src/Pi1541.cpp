@@ -193,6 +193,7 @@ void Pi1541::Update()
 	VIA[0].Execute();
 }
 
+extern IEC_Bus* iec_bus;
 void Pi1541::Reset()
 {
 	IOPort* VIABortB;
@@ -208,7 +209,7 @@ void Pi1541::Reset()
 	VIA[0].Reset();
 	VIA[1].Reset();
 	drive.Reset();
-	IEC_Bus::Reset();
+	iec_bus->Reset();
 	// On a real drive the outputs look like they are being pulled high (when set to inputs) (Taking an input from the front end of an inverter)
 	VIABortB = VIA[0].GetPortB();
 	VIABortB->SetInput(VIAPORTPINS_DATAOUT, true);

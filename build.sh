@@ -170,7 +170,7 @@ if [ x${checkout} = "xyes" ] ; then
     cd ${CIRCLE}
     patch -p1 < ../pottendo-Pi1541/src/Circle/patch-circle-httpClient.diff
     cd ${CIRCLE}/libs/circle
-    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-1-1.diff
+    patch -p1 < ../../../pottendo-Pi1541/src/Circle/patch-circle-V51-1-1-PWM.diff
     # fetch bootfiles for RPis
     cd ${CIRCLE}/libs/circle/boot
     make

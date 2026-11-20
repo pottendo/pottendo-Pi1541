@@ -41,6 +41,7 @@
 #include "Petscii.h"
 #include "iec_commands.h"
 #include "logger.h"
+#include "printer.h"
 #include "miniz.h"
 using namespace std;
 
@@ -89,6 +90,11 @@ static const char s_status[] =
 static const char s_logger[] =
 {
 #include "webcontent/logger.h"
+};
+
+static const char s_print[] =
+{
+#include "webcontent/print.h"
 };
 
 static const u8 s_Style[] =
@@ -153,6 +159,21 @@ static std::string urlEncode(const std::string& value) {
     return encoded.str();
 }
 
+static std::string htmlEncode(const std::string& value) {
+    std::string encoded;
+    for (char c : value) {
+        switch (c) {
+        case '&': encoded += "&amp;"; break;
+        case '<': encoded += "&lt;"; break;
+        case '>': encoded += "&gt;"; break;
+        case '"': encoded += "&quot;"; break;
+        case '\'': encoded += "&#39;"; break;
+        default: encoded += c; break;
+        }
+    }
+    return encoded;
+}
+
 static std::string urlDecode(const std::string& value) {
     std::ostringstream decoded;
     size_t len = value.length();
@@ -177,6 +198,80 @@ static std::string urlDecode(const std::string& value) {
 static bool endsWith(const std::string& str, const std::string& suffix) {
     if (str.length() < suffix.length()) return false;
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
+static bool glob_matches(const char* pattern, const char* filename)
+{
+	const char* star = nullptr;
+	const char* retry = nullptr;
+
+	while (*filename)
+	{
+		if (*pattern == '?' || *pattern == *filename)
+		{
+			++pattern;
+			++filename;
+		}
+		else if (*pattern == '*')
+		{
+			star = pattern++;
+			retry = filename;
+		}
+		else if (star)
+		{
+			pattern = star + 1;
+			filename = ++retry;
+		}
+		else
+			return false;
+	}
+
+	while (*pattern == '*')
+		++pattern;
+	return *pattern == '\0';
+}
+
+static int find_files_by_pattern(std::vector<std::string> &filenames, const std::string& path, const std::string& pattern)
+{
+	DIR dir;
+	FILINFO info;
+	FRESULT result = f_opendir(&dir, path.c_str());
+	if (result != FR_OK)
+	{
+		DEBUG_LOG("%s: failed to open directory '%s': %d",
+			__FUNCTION__, path.c_str(), result);
+		return -1;
+	}
+
+	while (true)
+	{
+		result = f_readdir(&dir, &info);
+		if (result != FR_OK)
+		{
+			FRESULT close_result;
+			DEBUG_LOG("%s: failed to read directory '%s': %d",
+				__FUNCTION__, path.c_str(), result);
+			close_result = f_closedir(&dir);
+			if (close_result != FR_OK)
+				DEBUG_LOG("%s: failed to close directory '%s': %d",
+					__FUNCTION__, path.c_str(), close_result);
+			return -1;
+		}
+		if (info.fname[0] == '\0')
+			break;
+		if (!(info.fattrib & AM_DIR)
+			&& glob_matches(pattern.c_str(), info.fname))
+			filenames.emplace_back(info.fname);
+	}
+
+	result = f_closedir(&dir);
+	if (result != FR_OK)
+	{
+		DEBUG_LOG("%s: failed to close directory '%s': %d",
+			__FUNCTION__, path.c_str(), result);
+		return -1;
+	}
+	return 0;
 }
 
 static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
@@ -308,6 +403,30 @@ static int direntry_table(const string header, string &res, string &path, string
 
 	res += "</table>";
 	return 0;
+}
+
+static void generate_prpreview(string &res, string path, string &page)
+{
+	int cols = 0;
+	res.clear();
+	vector<string> png_files;
+	find_files_by_pattern(png_files, path, "*.png");
+	sort(png_files.begin(), png_files.end());
+	for (const auto& png_file : png_files)
+	{
+		if (cols == 0)
+			res += "<tr>";
+		string png_path = path + "/" + png_file;
+		res += "<td style=\"vertical-align: top; text-align: left;\"><img src=\"" +
+			urlEncode(png_path) + "\"><div>" + htmlEncode(png_file) + "</div></td>";
+		if (++cols == 2)
+		{
+			res += "</tr>";
+			cols = 0;
+		}
+	}
+	if (cols != 0)
+		res += "</tr>";
 }
 
 static char *extract_field(const char *field, const char *pPartHeader, char *filename, char *extension = nullptr)
@@ -457,53 +576,6 @@ static bool read_file(string &dfn, string &msg, string &fcontent, UINT *nLength 
 	f_close(&fp);
 	return ret;
 }
-
-#if 0
-void hexdump(const unsigned char *buf, int len)
-{
-    int i;
-    int idx = 0;
-    int lines = 0;
-    char linestr[256] = {0};
-	char ta[12];
-	const unsigned char *tp = buf;
-    while (len > 0) {
-		snprintf(ta, 12, "%08lx: ", ((buf + idx) - tp));
-		strcat(linestr, ta);
-        for (i = 0; i < 16; i++) {
-            if (i < len) {
-                char t[4];
-                snprintf(t, 4, "%02x ", (uint8_t) buf[idx + i]);
-                strcat(linestr, t);
-            } else {
-                strcat(linestr, "   ");
-            }
-        }
-        strcat(linestr, "|");
-        for (i = 0; i < 16; i++) {
-            if (i < len) {
-                char t[2];
-                char c;
-                if (((unsigned char)buf[idx + i] > 31) && /* avoid tabs and other printable ctrl chars) */
-                    isprint((unsigned char)buf[idx + i])) {
-                    c= buf[idx + i];
-                } else {
-                    c = '.';
-                }
-                snprintf(t, 2, "%c", c);
-                strcat(linestr, t);
-            } else {
-                strcat(linestr, " ");
-            }
-        }
-        strcat(linestr, "|");
-        DEBUG_LOG("%s", linestr);
-		linestr[0] = '\0';
-        idx += 16;
-        len -= 16;
-    }
-}
-#endif
 
 static bool get_sector(unsigned char *img_buf, int track, int sector, unsigned char * &src)
 {
@@ -839,7 +911,7 @@ static FRESULT f_mkdir_full(const char *path, string &msg)
 	return ret;
 }
 
-static FRESULT f_unlink_full(string path, string &msg)
+static FRESULT f_unlink_full(string path, string &msg, bool only_contents = false)
 {
 	DIR dir;
 	FILINFO fi;
@@ -870,7 +942,7 @@ static FRESULT f_unlink_full(string path, string &msg)
 			msg += (string("Deleted <i>") + npath + "</i><br />");
 		}			
 	}
-	if (res == FR_OK)
+	if ((res == FR_OK) && !only_contents)
 	{
 		//DEBUG_LOG("%s: unlink '%s'", __FUNCTION__, path.c_str());
 		msg += (string("Deleted <i>") + npath + "</i><br />");
@@ -884,34 +956,63 @@ static FRESULT f_unlink_full(string path, string &msg)
 extern FileBrowser *fileBrowser;
 extern DiskCaddy diskCaddy;
 
-FRESULT download_file(string &fullndir, const u8 *&pContent, unsigned &nLength, string &msg)
+static THTTPStatus download_file(const string &fullndir, u8 *pBuffer,
+								 unsigned *pLength)
 {
-	FILINFO fileinfo;
 	FIL fp;
-	FRESULT res = FR_OK;
-	UINT bytesRead;
-	msg = "";
+	FRESULT res;
+	FSIZE_t fileSize;
+	unsigned length = 0;
+	unsigned capacity = *pLength;
 	if ((res = f_open(&fp, fullndir.c_str(), FA_READ)) != FR_OK)
-		msg = "Open of " + fullndir + " failed (" + to_string(res) + ")";
-	else
 	{
-		SetACTLed(true);
-		if ((res = f_read(&fp, img_buf, READBUFFER_SIZE, &bytesRead)) != FR_OK)
-			msg = "Read failed for " + fullndir + " (" + to_string(res) + ")";
-		SetACTLed(false);
+		Kernel.log("%s: open of '%s' failed (%d)", __FUNCTION__,
+				   fullndir.c_str(), res);
+		return res == FR_NO_FILE || res == FR_NO_PATH
+			? HTTPNotFound : HTTPInternalServerError;
+	}
+
+	fileSize = f_size(&fp);
+	if (fileSize > capacity)
+	{
 		f_close(&fp);
+		Kernel.log("%s: '%s' is too large to download (%lu > %u)",
+				   __FUNCTION__, fullndir.c_str(),
+				   (unsigned long)fileSize, capacity);
+		return HTTPRequestEntityTooLarge;
 	}
-	if (res == FR_OK)
+
+	SetACTLed(true);
+	while ((FSIZE_t)length < fileSize)
 	{
-		pContent = img_buf;
-		nLength = bytesRead;
+		unsigned remaining = (unsigned)(fileSize - length);
+		UINT request = remaining > READBUFFER_SIZE
+			? READBUFFER_SIZE : (UINT)remaining;
+		UINT bytesRead = 0;
+
+		res = f_read(&fp, pBuffer + length, request, &bytesRead);
+		if (res != FR_OK || bytesRead != request)
+		{
+			break;
+		}
+		length += bytesRead;
 	}
-	else
+	SetACTLed(false);
+
 	{
-		pContent = (const u8 *)msg.c_str();
-		nLength = msg.length();
+		FRESULT closeResult = f_close(&fp);
+		if (res != FR_OK || (FSIZE_t)length != fileSize
+			|| closeResult != FR_OK)
+		{
+			Kernel.log("%s: read of '%s' failed (%d, %u of %lu bytes; close %d)",
+					   __FUNCTION__, fullndir.c_str(), res, length,
+					   (unsigned long)fileSize, closeResult);
+			return HTTPInternalServerError;
+		}
 	}
-	return res;
+
+	*pLength = length;
+	return HTTPOK;
 }
 
 static FRESULT gen_index(string &index, string path)
@@ -927,6 +1028,7 @@ static FRESULT gen_index(string &index, string path)
 	{	
 		npath = path + '/' + fi.fname;
 		if (DiskImage::IsDiskImageExtention(fi.fname) ||
+			DiskImage::IsPrinterFileExtension(fi.fname) ||
 			DiskImage::IsLSTExtention(fi.fname))
 		{
 			index += ("\n" + npath);
@@ -1308,6 +1410,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	char filename[255];
 	char extension[10];
 	char field[255];
+	char version_buf[256];
 	filename[0] = '\0';
 	extension[0] = '\0';
 	CString String;
@@ -1317,7 +1420,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 	mem_stat(pPath, mem, true);
 	//DEBUG_LOG("%s: pPath = '%s'", __FUNCTION__, pPath);
 	//DEBUG_LOG("%s: pParams = '%s'", __FUNCTION__, pParams); // Attention when blanks in filename this may crash here
-	
+
 	// serve content of /web
 	if (strncmp(pPath, "/web", 4) == 0)
 	{
@@ -1501,9 +1604,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 			ndir = urlDecode(ndir);
 			string fullndir = def_prefix + curr_path + "/" + ndir;
 			DEBUG_LOG("%s: download file '%s'", __FUNCTION__, fullndir.c_str());
-			download_file(fullndir, pContent, nLength, msg);
 			*ppContentType = "application/octet-stream";
-			goto out;
+			return download_file(fullndir, pBuffer, pLength);
 		}
 		if (type == "[CHMEDIUM]")
 		{
@@ -1637,9 +1739,13 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		}
 		GetTemperature(temp);
 		CString *t = Kernel.get_timer()->GetTimeString();
-		String.Format("DeviceID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
+		String.Format("Drive ID: <i>%d</i><br />Current Diskimage: <i>%s</i><br />Printer ID: <i>%d</i>, Driver: <i>%s</i>: %s%s<br />Pi Temp: <i>%dC @%ldMHz</i><br />Time: <i>%s</i>",
 				 _m_IEC_Commands->GetDeviceId(),
 				 din,
+				 (printer ? (printer->get_deviceid()) : 0),
+				 options.GetPrDriver(),
+				 (printer ? (printer->running() ? "on" : "off") : "off"),
+				 (printer ? (printer->running() ? (string(", spooled: <i>") + to_string(printer->get_spooled()) + "b</i>").c_str() : "") : ""),
 				 temp / 1000,
 				 CPUThrottle.GetClockRate() / 1000000L,
 				 t->c_str());
@@ -1978,8 +2084,8 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				else
 				{
 					//DEBUG_LOG("%s: DOWNLOAD of '%s'", __FUNCTION__, fullname.c_str());
-					download_file(fullname, pContent, nLength, msg);
 					*ppContentType = "application/octet-stream";
+					return download_file(fullname, pBuffer, pLength);
 				}
 				goto out;
 			}
@@ -1995,7 +2101,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 				{
 					content = string("<img src=\"") + urlEncode(curr_path) + "\"/>";
 				}
-				else if (DiskImage::IsTextFileExtention(mount_img)) // LSTs are also TextFiles
+				else if (DiskImage::IsTextFileExtention(mount_img) || DiskImage::IsPrinterFileExtension(mount_img)) // LSTs are also TextFiles
 				{
 					// assume a textfile to show, e.g. .LST file
 					string tmp;
@@ -2096,10 +2202,87 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		nLength = String.GetLength();
 		*ppContentType = "text/html; charset=utf-8";
 	}
+	else if (strcmp(pPath, "/print.html") == 0)
+	{
+		string pg;
+		string msg;
+		string p = "";
+		string pbn = "";
+		string pv = "";
+		save_CD scwd(Printer::def_prefix.c_str(), def_prefix);
+		//DEBUG_LOG("%s: def_prefix web = %s", __FUNCTION__, def_prefix.c_str());
+		if (printer)
+		{
+			if (printer->get_spooled() == 0)
+				msg = "Printer spool is empty<br />";
+			else
+				msg = "Printer spool contains <i>" + to_string(printer->get_spooled()) + "</i> bytes<br />";
+			if ((printer->get_spooled() != 0) && (strcmp(pParams, "[FLUSH]") == 0))
+			{
+				msg = "Flushing printer spool...<br />";
+				printer->flush(options.GetPrDriver(), msg);	// driver ignored so far
+			    if (options.GetPrSound())
+			        Kernel.playsound(2);
+			}
+			printer->get_prspool(pv, ".png", true);
+			printer->get_prspool(p, "");
+			printer->get_prspool(pbn, "", true);
+			if (strcmp(options.GetPrDriver(), "mps1520") != 0)
+			{
+				size_t extension = pv.rfind(".png");
+				if (extension != string::npos)
+					pv.insert(extension, "-1");
+			}
+		}
+		else
+		{
+			msg = "Printer off<br />";
+			DEBUG_LOG("%s: %s, pParm = %s", __FUNCTION__, msg.c_str(), pParams);
+		}
+		if (strncmp(pParams, "[SELDRIVER]&", 12) == 0)
+		{
+			const char *drv = &pParams[12]; // security issue
+			DEBUG_LOG("%s: selected '%s'", __FUNCTION__, drv);
+			options.SetPrDriver((char *)drv);
+			if (printer)
+			{
+				printer->set_running(false);
+				MsDelay(400);
+				Kernel.activate_core(3);
+			} 
+		}
+		if (strcmp(pParams, "[TOGGLE]") == 0)
+		{
+			if (printer)
+				printer->set_running(false);
+			else
+				Kernel.activate_core(3);
+		} 
+		else if (strcmp(pParams, "[DOWNLOAD]") == 0)
+		{
+			if (printer) 
+			{
+				DEBUG_LOG("%s: printer page download, pParams = %s, p = %s", __FUNCTION__, pParams, p.c_str());
+				*ppContentType = "application/octet-stream";
+				return download_file(p, pBuffer, pLength);
+			}
+			msg += string("Printer disabled<br />");
+		}
+		else if (strcmp(pParams, "[DELSPOOL]") == 0)
+		{
+			DEBUG_LOG("%s: delete printer spooler: %s", __FUNCTION__, options.GetPrPath());
+			f_unlink_full(options.GetPrPath(), msg, true);
+			msg += "Deleted printer spooler";
+		}
+		generate_prpreview(pg, options.GetPrPath(), pv);
+		String.Format(s_print, msg.c_str(), pbn.c_str(), pg.c_str(), Kernel.get_version(), mem.c_str());
+		pContent = (const u8 *)(const char *)String;
+		nLength = String.GetLength();
+		*ppContentType = "text/html; charset=utf-8";
+	}
 	else if (strcmp(pPath, "/reset.html") == 0)
 	{
 		string msg;
-extern int reboot_req;
 		DEBUG_LOG("%s: reset requested.", __FUNCTION__);
 		msg = "Reboot requested...";
 		reboot_req++;
@@ -2126,7 +2309,9 @@ extern int reboot_req;
 		UINT br;
 		string fn;
 		fn = urlDecode(string(pPath));
-		if (fn.find(def_prefix) == string::npos)
+		if (fn.find(options.GetPrPath()) != string::npos)
+			fn = Printer::def_prefix + fn;
+		else if (fn.find(def_prefix) == string::npos)
 			fn = def_prefix + fn;
 		//DEBUG_LOG("%s: icon: '%s'", __FUNCTION__, fn.c_str());
 		if (f_open(&fp, fn.c_str(), FA_READ) == FR_OK)
@@ -2158,10 +2343,9 @@ extern int reboot_req;
 	}
 	else if (strcmp(pPath, "/pi1541Version.html") == 0)
 	{
-		char buf[256];
-		sprintf(buf, "%s, %s", Kernel.get_version(), mem.c_str());
-		nLength = strlen(buf);
-		pContent = (const u8 *)buf;
+		sprintf(version_buf, "%s, %s", Kernel.get_version(), mem.c_str());
+		nLength = strlen(version_buf);
+		pContent = (const u8 *)version_buf;
 		*ppContentType = "text/html; charset=UTF-8";
 	}
 	else

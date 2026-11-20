@@ -1,6 +1,29 @@
-# pottendo-Pi1541 V2.3.1
+# pottendo-Pi1541 V2.4
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
+
+## News V2.4 vs. V2.3.1
+
+- PNG numbers are now 3 digit to be sorted properly when many pages are printed.
+- Fix printer menu spool directory path handling - finally.
+- Fix to save images correctly, when printing has happened in-between.
+- Don't override spoolfiles, check only done for PDF extension.
+- Printer drivers can now be selected via the WebUI.
+- Direct print support, see below section printing, currently to be activated via WebUI.
+- Rename 1520 driver to mps1520 -> update your options.txt
+- Generate PWG Raster files to prepare for network printing
+- Temperature optimization: headless LCD update is now done by network core and core 0 not used for pi1541
+- Added a workaround to patch PWM (see https://github.com/rsta2/circle/issues/734).
+- Added printer DMA sound, see options below, how to activate
+- Preview of printpage(s), generation of .pdf for convenient postprocessing for new drivers
+- Added more printer drivers: mps801,mps802,mps803,nl10,mps1520 - credits to the Vice team for the drivers and Copilot GPT-6 Luna for merging support
+- Support secondary address 7 to switch to secondary character set
+- Make printer buffer allocation dynamic
+- Write raw printer dump file, usable for offline postprocessing (e.g. via petlp)
+- Move network back to run on core 2 and implement toggle on/off via longpress ENTER in IEC Emulation Mode. See options below.
+- default `config.txt` reduces overclocking to 1350MHz for PiZero2 to improve stability
+- Added basic printer emulator, petlp driver, for credits see: https://codeberg.org/majick/petlp
+- Run network on core 0 (along with HDMI output if activated)
 
 ## News V2.3.1 vs. V2.3
 
@@ -28,6 +51,8 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 
 Almost all Pi model specific bindings which have a counterparts in Circle have been removed. This allows to use the potential of Circle to extend Pi1541 with new functionalities. 
 A web-server has been added which features the WebUI:
+- PiCMD Emulator
+- Printer emulator. Check details below.
 - Manage Upload and SDCard
   - support USB drives in WebUI, image files must be located under directory '/1541' on the USB drives/sticks.
   - support to rename of files/dirs on SDCard/USB via WebUI
@@ -35,11 +60,10 @@ A web-server has been added which features the WebUI:
   - delete of files & directories
   - download files
   - create directory
-  - create new diskimages, use extension to select between .d64 or .g64 formats (.d81 is not supported)
+  - create new diskimages, use extension to select between .d64, .g64 or .d81 formats
   - create LST files from current directory
   - LST support for D81 images, limitation: Mix D81 with others in one .LST file won't work, see also 'bugs' below.
   - Support to create/edit .txt, .nfo or .lst files
-  - Support creating empty d81 images
   - show icons (.png) if exists for images
   - script to upload files or directories via commandline
   - script to mount from an index via commandline, index can be generated
@@ -51,13 +75,14 @@ A web-server has been added which features the WebUI:
 - Update Pi1541 files like _options.txt_, _config.txt_, _Pi1541 kernel_
 - View & Download log-messages
 - Show DeviceID in stats
+- Easier handling for switching device IDs and ROMs via long-press of BACK and INSERT (in IEC Emulation mode)
+- Toggle network via long-press ENTER (in IEC Emulation mode)
 - Reboot of Pi1541
 - Support firmware update from USB (untested!)
 - IEC command fix for partition parsing, credits to RetroNynjah
 - Improved rotary support - Credits to hgryska
 - Configure web-memory profile (see new options below)
 - Minor changes: remove debuglogs
-- Update circle-stdlib/circle to recent step 50.1
 - Bugfixes: navigate dirs with spaces in names over several levels, proper filename for PRG when mounted
             3A+ kernel name for upload, create image supports .g64, ...
 
@@ -160,10 +185,28 @@ Note: checking the <i>Automount-image</i> checkbox, uploads and overrides the de
 When uploading directories, the browser may ask if you're sure. You still need to click the `Upload Directory` button to really upload!
 
 ![](docs/mount.png)
+
 <br />
+
 ![](docs/mount-cmdhd.png)
 
 Select image for preview and mount it.
+<br />
+
+Printer page including preview.
+
+![](docs/plotter.png)
+
+MPS1520 Driver
+
+![](docs/mps803.png)
+
+MPS803 Driver
+
+![](docs/geosprint.png)
+
+GEOS printoutput
+
 <br />
 
 ![](docs/edit-config.png)
@@ -188,7 +231,6 @@ The codebase is the publically available Pi1541 code, V1.24 (as of Jan. 2024) + 
 - some bugfixes to avoid crash (missing initializer)
 - build support for moden GCCs (-mno-unaligend-access)
 - new option `headLess`, see below
-- new options for static or DHCP network configuration, see below
 - as a reset button is missing on most PIs, this is mapped to the button combo which selects DriveID 11 (a rare use-case for me)
 - added support for a SH1107 based LCD featuring 128x128 pixel resolution (see note above on I2Cs and pull-up resistors in case it doesn't work)
 - SoundOnGPIO = -1 turns sound completely off
@@ -204,12 +246,30 @@ Follow the toplevel readme on my fork of the great PiCMD project: [pottendo-PiCM
 Future releases will add some specifics to support the HD emulation also from the webserver. Currently the controls follows the original design and must use the buttons as described.
 
 Limitations: 
-- HD images can't be up/down-loaded via web-interface - the 16MB limit makes it anyway not very useful.
-- Webserver won't show image content of HD images
+- HD images can't be down-loaded via web-interface - the 16MB limit makes it anyway not very useful. Upload zipped images (<16MB) is possible and can subsequently unzipped using the WebUI.
+- Webserver won't show partition content of HD images, just the partition table.
 
 Know Bugs/Observations:
 - The program _MCOPY_ from the hd-utility disk didn't work in my setup - this may be caused by my HW setup (SRQ setup)
 - CPM see, maybe not emulation related: https://github.com/xlar54/PiCMD/issues/23
+
+## Printer Emulation
+
+An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
+
+Via WebUI one can flush the printer spooled which gnerates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/` and cannot be placed on USB drives.
+One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. The download button retrieves the last generated PDF. Other files can be downloaded via the normal file browser WebUI by navigating to `SD:/1541/prn-out`. Printerfiles may not exceed 999 files in this directory, delete spool from time to time.
+It uses sRGB 8-bit color for the mps1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
+
+Use `PrinterName` name to define a network printer, where pages are being sent for direct printing. Can be a hostname or an IP address. If the printer isn't reachable, it may take a few seconds until the driver runs into a timeout.
+Your printer must support IPP printing, A4 media and .PWG raster format - which is pretty standard. The mps1520 driver sends sRGB 8-bit raster format (color).
+
+Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The mps1520 driver selects colors depending on the secondary addres.
+The Commodore mps1520 plotter's PNG, PDF, and PWG Raster output supports black, blue, green, and red.
+
+**Note:** The NL10 driver rendering can be a bit lengthy and the http server runs in a timeout when flushing the buffer. Just refresh the page once the flush is finished. In general if prints are long, this can happen - also with other drivers. There's a finish sound on the PWM sound output (3.5mm jack).
+
+**Note:** As of now, the IEC drive emulation and printer do not work at the same time. Turn off the printer emulation, when navigating with buttons or FB64 or its variants.
 
 ## Compatibility
 
@@ -237,7 +297,7 @@ Other uController support has been added:
 
 However, the code compiles and runs in principle on those platforms; due to the limits of those uControllers Pi1541 won't run. The code can be used as base for further more powerful uControllers providing sufficient memory and performance to handle Pi1541 hard realtime requirements.
 
-**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`.
+**Attention**: the operating temperature is substantially higher than with the original kernel (legacy build). It is recommended to use _active_ cooling as of now. Raspeberry PIs normally protect themselves through throtteling. This should work latest at 85C - you may lower this threshold via `cmdline.txt` using e.g. `socmaxtemp=80`. One can disable the network core, which may reduce temperature, by long-pressing ENTER when in IEC Emulation mode (i.e. no diskimage is mounted). See options how control network setup on startup.
 
 For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limit=70` and `temp_limit=80`. PI3B+3A+'s protect themselves by down-clocking from 1400MHz to 1200MHz when reaching the `temp_soft_limit`. This may degrade compatibility for complex fast-loaders.
 
@@ -250,7 +310,7 @@ For Pi3B models there're further parameters set in `config.txt`: `temp_soft_limi
 - PiZero support for circle, as it doesn't make sense due to lack of network support
 - Circle Support for all variants of Pi1 and Pi2, as I don't have those to test
 - Pi5 support - with support from @rsta, I found that the GPIO performance of the Pi5 is significantly slower than on earlier models due to its changed hardware architecture. Even with some tweaking, Pi1541 misses cycles and emulation breaks. The code is prepared for Pi5, but as of now not working; maybe never will.
-- Pico2/ESP32 support
+- Pico2/ESP32 support; compilation compatibility is called obsolete and may disappear any time.
   
 # Additional Options in `options.txt`
 
@@ -258,9 +318,14 @@ The following options control new functions available:
 | Option      | Value  | Purpose                                  |Default|Comment |
 | ----------- | ------ | ---------------------------------------- |--------|--------|
 | SoundOnGPIO | 0 or 1 or -1 | 0: DMA Sound, 1: GPIO Sound, -1: Sound off |0||
+| printer     | 0 or 4,5,6 | enable printer at start by selecting a devide ID, use -4, -5, -6 to intialize but don't start |0| can be activated/deactivated via the WebUI, 6 selects mps1520 driver |
+| PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
+| PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
+| PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
+| PrinterName | string or IP | enables direct printing when specifying a printer name or its IP address |||
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
-| netEthernet | 0 or 1 | disable/enable Ethernet network          |0||
-| netWifi     | 0 or 1 | disable/enable Wifi network              |0||
+| netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use ENTER longpress to enable later) |0||
+| netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
 | maxContentSize | value | max memory in kB for webserver | 1000 | range from 256 to 4000 |
 | maxMultipartSize | value | max memory in kB for multipart uploads | 20000| range from 1000 to 20000 |
 | useDHCP     | 0 or 1 | disable/enable DHCP for optaining IP configuration |1||
@@ -274,6 +339,20 @@ Refer to PiCMDs documentation for CMD-HD specific options, see also in the provi
 
 Here a snippet one can add to his `options.txt`:
 ```
+
+// Printer
+// chose value > 0 to activate printer at startup, chose 4, 5 for printers, 6 will overrule driver below to mps1520 plotter driver
+// if 0, printer can be enabled via the webui
+printer = 0
+// Spool directory, where prints are being stored using the webui
+PrinterPath = prn-out
+// Driver: petlp, mps803, mps802, mps801, nl10, ignored when printer = 6 (plotter)
+PrinterDriver = mps803  
+// Printer DMA Sound
+PrinterSound = 1
+// Direct print Support, network name or IP address of your printer
+// PrinterName = my-printer.echt.org
+
 // ---------------------------------------------------------------------------
 // CMD HD
 // ---------------------------------------------------------------------------
@@ -309,8 +388,10 @@ DisableHDMI = 1 // equal to headLess = 1  // no HDMI output
 
 // Network configuration, WiFi needs a proper wpa_supplicant.conf configured for you SSID
 TZ = 2.0    // Timezone: 2.0=CEST is default, use -5.0 for ET (e.g. New York/US), use 5.5 for New Delhi/IN
+// network setup: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later)
 netWifi = 0
 netEthernet = 1
+
 // webserver static memory profile in kB, use smaller value (4000) for Pis < 1GB memory.
 maxContentSize = 1000     // == 1MB (min 256, max 4000)
 maxMultipartSize = 20000  // == 20MB for directory upload (min 1000, max 20000)
@@ -328,6 +409,7 @@ useDHCP = 1 // get network config automatically, else set to '0' and define stat
 - Up to 3 USB drives show up, should be possible to have 4, but it didn't work in my setup: error FR_NOT_READY (3)
 - D81 LST mounted set. Changing images works; but if one just loads '$' then always the directory of the first image is loaded from the host.
 - PiZero2W won't run stable with HDMI enabled @1400 Mhz -> keep HDMI disabled (`DisableHDMI = 1`) or reduce clock-speed in `config.txt`.
+- Printer preview may not be visible, if user changed to another medium, like USB0. Switch back to SDCard before entering menu Print.
 
 # Checkout & Build
 
@@ -341,7 +423,7 @@ The following compiler suites were used for development:
 Make sure your `PATH` variable is set appropriately to find the installed compiler suite.
 
 For building the project needs certain developer tools installed. Depending on your Linux installation these may be needed to be installed:
-_make, wget, unzip, git, sed, patch, c1541_.
+_make, wget, unzip, git, sed, patch, c1541, acme_.
 
 My development machine is an x86_64 based ArchLinux box.
 Checkout & build
@@ -372,7 +454,7 @@ Depending on the RPi Model and on the chosen build (Circle vs. legacy):
 *Hint*: in case you want to alternatively build for circle-lib and legacy make sure to `make clean` between the builds!
 
 Finally copy the kernel image(s) to your Pi1541 SDCard boot partition.
-The prepared _config.txt_ covers several Pi models, and defaults to 64bit versions. If you want to boot the 32 bit versions, adjust `config.txt` accordingly - see comments below.
+The prepared _config.txt_ covers several Pi models, and defaults to 32bit versions. If you want to boot the 64 bit versions, adjust `config.txt` accordingly - see comments below.
 In case you want to run the slightly improved legacy 1.25 version (_kernel.img_) you may reuse the [pi0] section at the top for a Pi Zero.
 
 Here the sample `config.txt` on your Pi1541 SDcard, ready to be used for pottendo-Pi1541:
@@ -395,7 +477,7 @@ kernel=kernel-Pi0.img
 
 # this is for the PiZero 2W, merged with [p0]!
 [pi02]
-arm_freq=1400
+arm_freq=1350
 over_voltage=4
 sdram_freq=450
 over_voltage_sdram=1
@@ -440,7 +522,7 @@ kernel=kernel-P1BPlus.img
 # force_turbo = 1 in combination with over_voltage invalidates warranty!
 # may improve compatibility, and needed for Steve's original kernels
 force_turbo=1
-arm_freq=1400
+arm_freq=1350
 over_voltage=4
 sdram_freq=500
 over_voltage_sdram=1

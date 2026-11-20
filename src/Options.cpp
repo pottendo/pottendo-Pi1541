@@ -183,6 +183,8 @@ Options::Options(void)
 	, noHealthMonitor(1)
 	, useDHCP(1)
 	, TZ(2.0)
+	, printer(0)
+	, PrinterSound(0)
 #endif	
 {
 	autoMountImageName[0] = 0;
@@ -205,7 +207,11 @@ Options::Options(void)
 #if defined(CMDHD_SUPPORT)	
 	ROMNameCMDHD[0] = 0;
 #endif
-
+#if defined(__CIRCLE__)
+	strcpy(prpath, "prn-out");
+	strcpy(prdriver, "mps803");
+	strcpy(prhost, "");
+#endif
 }
 
 #define ELSE_CHECK_DECIMAL_OPTION(Name) \
@@ -293,6 +299,20 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(noHealthMonitor)
 		ELSE_CHECK_DECIMAL_OPTION(useDHCP)
 		ELSE_CHECK_FLOAT_OPTION(TZ)
+		ELSE_CHECK_DECIMAL_OPTION(printer)
+		ELSE_CHECK_DECIMAL_OPTION(PrinterSound)
+		else if ((strcasecmp(pOption, "PrinterPath") == 0))
+		{
+			strncpy(prpath, pValue, 255);
+		}
+		else if ((strcasecmp(pOption, "PrinterDriver") == 0))
+		{
+			strncpy(prdriver, pValue, 15);
+		}
+		else if ((strcasecmp(pOption, "PrinterName") == 0))
+		{
+			strncpy(prhost, pValue, 31);
+		}
 #endif		
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{

@@ -17,8 +17,9 @@
 
 #include <circle/startup.h>
 #include "circle-kernel.h"
+#include <string>
 #include "rpi-gpio.h"
-
+#include "debug.h"
 u32 _ctb;
 
 /* wrappers */
@@ -53,3 +54,97 @@ int GetTemperature(unsigned &value) { unsigned ret = CPUThrottle.GetTemperature(
 int USPiMassStorageDeviceAvailable(void) { return Kernel.usb_massstorage_available(); }
 
 void PlaySoundDMA(int play) { if (play == 0) Kernel.playsound(); }
+
+extern "C" void klog(const char *fmt, ...)
+{
+	char t[2048];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(t, 2048, fmt, args);
+	Kernel.log(t);
+	va_end(args);
+}
+
+void hexdump(const char *buf, int len)
+{
+    int i;
+    int idx = 0;
+    int lines = 0;
+    char linestr[256] = {0};
+	char ta[12];
+	const char *tp = buf;
+    while (len > 0) {
+#if (AARCH == 64)		// avoid warning
+		snprintf(ta, 12, "%04lx: ", ((buf + idx) - tp));
+#else
+		snprintf(ta, 12, "%04x: ", ((buf + idx) - tp));
+#endif
+		strcat(linestr, ta);
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[4];
+                snprintf(t, 4, "%02x ", (uint8_t) buf[idx + i]);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, "   ");
+            }
+        }
+        strcat(linestr, "|");
+        for (i = 0; i < 16; i++) {
+            if (i < len) {
+                char t[2];
+                char c;
+                if (((unsigned char)buf[idx + i] > 31) && /* avoid tabs and other printable ctrl chars) */
+                    isprint((unsigned char)buf[idx + i])) {
+                    c= buf[idx + i];
+                } else {
+                    c = '.';
+                }
+                snprintf(t, 2, "%c", c);
+                strcat(linestr, t);
+            } else {
+                strcat(linestr, " ");
+            }
+        }
+        strcat(linestr, "|");
+        DEBUG_LOG("%s", linestr);
+		linestr[0] = '\0';
+        idx += 16;
+        len -= 16;
+    }
+}
+
+save_CD::save_CD(const char *path, std::string &def_prefix)
+: drive("")
+{
+    FRESULT res;
+    f_getcwd(scwd, 255);
+    if (!path)
+        return;
+    std::string cwd(scwd);
+    if (cwd.find(def_prefix, 0) == std::string::npos)
+    {
+        DEBUG_LOG("%s: cwd %s differs from def_prefix %s", __FUNCTION__, cwd.c_str(), def_prefix.c_str());
+        // prefix and drive may be different, preserve drive
+        size_t colon = def_prefix.find(':');
+        drive = def_prefix.substr(0, colon);
+        if ((res = f_chdrive("SD")) != FR_OK)
+            DEBUG_LOG("%s: failed chdrive %d", __FUNCTION__, res);
+    }
+    DEBUG_LOG("%s: preserve %s %s, CD to %s", __FUNCTION__, def_prefix.c_str(), scwd, path);
+    if ((res = f_chdir(path)) != FR_OK)
+        DEBUG_LOG("%s: failed chdir %d", __FUNCTION__, res);
+}
+
+save_CD::~save_CD()
+{
+    FRESULT res;
+    DEBUG_LOG("%s: restoring %s: %s", __FUNCTION__, drive.c_str(), scwd);
+    if (drive != "")
+    {
+        if ((res = f_chdrive(drive.c_str())) != FR_OK)
+            DEBUG_LOG("%s: failed chdrive %d", __FUNCTION__, res);
+    }
+    if ((res = f_chdir(scwd)) != FR_OK)
+        DEBUG_LOG("%s: failed chdir %d", __FUNCTION__, res);
+}

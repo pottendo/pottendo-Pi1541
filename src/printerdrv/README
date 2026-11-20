@@ -1,0 +1,75 @@
+
+ *
+ * Commodore compatible Matrix Printer Emulator.
+ *
+ * Restricted Epson compatible Serial printer emulator.
+ * Only text mode is supported.
+ *
+ * Written by
+ *   Jarkko Sonninen  (sonninen@lut.fi)
+ *   Jouko Valta     (jopi@stekt.oulu.fi)
+ *   Hannu Helminen  (dm@stekt.oulu.fi)
+
+This is a small program to convert CBM printer output to 
+a postscript file that, when fed to a postscript printer, 
+produces a nice image of a matrix printer - a Matrix printer
+emulation.
+
+It used to be part of the X64/VICE emulator project, however
+the copyright of petlp.c forbid using it when we cleaned up the VICE code:
+
+[...section removed...]
+
+It can now compiled separately from the VICE emulator
+(in fact it's just a shameless rip from VICE 0.11.0).
+It is only tested on Unix (anyone care for DOS/Win)?
+
+In the newer VICE versions you can (under Unix) even use it
+by using "|petlp -F PS|lpr" as the printer output file - which 
+automatically pipes the output through "petlp" and then to the
+(default) printer via "lpr".
+
+Andre Fachat
+a.fachat@physik.tu-chemnitz.de
+
+
+--------------------------------------------------
+
+   ./petlp V1.00 -- Commodore Matrix Printer Emulator.
+
+Usage: ./petlp  [-c | -nc] [-latin | -graph ] [-lang langname ]
+        [-upper | -lower | -business ]
+        [-left n ] [-right n ] [-top n ] [-bot n ]
+        [-o outfile ] [-F format ] [-P printer ] [--] [file list]
+
+
+   -c           controls (interpret also control codes)
+   -nc          no controls (suppress control codes in printout)
+   -upper       select graphics character set
+   -lower       select business character set
+   -business    select business character set
+   -lang        specify International character set
+   -ascii       select ASCII input (resets -lang to US-ASCII)
+   -latin       same as -ascii
+   -F output-format
+
+Available output formats are:
+binary log petcii ascii Latin/1 PS 
+
+--------------------------------------------------
+
+Log:
+
+Version 1.1: 
+
+    Ripped from VICE version 0.11.0 and made to compile standalone.
+    Added "-?" help flag and the printing of the available output
+    format.
+
+    28jan1999 Andre
+
+Version 1.0: 
+
+    As shipped with VICE version 0.11.0
+
+

@@ -22,10 +22,13 @@
 #include <string>
 
 void reboot_now(void);
+void reboot_hook(void);
 void Reboot_Pi(void);
 static inline void delay_us(u32 usec) { Kernel.get_timer()->usDelay(usec); }
 static inline void usDelay(u32 usec) { Kernel.get_timer()->usDelay(usec); }
 static inline void MsDelay(u32 msec) { Kernel.get_timer()->usDelay(msec * 1000L); }
+static inline void MsDelay_s(u32 msec) { Kernel.get_scheduler()->MsSleep(msec); }
+static inline void MsDelay_core0pd(u32 msec) { Kernel.get_timer()->MsDelayPowerDown(msec); }
 
 void USPiInitialize(void);
 void TimerSystemInitialize(void);
@@ -49,9 +52,10 @@ void mem_stat(const char *func, std::string &mem, bool verb = false);
 bool parse_netaddr(const char* s, u8 *ip);
 extern "C" {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags);
-	void UpdateScreen(void);
+	void UpdateScreen(void *iec_bus);
 }
 void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour, u32 backgroundColour);
+void hexdump(const char *buf, int len);
 
 /* I2C provided by Circle */
 #define RPI_I2CInit i2c_init
@@ -75,4 +79,13 @@ inline void time_fn_eval(u32 ms_threshold, const char *t)
 	if ((delta = (_cta - _ctb)) > ms_threshold)
 		Kernel.log("%s: delta = %d", t, delta);
 }
+
+// presevers cwd over a block
+struct save_CD
+{
+	char scwd[256];
+	std::string drive;
+	save_CD(const char *path, std::string &def_prefix);
+	~save_CD();
+};
 #endif /* __legacy_wrappers_h__ */

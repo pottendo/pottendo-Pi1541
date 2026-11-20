@@ -33,6 +33,7 @@
 #include <circle/usb/usbkeyboard.h>
 #include <circle/sched/scheduler.h>
 #include <circle/memio.h>
+#include <circle/sched/semaphore.h>
 #include <SDCard/emmc.h>
 #include <circle/i2cmaster.h>
 #include <circle/sound/pwmsounddevice.h>
@@ -40,9 +41,12 @@
 #include <wlan/bcm4343.h>
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 #include <circle/net/netsubsystem.h>
+#include <circle-mbedtls/tlssimplesupport.h>
+#include "CTimerEx.h"
 #include <stdio.h>
 #include <cstring>
 #include <string>
+#include <ctime>
 #if RASPPI <= 1 && AARCH == 32
 #include "SpinLock.h"
 #else
@@ -55,28 +59,45 @@ enum TShutdownMode
 	ShutdownReboot
 };
 
-class Pi1541Cores : public CMultiCoreSupport {
-public:
-	Pi1541Cores(CMemorySystem *pMemorySystem) : CMultiCoreSupport(pMemorySystem) {}
-	virtual ~Pi1541Cores(void) = default;
+const unsigned int MAIN_CORE = 0;
+const unsigned int EMULATOR_CORE = 1;
+const unsigned int NET_CORE = 2;
+const unsigned int PRINTER_CORE = 3;
 
-	virtual void Run(unsigned int); 
+class Pi1541Cores : public CMultiCoreSupport {
+	u32 core2activated, core3activated;
+	static constexpr unsigned IPI_ACTIVATE_CORE = IPI_USER;
+public:
+	Pi1541Cores(CMemorySystem *pMemorySystem) 
+	: CMultiCoreSupport(pMemorySystem) 
+	, core2activated(0)
+	, core3activated(0)
+	{}
+	virtual ~Pi1541Cores(void) = default;
+	virtual void IPIHandler(unsigned nCore, unsigned nIPI) override;
+	virtual void Run(unsigned int) override; 
+	void activate_core(unsigned int core);
+	void toggle_network(void);
 };
 
 class CKernel
 {
 public:
 	CKernel (void);
+	~CKernel() = default;
 	boolean Initialize (void);
 	TShutdownMode Run (void);
 	int Cleanup (void) { return 0; }
 	inline void set_pixel(unsigned int x, unsigned int y, TScreenColor c) { mScreen.SetPixel(x, y, c); }
 
 	CInterruptSystem *get_isys(void) { return &mInterrupt; }
-	CTimer *get_timer(void) { return &mTimer; }
+	CTimerEx *get_timer(void) { return &mTimer; }
 	CLogger *get_logger(void) { return &mLogger; }
 	CScreenDevice *get_scrdevice(void) { return &mScreen; }
     CEMMCDevice &get_emmc(void) { return m_EMMC; }
+	CScheduler *get_scheduler(void) { return &mScheduler; }
+	CNetSubSystem *get_mNet(void) { return m_Net; }
+	CircleMbedTLS::CTLSSimpleSupport *get_mTLSSimple(void) { return m_TLSSimple; }
 
 	void blink(int n) { m_ActLED.Blink(n); }
 	void tlog(int i) { char x[1024]; sprintf(x, "0x%08x", i); mLogger.Write("tlog:", LogNotice, x); }
@@ -89,7 +110,7 @@ public:
 	void yield(void) { mScheduler.Yield(); }
 	bool run_wifi(void);
 	bool run_ethernet(void);
-	void run_webserver(bool isWifi);
+	void run_webserver(bool isWifi, unsigned int startit);
 	void i2c_init(int BSCMaster, int fast);
 	void i2c_setclock(int BSCMaster, int clock_freq);
 	int i2c_read(int BSCMaster, unsigned char slaveAddress, void* buffer, unsigned count);
@@ -105,13 +126,19 @@ public:
 	void run_tempmonitor(bool run = true);
 	CUSBKeyboardDevice *get_kbd(void) { return m_pKeyboard; }
 	inline void set_kbd(CUSBKeyboardDevice *kbd) { m_pKeyboard = kbd; }
-	void playsound(void);
+	void playsound(int sound = 0);
+	int playback_active(void) { return m_PWMSoundDevice->PlaybackActive(); }
 	inline bool screen_available(void) { return screen_failed; }
 	inline unsigned get_clock_ticks(void) { return CTimer::GetClockTicks(); }
 	char *get_version(void);
 	void append2version(const char *a) { char tmp[512]; snprintf(tmp, 511, "%s/%s", version_extra, a); strcpy(version_extra, tmp); }
 	static CMachineInfo *get_machine_info(std::string &kernelname);
 	void lcd_showheadless(void);
+	inline void activate_core(unsigned int core) { m_MCores.activate_core(core); }
+	unsigned int setup_network(unsigned int core);
+	void toggle_network(void);
+	bool net_running(void) { return net_run; }
+	void display_networkstat(void);
 private:
 	CActLED				m_ActLED;
 	CKernelOptions		mOptions;
@@ -120,7 +147,7 @@ private:
 	CSerialDevice		mSerial;
 	CExceptionHandler	mExceptionHandler;
 	CInterruptSystem	mInterrupt;
-	CTimer				mTimer;
+	CTimerEx			mTimer;
 	CLogger				mLogger;
 	CScheduler			mScheduler;
 	CUSBHCIDevice		m_USBHCI;
@@ -135,6 +162,7 @@ private:
 	CBcm4343Device		m_WLAN;
 	CSynchronizationEvent	mEvent;
 	CNetSubSystem		*m_Net;
+	CircleMbedTLS::CTLSSimpleSupport  *m_TLSSimple;
 	CWPASupplicant		m_WPASupplicant;
 	Pi1541Cores		 	m_MCores;
 	char ip_address[32];
@@ -142,10 +170,13 @@ private:
 	char *arch;
 	char pPi1541Version[256];
 	char version_extra[256];
+	bool net_run;
+	CString IPString;
 };
 
 extern CKernel Kernel;
 extern CCPUThrottle CPUThrottle;
+extern int reboot_req;
 
 #include "legacy-wrappers.h"
 

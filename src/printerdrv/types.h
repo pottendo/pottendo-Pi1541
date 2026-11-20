@@ -1,0 +1,3 @@
+
+typedef unsigned char   BYTE;
+

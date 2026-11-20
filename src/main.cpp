@@ -162,6 +162,7 @@ static u32 lcdTrackRow = 0;
 const char* fileBrowserSelectedName;
 u8 deviceID = 8;
 IEC_Commands *_m_IEC_Commands;	/* need dynamic allocation for ESPs with PSRAM */
+IEC_Bus *iec_bus;	/* need dynamic allocation, as printer as its own instance */
 InputMappings* inputMappings;
 #if not defined(EXPERIMENTALZERO)
 Keyboard* keyboard;
@@ -446,7 +447,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 		core0RefreshingScreen.Acquire();
 #endif
 
-		IEC_Bus::WaitMicroSeconds(100);
+		iec_bus->WaitMicroSeconds(100);
 
 #if defined(CMDHD_SUPPORT)
 		char trstr[16];
@@ -499,7 +500,7 @@ void UpdateLCD(const char* track, unsigned temperature)
 		screenLCD->PrintText(false, 0, lcdTrackRow * screenLCD->GetFontHeight(), tempBuffer, 0, RGBA(0xff, 0xff, 0xff, 0xff));
 		screenLCD->RefreshRows(lcdTrackRow, 1);
 
-		IEC_Bus::WaitMicroSeconds(100);
+		iec_bus->WaitMicroSeconds(100);
 #if not defined(EXPERIMENTALZERO)
 		core0RefreshingScreen.Release();
 #endif
@@ -567,7 +568,7 @@ void UpdateLCDLamps(void)
 	                     narrow[6] = "GEOS";
 
 	core0RefreshingScreen.Acquire();
-	IEC_Bus::WaitMicroSeconds(100);
+	iec_bus->WaitMicroSeconds(100);
 
 	u32 lampRows;
 	if (rows >= 4)
@@ -629,7 +630,7 @@ void UpdateLCDLamps(void)
 	// Keep the track/temperature line below the lamps if there is room for it.
 	lcdTrackRow = (rows > lampRows) ? lampRows : 0;
 
-	IEC_Bus::WaitMicroSeconds(100);
+	iec_bus->WaitMicroSeconds(100);
 	core0RefreshingScreen.Release();
 #endif
 }
@@ -637,8 +638,11 @@ void UpdateLCDLamps(void)
 
 // This runs on core0 and frees up core1 to just run the emulator.
 // Care must be taken not to crowd out the shared cache with core1 as this could slow down core1 so that it no longer can perform its duties in the 1us timings it requires.
-void UpdateScreen()
+void UpdateScreen(void *ip)
 {
+	IEC_Bus *ibus = (IEC_Bus *)ip;
+	if (!ibus)
+		ibus = iec_bus;
 #if not defined(EXPERIMENTALZERO)
 	bool oldLED = false;
 	bool oldMotor = false;
@@ -708,10 +712,10 @@ void UpdateScreen()
 		else
 #endif
 		{	
-			atn = IEC_Bus::GetPI_Atn();
-			clock = IEC_Bus::GetPI_Clock();
-			data = IEC_Bus::GetPI_Data();
-			srq = IEC_Bus::GetPI_SRQ();
+			atn = ibus->GetPI_Atn();
+			clock = ibus->GetPI_Clock();
+			data = ibus->GetPI_Data();
+			srq = ibus->GetPI_SRQ();
 		}
 		if (emulating == EMULATING_1541)
 		{
@@ -754,7 +758,7 @@ void UpdateScreen()
 			static char op[32];
 			Kernel.get_ip(&p);
 			if (strcmp(p, op) != 0) {
-				snprintf(tempBuffer, tempBufferSize, "IP address: %s", p);
+				snprintf(tempBuffer, tempBufferSize, "IP address: %s, iec_bus device: %d", p, ibus->GetDeviceID());
 				screen->PrintText(false, 0, y + screen->GetFontHeight(), tempBuffer, textColour, bgColour);
 				strncpy(op, p, 32);
 				snprintf(tempBuffer, tempBufferSize,
@@ -1071,8 +1075,9 @@ void UpdateScreen()
 		//	UpdateUartControls(refreshUartStatusDisplay, oldLED, oldMotor, oldATN, oldDATA, oldCLOCK, oldTrack, romIndex);
 
 		// Go back to sleep. The USB irq will wake us up again.
-#if defined (__CIRCLE__)		
-		MsDelay(20);		/* less CPU demanding */
+#if defined (__CIRCLE__)
+		reboot_hook();
+		MsDelay_core0pd(20);
 #else
 		__asm ("WFE");
 #endif
@@ -1128,7 +1133,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 {
 #if defined(CMDHD_SUPPORT)
 	const char *imagePath = fileBrowser->SelectedDHDPath();
-	DEBUG_LOG("%s: imagePath = '%s', filenameForIcon='%s'\n", __FUNCTION__, imagePath, filenameForIcon);
+	//DEBUG_LOG("%s: imagePath = '%s', filenameForIcon='%s'\n", __FUNCTION__, imagePath, filenameForIcon);
 	if (imagePath != 0 && imagePath[0] != 0)
 	{
 		bool readOnly = fileBrowser->SelectedDHDReadOnly();
@@ -1145,7 +1150,7 @@ EmulatingMode BeginEmulating(FileBrowser* fileBrowser, const char* filenameForIc
 	}
 #endif
 	DiskImage* diskImage = diskCaddy.SelectFirstImage();
-	DEBUG_LOG("%s: name = %s, IconName='%s'\n", __FUNCTION__, diskImage->GetName(), filenameForIcon);
+	DEBUG_LOG("%s: image = %s", __FUNCTION__, diskImage->GetName());
 	if (diskImage)
 	{
 #if defined(PI1581SUPPORT)
@@ -1274,18 +1279,18 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 	inputMappings->directDiskSwapRequest = 0;
 	// Force an update on all the buttons now before we start emulation mode. 
-	IEC_Bus::ReadBrowseMode();
+	iec_bus->ReadBrowseMode();
 
 	bool extraRAM = options.GetExtraRAM();
 	DataBusReadFn dataBusRead = extraRAM ? read6502ExtraRAM : read6502;
 	DataBusWriteFn dataBusWrite = extraRAM ? write6502ExtraRAM : write6502;
 	pi1541.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
 
-	IEC_Bus::VIA = &pi1541.VIA[0];
-	IEC_Bus::port = pi1541.VIA[0].GetPortB();
-	pi1541.Reset();	// will call IEC_Bus::Reset();
+	iec_bus->VIA = &pi1541.VIA[0];
+	iec_bus->port = pi1541.VIA[0].GetPortB();
+	pi1541.Reset();	// will call iec_bus->Reset();
 
-	IEC_Bus::LetSRQBePulledHigh();
+	iec_bus->LetSRQBePulledHigh();
 
 	//resetWhileEmulating = false;
 	selectedViaIECCommands = false;
@@ -1311,7 +1316,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 
 	while (cycleCount < FAST_BOOT_CYCLES)
 	{
-		IEC_Bus::ReadEmulationMode1541();
+		iec_bus->ReadEmulationMode1541();
 
 		pi1541.m6502.SYNC();
 
@@ -1344,7 +1349,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 #endif
 
 		if (refreshOutsAfterCPUStep)
-			IEC_Bus::ReadEmulationMode1541();
+			iec_bus->ReadEmulationMode1541();
 
 		if (pi1541.m6502.SYNC())	// About to start a new instruction.
 		{
@@ -1380,16 +1385,16 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 		//read32(ARM_SYSTIMER_CLO);
 		//read32(ARM_SYSTIMER_CLO);
 
-//		IEC_Bus::ReadEmulationMode1541();
+//		iec_bus->ReadEmulationMode1541();
 		if (refreshOutsAfterCPUStep)
-			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
-		IEC_Bus::OutputLED = pi1541.drive.IsLEDOn();
+			iec_bus->RefreshOuts1541();	// Now output all outputs.
+		iec_bus->OutputLED = pi1541.drive.IsLEDOn();
 
-		if (IEC_Bus::OutputLED ^ oldLED)
+		if (iec_bus->OutputLED ^ oldLED)
 		{
-			SetACTLed(IEC_Bus::OutputLED);
-			oldLED = IEC_Bus::OutputLED;
-			IEC_Bus::RefreshOutLED(); /*FCP*/
+			SetACTLed(iec_bus->OutputLED);
+			oldLED = iec_bus->OutputLED;
+			iec_bus->RefreshOutLED(); /*FCP*/
 		}
 
 
@@ -1411,7 +1416,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 			}
 		}
 
-		IEC_Bus::ReadGPIOUserInput(true);
+		iec_bus->ReadGPIOUserInput(true);
 
 		// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
 #if not defined(EXPERIMENTALZERO)
@@ -1426,7 +1431,7 @@ EXIT_TYPE __not_in_flash_func(Emulate1541) (FileBrowser* fileBrowser)
 		pi1541.Update();
 
 
-		bool reset = IEC_Bus::IsReset();
+		bool reset = iec_bus->IsReset();
 		if (reset)
 			resetCount++;
 		else
@@ -1492,8 +1497,8 @@ extern int mount_new;
 		
 		if (!refreshOutsAfterCPUStep)
 		{
-			IEC_Bus::ReadEmulationMode1541();
-			IEC_Bus::RefreshOuts1541();	// Now output all outputs.
+			iec_bus->ReadEmulationMode1541();
+			iec_bus->RefreshOuts1541();	// Now output all outputs.
 		}
 
 		if ((playsound > 0) && headSoundCounter > 0)
@@ -1504,10 +1509,10 @@ extern int mount_new;
 				headSoundFreqCounter = headSoundFreq;
 				headSoundCounter -= headSoundFreq * 8;
 				if (headSoundCounter <= 0)
-					IEC_Bus::OutputSound = 0;
+					iec_bus->OutputSound = 0;
 				else
-					IEC_Bus::OutputSound = !IEC_Bus::OutputSound;
-				IEC_Bus::RefreshOutSound(); /*FCP*/
+					iec_bus->OutputSound = !iec_bus->OutputSound;
+				iec_bus->RefreshOutSound(); /*FCP*/
 			}
 		}
 
@@ -1590,15 +1595,15 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 
 	inputMappings->directDiskSwapRequest = 0;
 	// Force an update on all the buttons now before we start emulation mode. 
-	IEC_Bus::ReadBrowseMode();
+	iec_bus->ReadBrowseMode();
 
 	DataBusReadFn dataBusRead = read6502_1581;
 	DataBusWriteFn dataBusWrite = write6502_1581;
 	pi1581.m6502.SetBusFunctions(dataBusRead, dataBusWrite);
 
-	IEC_Bus::CIA = &pi1581.CIA;
-	IEC_Bus::port = pi1581.CIA.GetPortB();
-	pi1581.Reset();	// will call IEC_Bus::Reset();
+	iec_bus->CIA = &pi1581.CIA;
+	iec_bus->port = pi1581.CIA.GetPortB();
+	pi1581.Reset();	// will call iec_bus->Reset();
 
 #if defined(RPI2)
 	asm volatile ("mrc p15,0,%0,c9,c13,0" : "=r" (ctBefore));
@@ -1617,7 +1622,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 
 	while (exitReason == EXIT_UNKNOWN)
 	{
-		IEC_Bus::ReadEmulationMode1581();
+		iec_bus->ReadEmulationMode1581();
 
 		for (int cycle2MHz = 0; cycle2MHz < 2; ++cycle2MHz)
 		{
@@ -1647,15 +1652,15 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			pi1581.Update();
 		}
 
-		IEC_Bus::RefreshOuts1581();	// Now output all outputs.
+		iec_bus->RefreshOuts1581();	// Now output all outputs.
 
-		IEC_Bus::OutputLED = pi1581.IsLEDOn();
+		iec_bus->OutputLED = pi1581.IsLEDOn();
 
-		if (IEC_Bus::OutputLED ^ oldLED)
+		if (iec_bus->OutputLED ^ oldLED)
 		{
-			SetACTLed(IEC_Bus::OutputLED);
-			oldLED = IEC_Bus::OutputLED;
-			IEC_Bus::RefreshOutLED(); /*FCP*/
+			SetACTLed(iec_bus->OutputLED);
+			oldLED = iec_bus->OutputLED;
+			iec_bus->RefreshOutLED(); /*FCP*/
 		}
 
 
@@ -1677,7 +1682,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 			}
 		}
 
-		IEC_Bus::ReadGPIOUserInput(true);
+		iec_bus->ReadGPIOUserInput(true);
 
 		// Other core will check the uart (as it is slow) (could enable uart irqs - will they execute on this core?)
 #if not defined(EXPERIMENTALZERO)
@@ -1689,7 +1694,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 		bool exitDoAutoLoad = inputMappings->AutoLoad();
 
 
-		bool reset = IEC_Bus::IsReset();
+		bool reset = iec_bus->IsReset();
 		if (reset)
 			resetCount++;
 		else
@@ -1753,10 +1758,10 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 				headSoundFreqCounter = headSoundFreq;
 				headSoundCounter -= headSoundFreq * 8;
 				if (headSoundCounter <= 0)
-					IEC_Bus::OutputSound = 0;
+					iec_bus->OutputSound = 0;
 				else
-					IEC_Bus::OutputSound = !IEC_Bus::OutputSound;
-				IEC_Bus::RefreshOutSound(); /*FCP*/
+					iec_bus->OutputSound = !iec_bus->OutputSound;
+				iec_bus->RefreshOutSound(); /*FCP*/
 			}
 		}
 
@@ -1835,17 +1840,17 @@ void __not_in_flash_func(emulator)(void)
 	{
 		if (emulating == IEC_COMMANDS)
 		{
-			IEC_Bus::VIA = 0;
-			IEC_Bus::CIA = 0;
-			IEC_Bus::port = 0;
+			iec_bus->VIA = 0;
+			iec_bus->CIA = 0;
+			iec_bus->port = 0;
 
-			IEC_Bus::Reset();
+			iec_bus->Reset();
 
-			IEC_Bus::LetSRQBePulledHigh();
+			iec_bus->LetSRQBePulledHigh();
 #if not defined(EXPERIMENTALZERO)
 			core0RefreshingScreen.Acquire();
 #endif
-			IEC_Bus::WaitMicroSeconds(100);
+			iec_bus->WaitMicroSeconds(100);
 
 			roms.ResetCurrentROMIndex();
 			fileBrowser->ClearScreen();
@@ -1886,7 +1891,7 @@ void __not_in_flash_func(emulator)(void)
 						case IEC_Commands::RESET:
 							if (options.GetOnResetChangeToStartingFolder())
 								fileBrowser->DisplayRoot();
-							IEC_Bus::Reset();
+							iec_bus->Reset();
 							_m_IEC_Commands->SimulateIECBegin();
 							CheckAutoMountImage(EXIT_UNKNOWN, fileBrowser);
 							break;
@@ -2116,8 +2121,8 @@ extern int mount_new;
 			core0RefreshingScreen.Acquire();
 #endif
 			if (diskCaddy.Empty())
-				IEC_Bus::WaitMicroSeconds(2 * 1000000);
-			IEC_Bus::WaitUntilReset();
+				iec_bus->WaitMicroSeconds(2 * 1000000);
+			iec_bus->WaitUntilReset();
 			emulating = IEC_COMMANDS;
 	
 			if ((exitReason == EXIT_RESET) && (options.GetOnResetChangeToStartingFolder() || selectedViaIECCommands))
@@ -2478,9 +2483,9 @@ static void CheckOptions()
 		do
 		{
 			screen->Clear(COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(20000);
+			iec_bus->WaitMicroSeconds(20000);
 			screen->PrintText(false, xpos, ypos, tempBuffer, COLOUR_WHITE, COLOUR_RED);
-			IEC_Bus::WaitMicroSeconds(100000);
+			iec_bus->WaitMicroSeconds(100000);
 		}
 		while (1);
 	}
@@ -2651,6 +2656,7 @@ void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour,
 
 #endif
 }
+
 void list_directory(const char *path) {
     FRESULT fr;              // Result code
     FILINFO fno;             // File information structure
@@ -2694,6 +2700,13 @@ void list_directory(const char *path) {
     printf("%s: done\n", __FUNCTION__);
 }
 
+void xPortB_OnPortOut(void* pUserData, unsigned char status)
+{
+	IEC_Bus *iecb = static_cast<IEC_Bus *>(pUserData);
+	//DEBUG_LOG("%s: iec_bus = %p, status = %02x", __FUNCTION__, iecBus, status);
+	iecb->PortB_OnPortOut(nullptr, status);
+}
+
 extern "C"
 {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
@@ -2721,8 +2734,6 @@ extern "C"
 		plfio_showstat();
 		list_directory("/");
 #endif
-	_m_IEC_Commands = new IEC_Commands;
-
 #if defined(__PICO2__)
 		FRESULT fr = f_mount(&fileSystemSD, "SD:", 1);
     	if (FR_OK != fr) {
@@ -2734,6 +2745,9 @@ extern "C"
 #if defined(__CIRCLE__)
 		options.SetHeadLess(options.GetDisableHDMI());
 #endif			
+		iec_bus = new IEC_Bus(options.GetDeviceID(), 0);
+		_m_IEC_Commands = new IEC_Commands(iec_bus);
+
 		InitialiseHardware();
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		enable_MMU_and_IDCaches();
@@ -2772,7 +2786,7 @@ extern "C"
 			DEBUG_LOG("%d Freq, %dus duration", options.SoundOnGPIOFreq(), options.SoundOnGPIODuration());
 
 		if (!options.QuickBoot() && options.LogoDisplayDelay())
-			IEC_Bus::WaitMicroSeconds(options.LogoDisplayDelay() * 1000000);
+			iec_bus->WaitMicroSeconds(options.LogoDisplayDelay() * 1000000);
 
 #if !defined (__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		InterruptSystemInitialize();
@@ -2803,16 +2817,16 @@ extern "C"
 
 		CheckOptions();
 
-		IEC_Bus::SetSplitIECLines(options.SplitIECLines());
-		IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());
-		IEC_Bus::SetInvertIECOutputs(options.InvertIECOutputs());
-		IEC_Bus::SetIgnoreReset(options.IgnoreReset());
+		iec_bus->SetSplitIECLines(options.SplitIECLines());
+		iec_bus->SetInvertIECInputs(options.InvertIECInputs());
+		iec_bus->SetInvertIECOutputs(options.InvertIECOutputs());
+		iec_bus->SetIgnoreReset(options.IgnoreReset());
 		//ROTARY: Added for rotary encoder support - 09/05/2019 by Geo...
-		IEC_Bus::SetRotaryEncoderEnable(options.RotaryEncoderEnable());
+		iec_bus->SetRotaryEncoderEnable(options.RotaryEncoderEnable());
 		//ROTARY: Added for rotary encoder inversion (Issue#185) - 08/13/2020 by Geo...
-		IEC_Bus::SetRotaryEncoderInvert(options.RotaryEncoderInvert());
+		iec_bus->SetRotaryEncoderInvert(options.RotaryEncoderInvert());
 
-		IEC_Bus::Initialise();
+		iec_bus->Initialise();
 
 #if not defined(EXPERIMENTALZERO)
 		if (playsound == 0)
@@ -2849,7 +2863,7 @@ extern "C"
 		GlobalSetDeviceID(deviceID);
 
 		pi1541.drive.SetVIA(&pi1541.VIA[1]);
-		pi1541.VIA[0].GetPortB()->SetPortOut(0, IEC_Bus::PortB_OnPortOut);
+		pi1541.VIA[0].GetPortB()->SetPortOut(iec_bus, xPortB_OnPortOut);
 
 #if !defined(__CIRCLE__) && !defined(__PICO2__) && !defined(ESP32)
 		if (screenLCD)
@@ -2865,7 +2879,7 @@ extern "C"
 				MsDelay(1000*3600);
 		} else 
 		{
-			UpdateScreen();		// core0 now loops here where it will handle interrupts and passively update the screen->
+			UpdateScreen(nullptr);		// core0 now loops here where it will handle interrupts and passively update the screen->
 		}
 		while (1);
 #else
