@@ -28,11 +28,17 @@ IPPClient::IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *pr)
 , dns(mNet->GetNet())
 , socket(mNet, IPPROTO_TCP)
 , dprint_supported(PR_INV)
-, uri(0x45, "printer-uri", string("ipp://") + pr + "/ipp/print")
+, uri(0x45, "printer-uri", string(pr) + "/ipp/print")
 {
-    dns.Resolve(printer, &IPPrinter);
-    socket.Setup(printer);
-    DEBUG_LOG("%s: IPPClient for printer %s created.", __FUNCTION__, printer);
+    string p(printer);
+    size_t pos = p.find("ipp://");
+    if (pos != string::npos)
+        printer += 6;
+    else if (p.find("ipps://") != string::npos)
+        printer += 7;
+    else
+        uri = IPPAttr(0x45, "priner-uri", string("ipps://") + pr + "/ipp/print");
+    DEBUG_LOG("%s: IPPClient for printer %s created.", __FUNCTION__, p.c_str());
 }
 
 IPPClient::~IPPClient()
@@ -43,6 +49,17 @@ IPPClient::~IPPClient()
 bool IPPClient::Connect(void)
 {
     int res;
+    if (!dns.Resolve(printer, &IPPrinter))
+    {
+        DEBUG_LOG("%s: can't resolve %s", __FUNCTION__, printer);
+        return false;
+    }
+    if ((res = socket.Setup(printer)) != 0)
+    {
+        DEBUG_LOG("%s: socket(%s) failed: %d", __FUNCTION__, printer, res);
+        return false;
+    }
+
     DEBUG_LOG("%s: connecting to: %s...", __FUNCTION__, printer);
     if ((res = socket.Connect(IPPrinter, port)) < 0)
     {

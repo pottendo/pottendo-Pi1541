@@ -2,6 +2,11 @@
 
 This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare metal library (as of June 2026, Step 51).
 
+## News V2.5 vs. V2.4
+
+V2.5Beta 1
+- PrinterName must now be prefixed with `ipp://` or `ipps://` to select TLS or not; some printer may require this.
+
 ## News V2.4 vs. V2.3.1
 
 - PNG numbers are now 3 digit to be sorted properly when many pages are printed.
@@ -255,13 +260,13 @@ Know Bugs/Observations:
 
 ## Printer Emulation
 
-An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview. GFX prints are not supported as of now. The preview doesn't yet provide a proper CBM character interpretation.
+An IEC printer interfaces provides a Epson CBM textprinter emulation. The userinterface provides access to a printer buffer and shows a preview.
 
-Via WebUI one can flush the printer spooled which gnerates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/` and cannot be placed on USB drives.
+Via WebUI one can flush the printer spooled which generates the printer output files (raw, PNG, PDF, PWG Raster or postscript), which are stored on the SDCard. Use option `PrinterPath` (default `prn-out`) in `options.txt` to control. This path is prefixed with `SD:/1541/` and cannot be placed on USB drives.
 One can download the page(s) as png, pdf, PWG Raster (.pwg) and postscript (.ps) files. PWG Raster output is one multi-page document alongside the PDF. The download button retrieves the last generated PDF. Other files can be downloaded via the normal file browser WebUI by navigating to `SD:/1541/prn-out`. Printerfiles may not exceed 999 files in this directory, delete spool from time to time.
 It uses sRGB 8-bit color for the mps1520 driver and sGray 8-bit grayscale for the other raster drivers. The petlp driver renders a postscript file on the SDCard. Use your favorite postscript capable viewer on your host system to preview.
 
-Use `PrinterName` name to define a network printer, where pages are being sent for direct printing. Can be a hostname or an IP address. If the printer isn't reachable, it may take a few seconds until the driver runs into a timeout.
+Use `PrinterName` name to define a network printer, where pages are being sent for direct printing. Can be a hostname or an IP address prefixed with `ipps://` or `ipp://`. If the printer isn't reachable, it may take a few seconds until the driver runs into a timeout.
 Your printer must support IPP printing, A4 media and .PWG raster format - which is pretty standard. The mps1520 driver sends sRGB 8-bit raster format (color).
 
 Printing from you favorite 8-bit machine can be controlled by the secondary address, when opening the printer device: `open 4,4,7` vs `open 4,4,1` results in upper or lower case and combinatino with/without full CBM characters. The mps1520 driver selects colors depending on the secondary addres.
@@ -322,7 +327,7 @@ The following options control new functions available:
 | PrinterPath | string | controls spool directory | prn-out | prefixed with `SD:/1541/`|
 | PrinterDriver | string | mps803,mps082,mps801,nl10,petlp | mps803 | outputs pdf or postscript(petlp) in spooldirectory|
 | PrinterSound | 0 or 1 | enable DMA sound output on the Pi's 3.5mm jack | 0 ||
-| PrinterName | string or IP | enables direct printing when specifying a printer name or its IP address |||
+| PrinterName | ipp-uri | enables direct printing when specifying a printer name or its IP address prefixed with `ipps://` or `ipp://`|| `ipps://` should work for modern printers |
 | TZ          | e.g. 2.0 | set the timezone relative to UTC, CEST = 2.0, NewYork/US = -5.0, Delhi/In = 5.5 |2.0||
 | netEthernet | 0, 1, 2 | enable Ethernet network: 0: no network, 1: enable at startup, 2: configure but don't start (use ENTER longpress to enable later) |0||
 | netWifi     | 0, 1, 2 | enable WiFi network: 0: no network, 1: enable at startup, 2: configure but don't start (use WebUI to enable later) |0||
