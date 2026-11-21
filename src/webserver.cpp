@@ -2237,7 +2237,7 @@ THTTPStatus CWebServer::GetContent (const char  *pPath,
 		else
 		{
 			msg = "Printer off<br />";
-			DEBUG_LOG("%s: %s, pParm = %s", __FUNCTION__, msg.c_str(), pParams);
+			DEBUG_LOG("%s: %s, pParams = '%s'.", __FUNCTION__, msg.c_str(), pParams);
 		}
 		if (strncmp(pParams, "[SELDRIVER]&", 12) == 0)
 		{

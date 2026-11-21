@@ -144,7 +144,10 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
     bool hasContentLength = false;
 
     if (len == 0)
+    {
+        DEBUG_LOG("%s: bufferlen is 0", __FUNCTION__);
         return false;
+    }
     headerlen = 0;
     *response = pBuffer; // as start initialize it
     while (nReceived < (int)len - 1)
@@ -152,12 +155,13 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         unsigned nAvailable = len - nReceived - 1;
         unsigned nToRead = nAvailable < sizeof(Temp) ? nAvailable : sizeof(Temp);
         int n = Socket.Receive(Temp, nToRead, 0);
-        //DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
+        DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
         if (n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
         {
             if (headerlen >= 0 && !hasContentLength)
             {
                 responselen = nReceived - (*response - pBuffer);
+                DEBUG_LOG("%s: MBEDTLS_ERR CLOSE NOTIFY, headerlen = %dm content is empty", __FUNCTION__, headerlen);
                 return true;
             }
 
@@ -165,7 +169,10 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             return false;
         }
         if ((n <= 0) || (n > (int)nAvailable))
+        {
+            DEBUG_LOG("%s: socket Receive returned %d", __FUNCTION__, n);
             return false;
+        }
 
         memcpy(pBuffer + nReceived, Temp, n);
         nReceived += n;
@@ -181,7 +188,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             char *headerEnd = *response - 4;
             char saved = *headerEnd;
             *headerEnd = '\0';
-            //DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
+            DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
             tp = strstr(pBuffer, "Content-Length:");
             *headerEnd = saved;
             if (tp)
