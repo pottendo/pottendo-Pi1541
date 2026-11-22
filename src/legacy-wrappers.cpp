@@ -116,7 +116,7 @@ void hexdump(const char *buf, int len)
 
 char *fbinary (char *p, char *e, const char *s, size_t len) 
 {
-    char *fin = e - len;
+    char *fin = e - len + 1;
     char *t = p;
     int match = -1;
     while ((t < fin) && ((match = memcmp(t, s, len)) != 0))

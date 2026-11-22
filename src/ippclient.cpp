@@ -174,7 +174,10 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         if (chunked) 
         {
             DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
-            static const char chunked_end[5] = { 0x30, 0xd, 0xa, 0xd, 0xa };
+            static const char chunked_end[5] = { 0x30, 0x0d, 0x0a, 0x0d, 0x0a };
+
+            hexdump(chunked_end, 5);
+            hexdump(pBuffer, &pBuffer[nReceived] - pBuffer);
             if (fbinary(pBuffer, &pBuffer[nReceived], chunked_end, sizeof(chunked_end)))
             {
                 responselen = nReceived - headerlen;
@@ -266,7 +269,7 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
     if (Receive(socket, buf, blen, &temp, hsize, bsize))
     {
         std::string header((char *)buf, temp - buf);
-        //DEBUG_LOG("%s: response header\n%s", __FUNCTION__, buf, header.c_str());
+        DEBUG_LOG("%s: response header\n%s", __FUNCTION__, buf, header.c_str());
     }
     return true;
 }
@@ -328,7 +331,7 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
         DEBUG_LOG("%s: receive header failed, hlen = %d, bl = %d", __FUNCTION__, hlen, bl);
         return false;
     }
-    //hexdump(pBuffer, hlen + bl);
+    hexdump(pBuffer, hlen + bl);
     // check response
     //pBuffer[hlen] = '\0';
     //DEBUG_LOG("%s: response header\n%s", __FUNCTION__, pBuffer);
