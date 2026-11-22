@@ -829,7 +829,7 @@ static bool DHDDiskInfo(string &name, list<string> &dir)
             double size_mib = (double)size_bytes / (1024.0 * 1024.0);
             snprintf(tbuf, 255, "%u %-16s %-10s %-5u %2.2f", 
 				partition_number, entry + 0x05, 
-			    partition_type(type), size_blocks, size_mib);
+			    partition_type(type), size_blocks * 2, size_mib);
 			dir.push_back(string(tbuf));
 #if 0
             DEBUG_LOG("%s:    start offset: 0x%08llX, "
