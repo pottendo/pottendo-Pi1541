@@ -56,6 +56,7 @@ extern "C" {
 }
 void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour, u32 backgroundColour);
 void hexdump(const char *buf, int len);
+char *fbinary (char *p, char *e, const char *s, size_t len);
 
 /* I2C provided by Circle */
 #define RPI_I2CInit i2c_init

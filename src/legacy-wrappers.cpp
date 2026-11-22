@@ -114,6 +114,16 @@ void hexdump(const char *buf, int len)
     }
 }
 
+char *fbinary (char *p, char *e, const char *s, size_t len) 
+{
+    char *fin = e - len;
+    char *t = p;
+    int match = -1;
+    while ((t < fin) && ((match = memcmp(t, s, len)) != 0))
+        t++;
+    return (match == 0) ? t : 0;
+}
+
 save_CD::save_CD(const char *path, std::string &def_prefix)
 : drive("")
 {

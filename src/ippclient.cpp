@@ -80,20 +80,12 @@ bool IPPClient::Connect(void)
         //hexdump(pBuffer + hsize, bsize);
         char *t1, *t2, *t3;
         std::string prsup("");
-        auto fbinary = [](char *p, char *e, const char *s) -> char * {
-            char *fin = e - strlen(s);
-            char *t = p;
-            int match = -1;
-            while ((t < fin) && ((match = strncmp(t, s, strlen(s))) != 0))
-                t++;
-            return (match == 0) ? t : 0;
-        };
-        t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "pwg-raster-document-type-supported");
+        t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "pwg-raster-document-type-supported", strlen("pwg-raster-document-type-supported"));
 
         if (t1)
         {
-            t2 = fbinary(t1, &pBuffer[hsize + bsize], "sgray_8");
-            t3 = fbinary(t1, &pBuffer[hsize + bsize], "srgb_8");
+            t2 = fbinary(t1, &pBuffer[hsize + bsize], "sgray_8", strlen("sgray_8"));
+            t3 = fbinary(t1, &pBuffer[hsize + bsize], "srgb_8", strlen("srgb_8"));
             if (t2)
             {
                 dprint_supported |= PR_BW;
@@ -104,7 +96,7 @@ bool IPPClient::Connect(void)
                 dprint_supported |= PR_COL;
                 prsup += "color";
             }
-            if (fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "iso_a4_210x297mm"))
+            if (fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "iso_a4_210x297mm", strlen("iso_a4_210x297mm")))
                 DEBUG_LOG("%s: found A4 - iso_a4_210x297mm - support", __FUNCTION__);
             else
                 DEBUG_LOG("%s: printer doesn't support A4 - iso_a4_210x297mm. Output may be cropped.", __FUNCTION__);
@@ -142,6 +134,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
     char *tp;
     int nReceived = 0;
     bool hasContentLength = false;
+    bool chunked = false;
 
     if (len == 0)
     {
@@ -150,18 +143,19 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
     }
     headerlen = 0;
     *response = pBuffer; // as start initialize it
-    while (nReceived < (int)len - 1)
+    while (nReceived < (int)len - 1) 
     {
         unsigned nAvailable = len - nReceived - 1;
         unsigned nToRead = nAvailable < sizeof(Temp) ? nAvailable : sizeof(Temp);
         int n = Socket.Receive(Temp, nToRead, 0);
         DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
+        hexdump(Temp, n);
         if (n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
         {
             if (headerlen >= 0 && !hasContentLength)
             {
                 responselen = nReceived - (*response - pBuffer);
-                DEBUG_LOG("%s: MBEDTLS_ERR CLOSE NOTIFY, headerlen = %dm content is empty", __FUNCTION__, headerlen);
+                //DEBUG_LOG("%s: MBEDTLS_ERR CLOSE NOTIFY, headerlen = %dm content is empty", __FUNCTION__, headerlen);
                 return true;
             }
 
@@ -177,6 +171,17 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         memcpy(pBuffer + nReceived, Temp, n);
         nReceived += n;
         pBuffer[nReceived] = '\0';
+        if (chunked) 
+        {
+            DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
+            static const char chunked_end[5] = { 0x30, 0xd, 0xa, 0xd, 0xa };
+            if (fbinary(pBuffer, &pBuffer[nReceived], chunked_end, sizeof(chunked_end)))
+            {
+                responselen = nReceived - headerlen;
+                DEBUG_LOG("%s: found end of chunked body, len = %d", __FUNCTION__, responselen);
+                return true;
+            }
+        }
         if (headerlen == 0)
         {
             tp = strstr(pBuffer, "\r\n\r\n");
@@ -189,22 +194,26 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             char saved = *headerEnd;
             *headerEnd = '\0';
             DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
-            tp = strstr(pBuffer, "Content-Length:");
             *headerEnd = saved;
-            if (tp)
+
+            if ((tp = strstr(pBuffer, "Content-Length:")) != nullptr)
             {
                 tp += strlen("Content-Length:");
                 while ((*tp == ' ') || (*tp == '\t'))
                     tp++;
                 char *end;
                 long contentLength = strtol(tp, &end, 10);
-                if (end == tp || contentLength < 0
-                    || (size_t)contentLength > len - (*response - pBuffer))
+                if (end == tp || contentLength < 0 || 
+                    (size_t)contentLength > len - (*response - pBuffer))
                     return false;
                 responselen = contentLength;
                 hasContentLength = true;
             }
-            DEBUG_LOG("%s: headerlen = %d, bodylen = %d", __FUNCTION__,
+            else if ((tp = strstr(pBuffer, "Transfer-Encoding: chunked")) != nullptr)
+            {
+                chunked = true;
+            }
+            DEBUG_LOG("%s: headerlen = %d, bodylen = %d (-1 == chunked)", __FUNCTION__,
                       headerlen, hasContentLength ? (int)responselen : -1);
         }
 
