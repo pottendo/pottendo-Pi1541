@@ -144,6 +144,8 @@ public:
 	void SetPinCNT(bool value);
 	bool GetPinCNT() const { return CNTPin; }
 	void SetPinSP(bool value);
+	// Diagnostics: one line describing the serial port and timer A state.
+	int DiagDescribe(char* out, int len) const;
 	bool GetPinSP() const { return SPPin; }
 	void SetPinTOD(bool value);
 
@@ -287,6 +289,7 @@ public:
 	unsigned char serialPortRegister;
 	unsigned char serialShiftRegister;
 	unsigned serialBitsShiftedSoFar;
+	bool serialOutputPending;	// SDR written while a byte is still going out
 	bool serialShiftingEnabled;
 	//unsigned timerATimeOutCount;
 };

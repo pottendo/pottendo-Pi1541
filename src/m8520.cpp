@@ -17,6 +17,10 @@
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
 #include "m8520.h"
+#include <stdio.h>
+
+// Fast serial diagnostics, defined in Pi1581.cpp.
+void F81Log(unsigned char type, unsigned char value);
 
 // The 8520 contains a programmable baud rate generator which is used for fast serial transfers. 
 // Timer A is used for the baud rate generator. In the output mode data is shifted out on SP at 1/2 the underflow rate of Timer A.
@@ -136,6 +140,7 @@ void m8520::Reset()
 	serialPortMode = SP_MODE_INPUT;
 	serialPortRegister = 0;
 	serialShiftRegister = 0;
+	serialOutputPending = false;
 	serialBitsShiftedSoFar = 8;
 
 	TODActive = false;
@@ -232,6 +237,16 @@ void m8520::Execute()
 							{
 								//DEBUG_LOG("o %04x\r\n", pc);
 								SetInterrupt(IR_SDR);
+								// "If the Serial Data Register was loaded with new
+								// information prior to this interrupt, the new data will
+								// automatically be loaded into the shift register and
+								// transmission will continue."
+								if (serialOutputPending)
+								{
+									serialShiftRegister = serialPortRegister;
+									serialBitsShiftedSoFar = 0;
+									serialOutputPending = false;
+								}
 							}
 						}
 					}
@@ -376,7 +391,11 @@ void m8520::SetPinCNT(bool value)
 				{
 					//DEBUG_LOG("ib=%02x %d\r\n", serialShiftRegister, pc);
 					serialPortRegister = serialShiftRegister;
-					//serialBitsShiftedSoFar = 0;
+					F81Log(3, serialShiftRegister);
+					// The input shifter runs continuously: every 8 CNT pulses
+					// is the next byte. Stopping at 8 lost every byte after
+					// the first one until the port was switched over again.
+					serialBitsShiftedSoFar = 0;
 					SetInterrupt(IR_SDR);
 				}
 			}
@@ -463,6 +482,7 @@ unsigned char m8520::Read(unsigned int address)
 		break;
 		case SDR:
 			value = serialPortRegister;
+			F81Log(2, value);
 			//DEBUG_LOG("rsr%02x\r\n", value);
 			//serialBitsShiftedSoFar = 0;
 		break;
@@ -571,10 +591,12 @@ void m8520::Write(unsigned int address, unsigned char value)
 
 		// Data written to the timer are latched in the Timer Latch.
 		case TALO:
-			timerALatch = (timerBLatch & 0xff00) | value;
+			// These used timer B's latch for the other half, so the 1581 ROM's
+			// fast serial rate ($0006) became $FF06: half a second per byte.
+			timerALatch = (timerALatch & 0xff00) | value;
 			break;
 		case TAHI:
-			timerALatch = (timerBLatch & 0xff) | (value << 8);
+			timerALatch = (timerALatch & 0xff) | (value << 8);
 			// In oneshot mode; a write to Timer High will transfer the timer latch to the counter and initiate counting regardless of the start bit.
 
 			// The timer latch is loaded into the timer following a write to the high byte of the prescaler while the timer is stopped.
@@ -638,10 +660,23 @@ void m8520::Write(unsigned int address, unsigned char value)
 		case SDR:
 			//DEBUG_LOG("wsr%02x %04x\r\n", value, pc);
 			serialPortRegister = value;
-			//serialShiftRegister = value;
+			F81Log((CRARegister & CRA_SPMODE) ? ((serialBitsShiftedSoFar >= 8) ? 1 : 7) : 8, value);
 			if ((CRARegister & CRA_SPMODE))
 			{
-				serialBitsShiftedSoFar = 0;
+				// The byte was never copied into the shift register, so every
+				// fast byte the 1581 sent went out as $00 (a C128 in 128 mode
+				// saw an empty directory). Load it now if the shifter is idle,
+				// else send it straight after the byte going out.
+				if (serialBitsShiftedSoFar >= 8)
+				{
+					serialShiftRegister = value;
+					serialBitsShiftedSoFar = 0;
+				}
+				else
+				{
+					serialOutputPending = true;
+					break;
+				}
 				//DEBUG_LOG("SDR W 0\r\n");
 			}
 			break;
@@ -743,22 +778,27 @@ void m8520::Write(unsigned int address, unsigned char value)
 				{
 					// Serial port output - CNT sources shift clock
 					serialPortMode = SP_MODE_OUTPUT;
+					F81Log(4, 1);
 					//DEBUG_LOG("o %04x\r\n", pc);
 					//DEBUG_LOG("o\r\n");
 
 					serialBitsShiftedSoFar = 8;
 					serialShiftRegister = 0;
+					serialOutputPending = false;
+					CNTPin = true;	// the clock idles high
 				}
 				else
 				{
 					// Serial port input - (external shift clock required)
 					serialPortMode = SP_MODE_INPUT;
+					F81Log(4, 0);
 
 					//DEBUG_LOG("i %04x\r\n", pc);
 					//DEBUG_LOG("i\r\n");
 
 					serialBitsShiftedSoFar = 0;
 					serialShiftRegister = 0;
+					serialOutputPending = false;
 				}
 			}
 
@@ -861,4 +901,15 @@ void m8520::Write(unsigned int address, unsigned char value)
 			}
 		break;
 	}
+}
+
+int m8520::DiagDescribe(char* out, int len) const
+{
+	return snprintf(out, len, "SP mode %s, bits %u, SR %02x, SDR %02x, pending %d, CNT %d, SP %d, "
+		"CRA %02x, TA %s %s, ICR data %02x mask %02x",
+		serialPortMode == SP_MODE_OUTPUT ? "OUT" : "IN", serialBitsShiftedSoFar,
+		(unsigned)serialShiftRegister, (unsigned)serialPortRegister, (int)serialOutputPending,
+		(int)CNTPin, (int)SPPin, (unsigned)CRARegister,
+		timerAActive ? "running" : "stopped", timerAOneShot ? "oneshot" : "continuous",
+		(unsigned)ICRData, (unsigned)ICRMask);
 }
