@@ -165,7 +165,9 @@ Options::Options(void)
 	, CMDHDDeviceID(0)
 	, CMDHDCacheMB(32)
 	, CMDHDAtnOutGPIO(0)
-	, CMDHDLcdLamps(1)	
+	, CMDHDLcdLamps(1)
+	, CMDHDHalfCycle(0)	
+	, CMDHDTimingFix(0)
 	, CMDHDButtonSwap8(1)
 	, CMDHDButtonSwap9(2)
 	, CMDHDButtonWP(3)
@@ -247,6 +249,28 @@ void Options::Process(char* buffer)
 		{
 			strncpy(autoMountImageName, pValue, 255);
 		}
+#if defined(CMDHD_SUPPORT)
+		// CMD HD options (as parsed by PiCMD's options.cpp). Without these the
+		// fields kept their defaults whatever options.txt said - notably
+		// CMDHDAtnOutGPIO stayed 0, so the front panel SWAP 8/9 could not move
+		// another drive off that number and two drives answered on it.
+		else if ((strcasecmp(pOption, "CMDHDRomName") == 0) || (strcasecmp(pOption, "ROMCMDHD") == 0))
+		{
+			strncpy(ROMNameCMDHD, pValue, 255);
+			ROMNameCMDHD[255] = 0;
+		}
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDDeviceID)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDCacheMB)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDAtnOutGPIO)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDLcdLamps)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDHalfCycle)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDTimingFix)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDButtonSwap8)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDButtonSwap9)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDButtonWP)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDButtonReset)
+		ELSE_CHECK_DECIMAL_OPTION(CMDHDButtonExit)
+#endif
 		ELSE_CHECK_DECIMAL_OPTION(deviceID)
 		ELSE_CHECK_DECIMAL_OPTION(onResetChangeToStartingFolder)
 		ELSE_CHECK_DECIMAL_OPTION(extraRAM)

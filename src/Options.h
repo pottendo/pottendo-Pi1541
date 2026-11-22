@@ -60,6 +60,8 @@ public:
 	// reads ATN can drive it too.
 	inline unsigned int GetCMDHDAtnOutGPIO() const { return CMDHDAtnOutGPIO; }
 	inline unsigned int GetCMDHDLcdLamps() const { return CMDHDLcdLamps; }
+	inline unsigned int GetCMDHDHalfCycle() const { return CMDHDHalfCycle; }
+	inline unsigned int GetCMDHDTimingFix() const { return CMDHDTimingFix; }
 #endif	
 	const char* GetRomName(int index) const;
 	const char* GetRomName1581() const;
@@ -246,6 +248,8 @@ private:
 	unsigned int CMDHDCacheMB;
 	unsigned int CMDHDAtnOutGPIO;
 	unsigned int CMDHDLcdLamps;
+	unsigned int CMDHDHalfCycle;
+	unsigned int CMDHDTimingFix;
 	u8 CMDHDButtonSwap8;
 	u8 CMDHDButtonSwap9;
 	u8 CMDHDButtonWP;
