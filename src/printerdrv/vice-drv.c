@@ -697,6 +697,14 @@ static void pwg_put_u32(uint8_t *header, size_t offset, uint32_t value)
     header[offset + 3] = (uint8_t)value;
 }
 
+static void pwg_put_float(uint8_t *header, size_t offset, float value)
+{
+    uint32_t bits;
+
+    memcpy(&bits, &value, sizeof(bits));
+    pwg_put_u32(header, offset, bits);
+}
+
 static void pwg_put_string(uint8_t *header, size_t offset,
                            const char *value)
 {
@@ -717,6 +725,7 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     size_t bytes_per_pixel = color ? 3 : 1;
     size_t bytes_per_line;
     uint64_t page_width_points, page_height_points;
+    float page_width_float, page_height_float;
 
     if (width == 0 || height == 0
         || width > UINT32_MAX || height > UINT32_MAX
@@ -734,6 +743,8 @@ static int write_pwg_page_header(vice_helper_file_t *file,
         DEBUG_LOG("PWG Raster page dimensions are too large.");
         return -1;
     }
+    page_width_float = (float)((double)width * 72.0 / dpi_x);
+    page_height_float = (float)((double)height * 72.0 / dpi_y);
 
     pwg_put_string(header, 0, "PwgRaster");
     pwg_put_string(header, 64, "white");
@@ -743,6 +754,16 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     pwg_put_u32(header, 280, dpi_y);
     pwg_put_u32(header, 352, (uint32_t)page_width_points); /* PageSize */
     pwg_put_u32(header, 356, (uint32_t)page_height_points);
+    pwg_put_u32(header, 284, 0); /* ImagingBoundingBox: left */
+    pwg_put_u32(header, 288, 0); /* bottom */
+    pwg_put_u32(header, 292, (uint32_t)page_width_points); /* right */
+    pwg_put_u32(header, 296, (uint32_t)page_height_points); /* top */
+    pwg_put_float(header, 428, page_width_float); /* cupsPageSize */
+    pwg_put_float(header, 432, page_height_float);
+    pwg_put_float(header, 436, 0.0f); /* cupsImagingBBox: left */
+    pwg_put_float(header, 440, 0.0f); /* bottom */
+    pwg_put_float(header, 444, page_width_float); /* right */
+    pwg_put_float(header, 448, page_height_float); /* top */
     pwg_put_u32(header, 372, (uint32_t)width);  /* cupsWidth */
     pwg_put_u32(header, 376, (uint32_t)height); /* cupsHeight */
     pwg_put_u32(header, 384, 8);              /* cupsBitsPerColor */
