@@ -583,7 +583,7 @@ public:
 
 	inline void LetSRQBePulledHigh()
 	{
-		SRQSetToOut = IEC_Bus::invertIECInputs;
+		SRQSetToOut = false;	// released: the pull up takes the line high
 #if defined(PI1581SUPPORT)
 		RefreshOuts1581();
 #endif	
@@ -861,21 +861,30 @@ public:
 				AtnaDataSetToOut | DataSetToOut |
 				(ClockSetToOut << 1) | out_pr1;
 
-			if (SRQSetToOut) srq |= 1 << PIGPIO_OUT_SRQ;	// fast clock is pulled high but we have an inverter in our hardware so to compensate we invert in software now
-			else srq |= 1 << PIGPIO_OUT_SRQ;
+			// The SRQ bit used to go into both the clear and the set write, so
+			// the pin always ended up high whatever SRQSetToOut said. With an
+			// inverting buffer (the default) that holds the SRQ line low after
+			// leaving any emulation that drives it, and a C128 then cannot do
+			// fast serial with any other drive on the bus (a 1571 falls back
+			// to slow). Asserting drives the pin high through an inverter and
+			// low through a non inverting buffer, as in RefreshOutsCMDHD().
+			srq = 1 << PIGPIO_OUT_SRQ;
+			const bool srqPinHigh = (SRQSetToOut == invertIECOutputs);
+			const unsigned srqSet = srqPinHigh ? srq : 0;
+			const unsigned srqClr = srqPinHigh ? 0 : srq;
 
 #if !defined(CIRCLE_GPIO)
 			if (invertIECOutputs)
 			{
 				/*7406 etal - inverters*/
-				write32(ARM_GPIO_GPCLR0, clearlist[sel] | srq);
-				write32(ARM_GPIO_GPSET0, setlist[sel] | srq);
+				write32(ARM_GPIO_GPCLR0, clearlist[sel] | srqClr);
+				write32(ARM_GPIO_GPSET0, setlist[sel] | srqSet);
 			}
 			else
 			{
 				/*7407 etal - buffers*/
-				write32(ARM_GPIO_GPCLR0, setlist[sel] | srq);
-				write32(ARM_GPIO_GPSET0, clearlist[sel] | srq);
+				write32(ARM_GPIO_GPCLR0, setlist[sel] | srqClr);
+				write32(ARM_GPIO_GPSET0, clearlist[sel] | srqSet);
 			}
 #else
 #error "RefreshOuts1581() not implemented for CIRCLE_GPIO"
