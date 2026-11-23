@@ -73,7 +73,7 @@ bool IPPClient::Connect(void)
 
     char pBuffer[nMaxSize];
  	size_t hsize, bsize;
-	if (!GetAttributes(pBuffer, nMaxSize, hsize, bsize))
+	if (!GetAttributes(pBuffer, nMaxSize, hsize, bsize, 0x0B, nullptr, "keep-alive"))
 		DEBUG_LOG("%s: failed to get printer attributes", __FUNCTION__);
     else
 	{
@@ -148,8 +148,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         unsigned nAvailable = len - nReceived - 1;
         unsigned nToRead = nAvailable < sizeof(Temp) ? nAvailable : sizeof(Temp);
         int n = Socket.Receive(Temp, nToRead, 0);
-        DEBUG_LOG("%s: received 0x%04x bytes", __FUNCTION__, n);
-        hexdump(Temp, n);
+        DEBUG_LOG("%s: received %d bytes", __FUNCTION__, n);
         if (n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
         {
             if (headerlen >= 0 && !hasContentLength)
@@ -167,17 +166,15 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             DEBUG_LOG("%s: socket Receive returned %d", __FUNCTION__, n);
             return false;
         }
+        //hexdump(Temp, n);
 
         memcpy(pBuffer + nReceived, Temp, n);
         nReceived += n;
         pBuffer[nReceived] = '\0';
         if (chunked) 
         {
-            DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
             static const char chunked_end[5] = { 0x30, 0x0d, 0x0a, 0x0d, 0x0a };
-
-            hexdump(chunked_end, 5);
-            hexdump(pBuffer, &pBuffer[nReceived] - pBuffer);
+            DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
             if (fbinary(pBuffer, &pBuffer[nReceived], chunked_end, sizeof(chunked_end)))
             {
                 responselen = nReceived - headerlen;
@@ -196,7 +193,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             char *headerEnd = *response - 4;
             char saved = *headerEnd;
             *headerEnd = '\0';
-            DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
+            //DEBUG_LOG("%s: found header, len = %d\n%s", __FUNCTION__, headerlen, pBuffer);
             *headerEnd = saved;
 
             if ((tp = strstr(pBuffer, "Content-Length:")) != nullptr)
@@ -230,19 +227,26 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
     return false;
 }
 
-bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsize)
+bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsize, uint8_t code, char *data, char *conn)
 {
     list<IPPAttr>ipp_get_attr;
     vector<char> ipp_cmd;
     ipp_get_attr.push_back(IPPAttr(static_cast<uint16_t>(0x200)));  // IPP 2.0
-    ipp_get_attr.push_back(IPPAttr(static_cast<uint16_t>(0x0B)));   // GetAttr
+    ipp_get_attr.push_back(IPPAttr(static_cast<uint16_t>(code)));   // GetAttr 0x0b, JobAttr 0x09
     ipp_get_attr.push_back(IPPAttr(static_cast<uint32_t>(0x01)));   // Req. ID
     ipp_get_attr.push_back(IPPAttr(static_cast<uint8_t>(0x01)));    // Operations attibutes
     ipp_get_attr.push_back(IPPAttr(0x47, "attributes-charset", "utf-8"));
     ipp_get_attr.push_back(IPPAttr(0x48, "attributes-natural-language", "en"));
-    ipp_get_attr.push_back(uri);
-    ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-type-supported"));
-    ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-supported"));
+    if (code == 0x0b)
+    {
+        ipp_get_attr.push_back(uri);
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-type-supported"));
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-supported"));
+    } 
+    else if (code == 0x09)
+    {
+        ipp_get_attr.push_back(IPPAttr(0x45, "job-uri", string(data)));
+    }
     ipp_get_attr.push_back(IPPAttr(static_cast<uint8_t>(0x03)));    // end marker
     for (auto attr : ipp_get_attr)
     {
@@ -254,9 +258,9 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
 			 "Host: %s:%d\r\n"
 			 "Content-Type: application/ipp\r\n"
 			 "Content-Length: %u\r\n"
-			 "Connection: keep-alive\r\n"
+			 "Connection: %s\r\n"
 			 "\r\n",
-			 ip.c_str(), port, ipp_cmd.size());
+			 ip.c_str(), port, ipp_cmd.size(), conn);
     //DEBUG_LOG("%s: sending header:\n%s", __FUNCTION__, t.c_str());
     if (!SendAll(socket, t.c_str(), t.GetLength()))
         return false;
@@ -269,7 +273,7 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
     if (Receive(socket, buf, blen, &temp, hsize, bsize))
     {
         std::string header((char *)buf, temp - buf);
-        DEBUG_LOG("%s: response header\n%s", __FUNCTION__, buf, header.c_str());
+        //DEBUG_LOG("%s: response header\n%s", __FUNCTION__, buf, header.c_str());
     }
     return true;
 }
@@ -302,7 +306,7 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
         "\r\nHost: " + std::string(printer) +
         "\r\nContent-Type: application/ipp"
         "\r\nContent-Length: "  + std::to_string(ipp_cmd.size() + blen) +
-        "\r\nConnection: close"
+        "\r\nConnection: keep-alive"
         "\r\n\r\n";
 
     //DEBUG_LOG("%s: header:\n%s", __FUNCTION__, ipp_req.c_str());
@@ -331,9 +335,48 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
         DEBUG_LOG("%s: receive header failed, hlen = %d, bl = %d", __FUNCTION__, hlen, bl);
         return false;
     }
-    hexdump(pBuffer, hlen + bl);
-    // check response
-    //pBuffer[hlen] = '\0';
-    //DEBUG_LOG("%s: response header\n%s", __FUNCTION__, pBuffer);
+#ifdef PRINT_DEBUG    
+    char *j;
+    uint8_t job_state = 0;
+    j = fbinary(&pBuffer[hlen], &pBuffer[hlen + bl], "job-uri", strlen("job-uri"));
+    if (j)
+    {
+        j += 7;
+        uint16_t jl = (*j) * 256 + *(j+1);
+        char juri[256];
+        strncpy(juri, j+2, jl);
+        juri[jl] = '\0';
+        int retry = 10;
+        DEBUG_LOG("%s: found job-uri(%d) %s", __FUNCTION__, jl, juri);
+        do
+        {
+            if (!GetAttributes(pBuffer, nMaxSize, hlen, bl, 0x09, juri, "keep-alive"))
+            {
+                DEBUG_LOG("%s: failed to get printer job attributes", __FUNCTION__);
+                break;
+            }
+            else
+            {
+                DEBUG_LOG("%s: job attributes:", __FUNCTION__);
+                hexdump(pBuffer, hlen + bl);
+                char *js = fbinary(&pBuffer[hlen], &pBuffer[hlen + bl], "job-state", strlen("job-state"));
+                if (js)
+                {
+                    job_state = *(js + 9 + 2 + 3); // "job-state" 2b len 4b status, last byte of status 
+                    DEBUG_LOG("%s: job-state = %d", __FUNCTION__, job_state);
+                    if (job_state > 6)
+                        break;
+                }
+            }
+            MsDelay(1000);
+        } while (retry--);
+    }
+    if (job_state == 9)
+        DEBUG_LOG("%s: printing successful", __FUNCTION__);
+    else
+        DEBUG_LOG("%s: print-job failed: %d", __FUNCTION__, job_state);
+#endif        
+    // close connection
+    GetAttributes(pBuffer, nMaxSize, hlen, bl, 0x0b, nullptr, "close"); // Ignore result
     return true;
 }

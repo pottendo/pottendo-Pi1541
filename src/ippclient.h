@@ -47,6 +47,9 @@ public:
     IPPAttr(char a, string attr, string val) { 
         bin.push_back(a); w16(attr.length()); wstr(attr); w16(val.length()); wstr(val); 
     }
+    IPPAttr(char *s) {
+        w16(strlen(s)); wstr(s);
+    }
     IPPAttr(uint8_t v) { bin.push_back(v); }
     IPPAttr(uint16_t v) { w16(v); }
     IPPAttr(uint32_t v) { w16((v >> 16) & 0xffff); w16(v & 0xffff); }
@@ -72,7 +75,7 @@ public:
     IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *printer);
     ~IPPClient();
     bool Connect(void);
-    bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize);
+    bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize, uint8_t code, char *data = nullptr, char *conn = nullptr);
     inline int dprint_support(void) { return dprint_supported; }
     bool Print(const char *buf, size_t len);
 };
