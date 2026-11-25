@@ -39,6 +39,8 @@
 #define PNG_MAX_WIDTH 4096
 #define PDF_MARGIN 10
 #define PWG_LEFT_MARGIN_MM 5
+#define PWG_A4_WIDTH_MM 210
+#define PWG_A4_HEIGHT_MM 297
 
 static driver_select_t *printer_driver;
 static int test_mode;
@@ -724,8 +726,12 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     uint8_t header[PWG_HEADER_SIZE] = {0};
     size_t bytes_per_pixel = color ? 3 : 1;
     size_t bytes_per_line;
-    uint64_t page_width_points, page_height_points;
-    float page_width_float, page_height_float;
+    uint64_t page_width_points =
+        (PWG_A4_WIDTH_MM * 720ULL + 127) / 254;
+    uint64_t page_height_points =
+        (PWG_A4_HEIGHT_MM * 720ULL + 127) / 254;
+    float page_width_float = (float)(PWG_A4_WIDTH_MM * 72.0 / 25.4);
+    float page_height_float = (float)(PWG_A4_HEIGHT_MM * 72.0 / 25.4);
 
     if (width == 0 || height == 0
         || width > UINT32_MAX || height > UINT32_MAX
@@ -736,15 +742,6 @@ static int write_pwg_page_header(vice_helper_file_t *file,
         return -1;
     }
     bytes_per_line = width * bytes_per_pixel;
-    page_width_points = ((uint64_t)width * 72 + dpi_x / 2) / dpi_x;
-    page_height_points = ((uint64_t)height * 72 + dpi_y / 2) / dpi_y;
-    if (page_width_points > UINT32_MAX
-        || page_height_points > UINT32_MAX) {
-        DEBUG_LOG("PWG Raster page dimensions are too large.");
-        return -1;
-    }
-    page_width_float = (float)((double)width * 72.0 / dpi_x);
-    page_height_float = (float)((double)height * 72.0 / dpi_y);
 
     pwg_put_string(header, 0, "PwgRaster");
     pwg_put_string(header, 64, "white");
@@ -764,6 +761,7 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     pwg_put_float(header, 440, 0.0f); /* bottom */
     pwg_put_float(header, 444, page_width_float); /* right */
     pwg_put_float(header, 448, page_height_float); /* top */
+    pwg_put_string(header, 1732, "iso_a4_210x297mm");
     pwg_put_u32(header, 372, (uint32_t)width);  /* cupsWidth */
     pwg_put_u32(header, 376, (uint32_t)height); /* cupsHeight */
     pwg_put_u32(header, 384, 8);              /* cupsBitsPerColor */
@@ -776,8 +774,8 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     pwg_put_u32(header, 456, 1);              /* CrossFeedTransform */
     pwg_put_u32(header, 460, 1);              /* FeedTransform */
     pwg_put_u32(header, 480, 0xffffff);       /* AlternatePrimary */
-    pwg_put_u32(header, 472, (uint32_t)(width - 1)); /* ImageBoxRight */
-    pwg_put_u32(header, 476, (uint32_t)height);/* ImageBoxBottom */
+    pwg_put_u32(header, 472, (uint32_t)width); /* ImageBoxRight */
+    pwg_put_u32(header, 476, (uint32_t)height); /* ImageBoxBottom */
 
     if (vice_helper_file_write(header, 1, sizeof(header), file)
         != sizeof(header)) {
@@ -829,6 +827,9 @@ static int write_pwg_raster(const char *driver_name)
     size_t bytes_per_pixel = strcmp(driver_name, "mps1520") == 0 ? 3 : 1;
     size_t left_margin;
     size_t output_width;
+    size_t output_height;
+    uint64_t output_width_pixels;
+    uint64_t output_height_pixels;
     size_t compressed_capacity;
     size_t row_size;
     uint8_t *compressed = NULL;
@@ -841,16 +842,28 @@ static int write_pwg_raster(const char *driver_name)
     if (page_count == 0) {
         return 0;
     }
-    if (pixels == NULL || width == 0 || dpi_x == 0) {
+    if (pixels == NULL || width == 0 || dpi_x == 0 || dpi_y == 0
+        || width > UINT32_MAX || gfx_rows > UINT32_MAX) {
         DEBUG_LOG("Invalid page width for PWG Raster output.");
         return -1;
     }
-    left_margin = ((uint64_t)dpi_x * PWG_LEFT_MARGIN_MM * 10 + 127) / 254;
-    if (left_margin > SIZE_MAX - width) {
-        DEBUG_LOG("PWG Raster page is too wide.");
+    output_width_pixels =
+        ((uint64_t)dpi_x * PWG_A4_WIDTH_MM * 10 + 127) / 254;
+    output_height_pixels =
+        ((uint64_t)dpi_y * PWG_A4_HEIGHT_MM * 10 + 127) / 254;
+    if (output_width_pixels == 0 || output_height_pixels == 0
+        || output_width_pixels > UINT32_MAX
+        || output_height_pixels > UINT32_MAX) {
+        DEBUG_LOG("Invalid A4 dimensions for PWG Raster output.");
         return -1;
     }
-    output_width = width + left_margin;
+    output_width = (size_t)output_width_pixels;
+    output_height = (size_t)output_height_pixels;
+    left_margin = ((uint64_t)dpi_x * PWG_LEFT_MARGIN_MM * 10 + 127) / 254;
+    if (left_margin >= output_width) {
+        DEBUG_LOG("Invalid A4 dimensions for PWG Raster output.");
+        return -1;
+    }
     if (output_width > (SIZE_MAX - 1) / (bytes_per_pixel + 1)
         || output_width > SIZE_MAX / bytes_per_pixel) {
         DEBUG_LOG("PWG Raster scanline is too large.");
@@ -883,37 +896,80 @@ static int write_pwg_raster(const char *driver_name)
         size_t last_row = page_height == 0
             ? gfx_rows : vice_helper_gfx_page_end(page);
         size_t height;
-        size_t row;
 
         if (last_row < first_row || last_row > gfx_rows) {
             DEBUG_LOG("Invalid page boundary for PWG Raster output.");
             goto cleanup;
         }
         height = last_row - first_row;
-        if (height == 0
-            || write_pwg_page_header(file, output_width, height, dpi_x, dpi_y,
-                                     page_count, bytes_per_pixel == 3) < 0) {
+        if (height == 0 || height > UINT32_MAX) {
+            DEBUG_LOG("Invalid page height for PWG Raster output.");
             goto cleanup;
         }
-        for (row = first_row; row < last_row; row++) {
-            const uint8_t *source = pixels + row * width;
-            size_t column;
-            memset(row_data, 255, left_margin * bytes_per_pixel);
-            if (bytes_per_pixel == 3) {
-                for (column = 0; column < width; column++) {
-                    output_pixel_rgb(source[column],
-                                     row_data + (left_margin + column) * 3);
-                }
-            } else {
-                for (column = 0; column < width; column++) {
-                    row_data[left_margin + column] =
-                        source[column] == OUTPUT_PIXEL_BLACK ? 0 : 255;
-                }
+        {
+            size_t available_width = output_width - left_margin;
+            uint64_t scale_numerator = 1;
+            uint64_t scale_denominator = 1;
+            size_t content_width;
+            size_t content_height;
+            size_t output_row;
+
+            if (width > available_width) {
+                scale_numerator = available_width;
+                scale_denominator = width;
             }
-            if (write_pwg_row(file, row_data, output_width, bytes_per_pixel,
-                              compressed, compressed_capacity) < 0) {
-                DEBUG_LOG("Failed to write PWG Raster page data.");
+            if ((uint64_t)output_height * scale_denominator
+                < scale_numerator * height) {
+                scale_numerator = output_height;
+                scale_denominator = height;
+            }
+            content_width =
+                (size_t)((uint64_t)width * scale_numerator
+                         / scale_denominator);
+            content_height =
+                (size_t)((uint64_t)height * scale_numerator
+                         / scale_denominator);
+            if (content_width == 0 || content_height == 0) {
+                DEBUG_LOG("PWG Raster content is too large to fit on A4.");
                 goto cleanup;
+            }
+            if (write_pwg_page_header(file, output_width, output_height,
+                                      dpi_x, dpi_y, page_count,
+                                      bytes_per_pixel == 3) < 0) {
+                goto cleanup;
+            }
+            for (output_row = 0; output_row < output_height; output_row++) {
+                memset(row_data, 255, row_size);
+                if (output_row < content_height) {
+                    size_t source_y =
+                        (size_t)((uint64_t)output_row * scale_denominator
+                                 / scale_numerator);
+                    const uint8_t *source =
+                        pixels + (first_row + source_y) * width;
+                    size_t column;
+
+                    for (column = 0; column < content_width; column++) {
+                        size_t source_x =
+                            (size_t)((uint64_t)column * scale_denominator
+                                     / scale_numerator);
+
+                        if (bytes_per_pixel == 3) {
+                            output_pixel_rgb(
+                                source[source_x],
+                                row_data + (left_margin + column) * 3);
+                        } else {
+                            row_data[left_margin + column] =
+                                source[source_x] == OUTPUT_PIXEL_BLACK
+                                    ? 0 : 255;
+                        }
+                    }
+                }
+                if (write_pwg_row(file, row_data, output_width,
+                                  bytes_per_pixel, compressed,
+                                  compressed_capacity) < 0) {
+                    DEBUG_LOG("Failed to write PWG Raster page data.");
+                    goto cleanup;
+                }
             }
         }
     }

@@ -77,7 +77,8 @@ bool IPPClient::Connect(void)
 		DEBUG_LOG("%s: failed to get printer attributes", __FUNCTION__);
     else
 	{
-        //hexdump(pBuffer + hsize, bsize);
+        DEBUG_LOG("%s: Attributes:", __FUNCTION__);
+        hexdump(pBuffer + hsize, bsize);
         char *t1, *t2, *t3;
         std::string prsup("");
         t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "pwg-raster-document-type-supported", strlen("pwg-raster-document-type-supported"));
@@ -148,7 +149,7 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         unsigned nAvailable = len - nReceived - 1;
         unsigned nToRead = nAvailable < sizeof(Temp) ? nAvailable : sizeof(Temp);
         int n = Socket.Receive(Temp, nToRead, 0);
-        DEBUG_LOG("%s: received %d bytes", __FUNCTION__, n);
+        //DEBUG_LOG("%s: received %d bytes", __FUNCTION__, n);
         if (n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
         {
             if (headerlen >= 0 && !hasContentLength)
@@ -174,11 +175,11 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
         if (chunked) 
         {
             static const char chunked_end[5] = { 0x30, 0x0d, 0x0a, 0x0d, 0x0a };
-            DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
+            //DEBUG_LOG("%s: chunked encoding...", __FUNCTION__);
             if (fbinary(pBuffer, &pBuffer[nReceived], chunked_end, sizeof(chunked_end)))
             {
                 responselen = nReceived - headerlen;
-                DEBUG_LOG("%s: found end of chunked body, len = %d", __FUNCTION__, responselen);
+                //DEBUG_LOG("%s: found end of chunked body, len = %d", __FUNCTION__, responselen);
                 return true;
             }
         }
@@ -213,8 +214,8 @@ static bool Receive(CircleMbedTLS::CTLSSimpleClientSocket  &Socket,
             {
                 chunked = true;
             }
-            DEBUG_LOG("%s: headerlen = %d, bodylen = %d (-1 == chunked)", __FUNCTION__,
-                      headerlen, hasContentLength ? (int)responselen : -1);
+            /* DEBUG_LOG("%s: headerlen = %d, bodylen = %d (-1 == chunked)", __FUNCTION__,
+                      headerlen, hasContentLength ? (int)responselen : -1); */
         }
 
         if (hasContentLength
@@ -242,6 +243,8 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
         ipp_get_attr.push_back(uri);
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-type-supported"));
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-supported"));
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "document-format-supported"));
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-resolution-supported"));
     } 
     else if (code == 0x09)
     {
@@ -335,7 +338,7 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
         DEBUG_LOG("%s: receive header failed, hlen = %d, bl = %d", __FUNCTION__, hlen, bl);
         return false;
     }
-#ifdef PRINT_DEBUG    
+#ifndef PRINT_DEBUG    
     char *j;
     uint8_t job_state = 0;
     j = fbinary(&pBuffer[hlen], &pBuffer[hlen + bl], "job-uri", strlen("job-uri"));
