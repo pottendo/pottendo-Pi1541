@@ -29,6 +29,8 @@ IPPClient::IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *pr)
 , socket(mNet, IPPROTO_TCP)
 , dprint_supported(PR_INV)
 , uri(0x45, "printer-uri", string(pr) + "/ipp/print")
+, dpi_x(0)
+, dpi_y(0)
 {
     string p(printer);
     size_t pos = p.find("ipp://");
@@ -102,7 +104,19 @@ bool IPPClient::Connect(void)
             else
                 DEBUG_LOG("%s: printer doesn't support A4 - iso_a4_210x297mm. Output may be cropped.", __FUNCTION__);
         }
-        DEBUG_LOG("%s: direct print support: %s", __FUNCTION__, (dprint_supported ? prsup.c_str() : "none"));
+        // check DPI now
+        t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], 
+                     "pwg-raster-document-resolution-supported", strlen("pwg-raster-document-resolution-supported"));
+        if (t1)
+        {
+            t1 += strlen("pwg-raster-document-resolution-supported");
+            t1 += 2; // len, usually 9
+            dpi_x = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
+            t1 += 4;
+            dpi_y = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
+        }
+
+        DEBUG_LOG("%s: direct print support: %s, %dx%ddpi", __FUNCTION__, (dprint_supported ? prsup.c_str() : "none"), dpi_x, dpi_y);
 	}
     return dprint_support();
 }
@@ -297,12 +311,16 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
     ipp_print_job.push_back(IPPAttr(0x49, "document-format", "image/pwg-raster"));
     ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x02)));    // Job attributes
     ipp_print_job.push_back(IPPAttr(0x44, "media", "iso_a4_210x297mm"));
+    ipp_print_job.push_back(IPPAttr(0x44, "print-scaling", "none"));
+    ipp_print_job.push_back(IPPAttr(0x32, "printer-resolution", static_cast<uint16_t>(9),
+        static_cast<uint32_t>(dpi_x), static_cast<uint32_t>(dpi_y), static_cast<uint8_t>(3)));
     ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x03)));    // end marker
     for (auto attr : ipp_print_job)
     {
         ipp_cmd.insert(ipp_cmd.end(), attr.get_binr().begin(), attr.get_binr().end());
     }
-    //hexdump(ipp_cmd.data(), ipp_cmd.size());
+    DEBUG_LOG("%s: print job attributes: ", __FUNCTION__);
+    hexdump(ipp_cmd.data(), ipp_cmd.size());
 
     std::string ipp_req = 
         "POST /ipp/print HTTP/1.1"

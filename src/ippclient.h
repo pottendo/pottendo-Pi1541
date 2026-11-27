@@ -42,6 +42,7 @@ class IPPAttr {
     vector<char> bin;
 
     void w16(uint16_t v) { bin.push_back((v >> 8) & 0xff); bin.push_back(v & 0xff); }
+    void w32(uint32_t v) { w16((v >> 16) & 0xffff); w16(v & 0xffff); }
     void wstr(string s) { bin.insert(bin.end(), s.begin(), s.end()); }
 public:
     IPPAttr(char a, string attr, string val) { 
@@ -53,6 +54,8 @@ public:
     IPPAttr(uint8_t v) { bin.push_back(v); }
     IPPAttr(uint16_t v) { w16(v); }
     IPPAttr(uint32_t v) { w16((v >> 16) & 0xffff); w16(v & 0xffff); }
+    IPPAttr(uint8_t v, string s, uint16_t l, uint32_t v1, uint32_t v2, uint8_t v3)
+        { bin.push_back(v), w16(s.length()), wstr(s), w16(l), w32(v1), w32(v2), bin.push_back(v3); }
 
     ~IPPAttr() = default;
     char *get_bin(void) { return bin.data(); }
@@ -71,6 +74,7 @@ class IPPClient
     CircleMbedTLS::CTLSSimpleClientSocket socket;
     int dprint_supported;
     IPPAttr uri;
+    uint32_t dpi_x, dpi_y;
 public:
     IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *printer);
     ~IPPClient();
@@ -78,6 +82,7 @@ public:
     bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize, uint8_t code, char *data = nullptr, char *conn = nullptr);
     inline int dprint_support(void) { return dprint_supported; }
     bool Print(const char *buf, size_t len);
+    inline void get_dpi(uint32_t &dx, uint32_t &dy) { dx = dpi_x; dy = dpi_y; };
 };
 
 #endif

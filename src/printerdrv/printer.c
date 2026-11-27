@@ -118,11 +118,15 @@ static PRINTER *PrinterData = NULL;
 static int   petcii = 1;
 
 #if defined(__CIRCLE__)
-int petlp_main(int argc, char **argv)
+int petlp_main(int argc, char **argv, unsigned int dpi_x, unsigned int dpi_y)
 #else
 int main(int argc, char **argv)
 #endif
 {
+#if defined(__CIRCLE__)
+	(void)dpi_x;
+	(void)dpi_y;
+#endif
 	FILE *source = stdin;
 	BYTE *s;
 	char *progname, *outfilename = NULL, c;

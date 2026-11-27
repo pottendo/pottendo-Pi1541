@@ -54,6 +54,8 @@ static char *vicepr_session_driver;
 static char *vicepr_session_gfx_path;
 static char *vicepr_session_pdf_path;
 static char *vicepr_session_pwg_path;
+static unsigned int vicepr_session_dpi_x;
+static unsigned int vicepr_session_dpi_y;
 static void (*vicepr_session_shutdown_driver)(void);
 static int vicepr_session_had_input;
 static int vicepr_session_last_was_formfeed;
@@ -92,6 +94,8 @@ static void clear_vicepr_session(void)
     vicepr_session_gfx_path = NULL;
     vicepr_session_pdf_path = NULL;
     vicepr_session_pwg_path = NULL;
+    vicepr_session_dpi_x = 0;
+    vicepr_session_dpi_y = 0;
     vicepr_session_shutdown_driver = NULL;
     vicepr_session_active = 0;
     vicepr_session_had_input = 0;
@@ -815,7 +819,9 @@ static int write_pwg_row(vice_helper_file_t *file, const uint8_t *pixels,
         == output_offset ? 0 : -1;
 }
 
-static int write_pwg_raster(const char *driver_name)
+static int write_pwg_raster(const char *driver_name,
+                            unsigned int requested_dpi_x,
+                            unsigned int requested_dpi_y)
 {
     vice_helper_file_t *file = NULL;
     const uint8_t *pixels = vice_helper_gfx_pixels();
@@ -834,8 +840,10 @@ static int write_pwg_raster(const char *driver_name)
     size_t row_size;
     uint8_t *compressed = NULL;
     uint8_t *row_data = NULL;
-    unsigned int dpi_x = vice_helper_gfx_dpi_x();
-    unsigned int dpi_y = vice_helper_gfx_dpi_y();
+    unsigned int dpi_x = requested_dpi_x != 0
+        ? requested_dpi_x : vice_helper_gfx_dpi_x();
+    unsigned int dpi_y = requested_dpi_y != 0
+        ? requested_dpi_y : vice_helper_gfx_dpi_y();
     size_t page;
     int result = -1;
 
@@ -1021,18 +1029,25 @@ int vicepr_finish(void)
         status = EXIT_FAILURE;
     }
     if (pwg_path != NULL
-        && write_pwg_raster(vicepr_session_driver) < 0) {
+        && write_pwg_raster(vicepr_session_driver,
+                            vicepr_session_dpi_x,
+                            vicepr_session_dpi_y) < 0) {
         status = EXIT_FAILURE;
     }
     clear_vicepr_session();
     return status;
 }
 
-int vicepr_main(int argc, char **argv)
+int vicepr_main(int argc, char **argv, unsigned int dpi_x,
+                unsigned int dpi_y)
 #else
 int main(int argc, char **argv)
 #endif
 {
+#if !defined(__CIRCLE__)
+    unsigned int dpi_x = 0;
+    unsigned int dpi_y = 0;
+#endif
 #if !defined(__CIRCLE__)
     uint8_t input[4096];
     size_t bytes_read;
@@ -1051,6 +1066,11 @@ int main(int argc, char **argv)
     int last_was_formfeed = 0;
 #endif
     int status = EXIT_SUCCESS;
+
+    if ((dpi_x == 0) != (dpi_y == 0)) {
+        DEBUG_LOG("Both horizontal and vertical DPI values must be provided.");
+        return EXIT_FAILURE;
+    }
 
     test_mode = 0;
     stdout_enabled = 0;
@@ -1152,7 +1172,9 @@ int main(int argc, char **argv)
         if (strcmp(driver_name, vicepr_session_driver) != 0
             || !same_optional_string(gfx_path, vicepr_session_gfx_path)
             || !same_optional_string(pdf_path, vicepr_session_pdf_path)
-            || !same_optional_string(pwg_path, vicepr_session_pwg_path)) {
+            || !same_optional_string(pwg_path, vicepr_session_pwg_path)
+            || dpi_x != vicepr_session_dpi_x
+            || dpi_y != vicepr_session_dpi_y) {
             DEBUG_LOG("Printer settings changed before finishing the "
                       "current page.");
             return EXIT_FAILURE;
@@ -1207,6 +1229,8 @@ int main(int argc, char **argv)
         vicepr_session_gfx_path = session_gfx_path;
         vicepr_session_pdf_path = session_pdf_path;
         vicepr_session_pwg_path = session_pwg_path;
+        vicepr_session_dpi_x = dpi_x;
+        vicepr_session_dpi_y = dpi_y;
         vicepr_session_shutdown_driver = shutdown_driver;
         vicepr_session_active = 1;
     } else if (printer_driver->drv_open(0, secondary_addr) < 0) {
@@ -1317,7 +1341,8 @@ int main(int argc, char **argv)
     if (pdf_path != NULL && write_gfx_pdf() < 0) {
         status = EXIT_FAILURE;
     }
-    if (pwg_path != NULL && write_pwg_raster(driver_name) < 0) {
+    if (pwg_path != NULL
+        && write_pwg_raster(driver_name, dpi_x, dpi_y) < 0) {
         status = EXIT_FAILURE;
     }
     return status;
@@ -1333,7 +1358,8 @@ int main(int argc, char **argv)
     if (pdf_path != NULL && write_gfx_pdf() < 0) {
         status = EXIT_FAILURE;
     }
-    if (pwg_path != NULL && write_pwg_raster(driver_name) < 0) {
+    if (pwg_path != NULL
+        && write_pwg_raster(driver_name, dpi_x, dpi_y) < 0) {
         status = EXIT_FAILURE;
     }
     vice_helper_free_gfx_pixels();

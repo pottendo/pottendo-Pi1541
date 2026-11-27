@@ -27,10 +27,12 @@ extern Options options;
 
 extern "C" 
 {
-    int petlp_main(int argc, char **argv);
+    int petlp_main(int argc, char **argv, unsigned int dpi_x,
+                   unsigned int dpi_y);
     int pi1541_printline(BYTE *line, size_t len, int secondary);
     int pi1541_close(void);
-    int vicepr_main(int argc, char **argv);
+    int vicepr_main(int argc, char **argv, unsigned int dpi_x,
+                    unsigned int dpi_y);
     int vicepr_finish(void);
 }
 
@@ -40,7 +42,7 @@ unsigned out_pr1 = 0;
 uint16_t Printer::next_snr = 1;
 const string Printer::def_prefix = "SD:/1541/";
 
-Printer::Printer(u8 ID, bool activate) 
+Printer::Printer(u8 ID, bool activate, uint32_t dx, uint32_t dy)
 : deviceID(ID)
 , iec_bus(ID)
 , last_secaddr(255)
@@ -55,6 +57,8 @@ Printer::Printer(u8 ID, bool activate)
 , fp(def_prefix + options.GetPrPath())
 , dprint(false)
 , ipp_client(nullptr)
+, dpi_x(dx)
+, dpi_y(dy)
 {
     FRESULT res;
     FILINFO fi;
@@ -93,10 +97,13 @@ Printer::Printer(u8 ID, bool activate)
         shoff = true;
     }
     if (!shoff && (strcmp(options.GetPrHost(), "") != 0) && options.NetworkOn())
+    {
         dprint = true;
+    }
     next_spoolnr(spoolnr); // initialize spoolnr
-    DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s', direct print: %s %s", 
-        __FUNCTION__, deviceID, driver.c_str(), fp.c_str(), (dprint ? "enabled" : "no"), (dprint ? options.GetPrHost() : ""));
+    DEBUG_LOG("%s: emulator, deviceID=%d, driver = '%s', spooler dir = '%s', direct print: %s %s %dx%ddpi", 
+        __FUNCTION__, deviceID, driver.c_str(), fp.c_str(), 
+        (dprint ? "enabled" : "no"), (dprint ? options.GetPrHost() : ""), dpi_x, dpi_y);
 }
 
 Printer::~Printer()
@@ -188,9 +195,19 @@ void Printer::flush(string drv, string &res)
 {
     if (!dirty)
         return;
+
+    if (dprint) 
+    {
+	    IPPClient ipp_client(Kernel.get_mTLSSimple(), options.GetPrHost());
+		if (!ipp_client.Connect())
+			DEBUG_LOG("%s: connect printer failed, can't get DPI", __FUNCTION__);
+		else
+			ipp_client.get_dpi(dpi_x, dpi_y);
+        DEBUG_LOG("%s: updated DPI: %dx%d", __FUNCTION__, dpi_x, dpi_y);
+    }
     flush_raw(res);
-    flush_vice(driver, res, true);
-    flush_vice(driver, res, false);
+    flush_vice(driver, res, true, dpi_x, dpi_y);
+    flush_vice(driver, res, false, dpi_x, dpi_y);
     dirty = false;
     spooled = 0;
     for (auto channel : spoolChannels)
@@ -248,12 +265,15 @@ out:
     f_close(&fp);
 }
 
-void Printer::flush_vice(string drv, string &res, bool gfx)
+void Printer::flush_vice(string drv, string &res, bool gfx,
+                         unsigned int dpi_x, unsigned int dpi_y)
 {
     int ret;
     string output_path;
     string d = drv;
     uint32_t channel_count[16] = {0};
+
+    DEBUG_LOG("%s: request to flush with %dx%ddpi", __FUNCTION__, dpi_x, dpi_y);
     if ((drv == "petlp") && gfx)
         d = "mps803";  // we don't have an gxf driver in petlp for Epson, use mps803 for preview
 
@@ -274,7 +294,7 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
             const_cast<char *>("PS"),
             const_cast<char *>("-pi1541"),
             nullptr};
-        ret = petlp_main(8, argv);
+        ret = petlp_main(8, argv, dpi_x, dpi_y);
         if (ret < 0)
         {
             DEBUG_LOG("%s: petlp initialization failed with error code %d",
@@ -328,7 +348,7 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
                     const_cast<char *>(secaddr.c_str()),
                     nullptr};
 
-                ret = vicepr_main(7, argv);
+                ret = vicepr_main(7, argv, dpi_x, dpi_y);
             }
             else
             {
@@ -346,7 +366,7 @@ void Printer::flush_vice(string drv, string &res, bool gfx)
                     const_cast<char *>(pwg_output_path.c_str()),
                     nullptr};
 
-                ret = vicepr_main(9, argv);
+                ret = vicepr_main(9, argv, dpi_x, dpi_y);
             }
         }
         if (ret != 0)
