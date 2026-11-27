@@ -840,6 +840,8 @@ static int write_pwg_raster(const char *driver_name,
     size_t row_size;
     uint8_t *compressed = NULL;
     uint8_t *row_data = NULL;
+    unsigned int driver_dpi_x = vice_helper_gfx_dpi_x();
+    unsigned int driver_dpi_y = vice_helper_gfx_dpi_y();
     unsigned int dpi_x = requested_dpi_x != 0
         ? requested_dpi_x : vice_helper_gfx_dpi_x();
     unsigned int dpi_y = requested_dpi_y != 0
@@ -851,6 +853,7 @@ static int write_pwg_raster(const char *driver_name,
         return 0;
     }
     if (pixels == NULL || width == 0 || dpi_x == 0 || dpi_y == 0
+        || driver_dpi_x == 0 || driver_dpi_y == 0
         || width > UINT32_MAX || gfx_rows > UINT32_MAX) {
         DEBUG_LOG("Invalid page width for PWG Raster output.");
         return -1;
@@ -918,24 +921,36 @@ static int write_pwg_raster(const char *driver_name,
             size_t available_width = output_width - left_margin;
             uint64_t scale_numerator = 1;
             uint64_t scale_denominator = 1;
+            uint64_t content_width_pixels =
+                ((uint64_t)width * dpi_x + driver_dpi_x / 2)
+                / driver_dpi_x;
+            uint64_t content_height_pixels =
+                ((uint64_t)height * dpi_y + driver_dpi_y / 2)
+                / driver_dpi_y;
             size_t content_width;
             size_t content_height;
             size_t output_row;
 
-            if (width > available_width) {
+            if (content_width_pixels == 0 || content_height_pixels == 0
+                || content_width_pixels > UINT32_MAX
+                || content_height_pixels > UINT32_MAX) {
+                DEBUG_LOG("Invalid scaled page dimensions for PWG Raster output.");
+                goto cleanup;
+            }
+            if (content_width_pixels > available_width) {
                 scale_numerator = available_width;
-                scale_denominator = width;
+                scale_denominator = content_width_pixels;
             }
             if ((uint64_t)output_height * scale_denominator
-                < scale_numerator * height) {
+                < scale_numerator * content_height_pixels) {
                 scale_numerator = output_height;
-                scale_denominator = height;
+                scale_denominator = content_height_pixels;
             }
             content_width =
-                (size_t)((uint64_t)width * scale_numerator
+                (size_t)(content_width_pixels * scale_numerator
                          / scale_denominator);
             content_height =
-                (size_t)((uint64_t)height * scale_numerator
+                (size_t)(content_height_pixels * scale_numerator
                          / scale_denominator);
             if (content_width == 0 || content_height == 0) {
                 DEBUG_LOG("PWG Raster content is too large to fit on A4.");
@@ -950,16 +965,16 @@ static int write_pwg_raster(const char *driver_name,
                 memset(row_data, 255, row_size);
                 if (output_row < content_height) {
                     size_t source_y =
-                        (size_t)((uint64_t)output_row * scale_denominator
-                                 / scale_numerator);
+                        (size_t)((uint64_t)output_row * height
+                                 / content_height);
                     const uint8_t *source =
                         pixels + (first_row + source_y) * width;
                     size_t column;
 
                     for (column = 0; column < content_width; column++) {
                         size_t source_x =
-                            (size_t)((uint64_t)column * scale_denominator
-                                     / scale_numerator);
+                            (size_t)((uint64_t)column * width
+                                     / content_width);
 
                         if (bytes_per_pixel == 3) {
                             output_pixel_rgb(
