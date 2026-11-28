@@ -876,7 +876,7 @@ void Pi1541Cores::IPIHandler(unsigned nCore, unsigned nIPI)
 
 void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 {
-	unsigned int run_net = 0;
+	volatile unsigned int run_net = 0;
 	unsigned long wakes_net = 0;
 	unsigned long wakes_prn = 0;
 	switch (core) {
@@ -934,6 +934,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 		}
 		else
 			core3activated = 1;
+
 		logger.finished_booting("other emulator (printer) core");
 		do {
 			// Core 3 waits here until activated.

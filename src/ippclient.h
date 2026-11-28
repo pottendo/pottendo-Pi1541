@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include "printer-attr.h"
 
 using namespace std;
 
@@ -36,20 +37,27 @@ enum {
     PR_BW  = 0x2
 };
 
-class IPPAttr {
+class IPPAttr 
+{
     string attr_name;
     string attr_value;
     vector<char> bin;
 
     void w16(uint16_t v) { bin.push_back((v >> 8) & 0xff); bin.push_back(v & 0xff); }
+    void w32(uint32_t v) { w16((v >> 16) & 0xffff); w16(v & 0xffff); }
     void wstr(string s) { bin.insert(bin.end(), s.begin(), s.end()); }
 public:
     IPPAttr(char a, string attr, string val) { 
         bin.push_back(a); w16(attr.length()); wstr(attr); w16(val.length()); wstr(val); 
     }
+    IPPAttr(char *s) {
+        w16(strlen(s)); wstr(s);
+    }
     IPPAttr(uint8_t v) { bin.push_back(v); }
     IPPAttr(uint16_t v) { w16(v); }
     IPPAttr(uint32_t v) { w16((v >> 16) & 0xffff); w16(v & 0xffff); }
+    IPPAttr(uint8_t v, string s, uint16_t l, uint32_t v1, uint32_t v2, uint8_t v3)
+        { bin.push_back(v), w16(s.length()), wstr(s), w16(l), w32(v1), w32(v2), bin.push_back(v3); }
 
     ~IPPAttr() = default;
     char *get_bin(void) { return bin.data(); }
@@ -68,13 +76,15 @@ class IPPClient
     CircleMbedTLS::CTLSSimpleClientSocket socket;
     int dprint_supported;
     IPPAttr uri;
+    PrinterAttr attributes;
 public:
     IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *printer);
     ~IPPClient();
-    bool Connect(void);
-    bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize);
+    bool Connect(char *conn); // "keep-alive" or "close"
+    bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize, uint8_t code, char *data = nullptr, char *conn = nullptr);
     inline int dprint_support(void) { return dprint_supported; }
     bool Print(const char *buf, size_t len);
+    inline void get_attributes(PrinterAttr &pa) { pa = attributes; }
 };
 
 #endif

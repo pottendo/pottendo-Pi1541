@@ -55,6 +55,7 @@ class Printer
     string fp;
     bool dprint;
     IPPClient *ipp_client;
+    PrinterAttr attributes;
 public:
     static const string def_prefix;
     Printer(u8 deviceID, bool activate);
@@ -74,6 +75,8 @@ public:
     inline string get_driver(void) { return driver; }
     inline size_t get_spooled(void) { return spooled; }
     inline string get_fullpath(void) { return fp; }
+    inline bool get_dprint(void) { return dprint; }
+    inline void get_attributes(PrinterAttr &pa) { pa = attributes; }
 
     static uint16_t next_snr;
 };

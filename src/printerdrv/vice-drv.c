@@ -31,6 +31,7 @@
 #include "drv-mps803.h"
 #include "drv-1520.h"
 #include "vice-helper.h"
+#include "../printer-attr.h"
 #include "../miniz.h"
 
 #define TEST_GLYPHS_PER_LINE 5
@@ -38,7 +39,8 @@
 #define PNG_MARGIN 10
 #define PNG_MAX_WIDTH 4096
 #define PDF_MARGIN 10
-#define PWG_LEFT_MARGIN_MM 5
+#define PWG_A4_WIDTH_MM 210
+#define PWG_A4_HEIGHT_MM 297
 
 static driver_select_t *printer_driver;
 static int test_mode;
@@ -52,6 +54,9 @@ static char *vicepr_session_driver;
 static char *vicepr_session_gfx_path;
 static char *vicepr_session_pdf_path;
 static char *vicepr_session_pwg_path;
+static unsigned int vicepr_session_dpi_x;
+static unsigned int vicepr_session_dpi_y;
+static PrinterAttr vicepr_session_attributes;
 static void (*vicepr_session_shutdown_driver)(void);
 static int vicepr_session_had_input;
 static int vicepr_session_last_was_formfeed;
@@ -90,6 +95,10 @@ static void clear_vicepr_session(void)
     vicepr_session_gfx_path = NULL;
     vicepr_session_pdf_path = NULL;
     vicepr_session_pwg_path = NULL;
+    vicepr_session_dpi_x = 0;
+    vicepr_session_dpi_y = 0;
+    memset(&vicepr_session_attributes, 0,
+           sizeof(vicepr_session_attributes));
     vicepr_session_shutdown_driver = NULL;
     vicepr_session_active = 0;
     vicepr_session_had_input = 0;
@@ -697,6 +706,14 @@ static void pwg_put_u32(uint8_t *header, size_t offset, uint32_t value)
     header[offset + 3] = (uint8_t)value;
 }
 
+static void pwg_put_float(uint8_t *header, size_t offset, float value)
+{
+    uint32_t bits;
+
+    memcpy(&bits, &value, sizeof(bits));
+    pwg_put_u32(header, offset, bits);
+}
+
 static void pwg_put_string(uint8_t *header, size_t offset,
                            const char *value)
 {
@@ -716,7 +733,12 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     uint8_t header[PWG_HEADER_SIZE] = {0};
     size_t bytes_per_pixel = color ? 3 : 1;
     size_t bytes_per_line;
-    uint64_t page_width_points, page_height_points;
+    uint64_t page_width_points =
+        (PWG_A4_WIDTH_MM * 720ULL + 127) / 254;
+    uint64_t page_height_points =
+        (PWG_A4_HEIGHT_MM * 720ULL + 127) / 254;
+    float page_width_float = (float)(PWG_A4_WIDTH_MM * 72.0 / 25.4);
+    float page_height_float = (float)(PWG_A4_HEIGHT_MM * 72.0 / 25.4);
 
     if (width == 0 || height == 0
         || width > UINT32_MAX || height > UINT32_MAX
@@ -727,13 +749,6 @@ static int write_pwg_page_header(vice_helper_file_t *file,
         return -1;
     }
     bytes_per_line = width * bytes_per_pixel;
-    page_width_points = ((uint64_t)width * 72 + dpi_x / 2) / dpi_x;
-    page_height_points = ((uint64_t)height * 72 + dpi_y / 2) / dpi_y;
-    if (page_width_points > UINT32_MAX
-        || page_height_points > UINT32_MAX) {
-        DEBUG_LOG("PWG Raster page dimensions are too large.");
-        return -1;
-    }
 
     pwg_put_string(header, 0, "PwgRaster");
     pwg_put_string(header, 64, "white");
@@ -743,6 +758,17 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     pwg_put_u32(header, 280, dpi_y);
     pwg_put_u32(header, 352, (uint32_t)page_width_points); /* PageSize */
     pwg_put_u32(header, 356, (uint32_t)page_height_points);
+    pwg_put_u32(header, 284, 0); /* ImagingBoundingBox: left */
+    pwg_put_u32(header, 288, 0); /* bottom */
+    pwg_put_u32(header, 292, (uint32_t)page_width_points); /* right */
+    pwg_put_u32(header, 296, (uint32_t)page_height_points); /* top */
+    pwg_put_float(header, 428, page_width_float); /* cupsPageSize */
+    pwg_put_float(header, 432, page_height_float);
+    pwg_put_float(header, 436, 0.0f); /* cupsImagingBBox: left */
+    pwg_put_float(header, 440, 0.0f); /* bottom */
+    pwg_put_float(header, 444, page_width_float); /* right */
+    pwg_put_float(header, 448, page_height_float); /* top */
+    pwg_put_string(header, 1732, "iso_a4_210x297mm");
     pwg_put_u32(header, 372, (uint32_t)width);  /* cupsWidth */
     pwg_put_u32(header, 376, (uint32_t)height); /* cupsHeight */
     pwg_put_u32(header, 384, 8);              /* cupsBitsPerColor */
@@ -755,8 +781,8 @@ static int write_pwg_page_header(vice_helper_file_t *file,
     pwg_put_u32(header, 456, 1);              /* CrossFeedTransform */
     pwg_put_u32(header, 460, 1);              /* FeedTransform */
     pwg_put_u32(header, 480, 0xffffff);       /* AlternatePrimary */
-    pwg_put_u32(header, 472, (uint32_t)(width - 1)); /* ImageBoxRight */
-    pwg_put_u32(header, 476, (uint32_t)height);/* ImageBoxBottom */
+    pwg_put_u32(header, 472, (uint32_t)width); /* ImageBoxRight */
+    pwg_put_u32(header, 476, (uint32_t)height); /* ImageBoxBottom */
 
     if (vice_helper_file_write(header, 1, sizeof(header), file)
         != sizeof(header)) {
@@ -796,7 +822,10 @@ static int write_pwg_row(vice_helper_file_t *file, const uint8_t *pixels,
         == output_offset ? 0 : -1;
 }
 
-static int write_pwg_raster(const char *driver_name)
+static int write_pwg_raster(const char *driver_name,
+                            unsigned int requested_dpi_x,
+                            unsigned int requested_dpi_y,
+                            const PrinterAttr *attributes)
 {
     vice_helper_file_t *file = NULL;
     const uint8_t *pixels = vice_helper_gfx_pixels();
@@ -806,30 +835,71 @@ static int write_pwg_raster(const char *driver_name)
     size_t page_count = page_height == 0
         ? (gfx_rows == 0 ? 0 : 1) : vice_helper_gfx_page_count();
     size_t bytes_per_pixel = strcmp(driver_name, "mps1520") == 0 ? 3 : 1;
+    size_t top_margin;
     size_t left_margin;
+    size_t right_margin;
+    size_t bottom_margin;
+    uint64_t top_margin_pixels;
+    uint64_t left_margin_pixels;
+    uint64_t right_margin_pixels;
+    uint64_t bottom_margin_pixels;
     size_t output_width;
+    size_t output_height;
+    uint64_t output_width_pixels;
+    uint64_t output_height_pixels;
     size_t compressed_capacity;
     size_t row_size;
     uint8_t *compressed = NULL;
     uint8_t *row_data = NULL;
-    unsigned int dpi_x = vice_helper_gfx_dpi_x();
-    unsigned int dpi_y = vice_helper_gfx_dpi_y();
+    unsigned int driver_dpi_x = vice_helper_gfx_dpi_x();
+    unsigned int driver_dpi_y = vice_helper_gfx_dpi_y();
+    unsigned int dpi_x = requested_dpi_x != 0
+        ? requested_dpi_x : vice_helper_gfx_dpi_x();
+    unsigned int dpi_y = requested_dpi_y != 0
+        ? requested_dpi_y : vice_helper_gfx_dpi_y();
     size_t page;
     int result = -1;
 
     if (page_count == 0) {
         return 0;
     }
-    if (pixels == NULL || width == 0 || dpi_x == 0) {
+    if (pixels == NULL || width == 0 || dpi_x == 0 || dpi_y == 0
+        || driver_dpi_x == 0 || driver_dpi_y == 0
+        || width > UINT32_MAX || gfx_rows > UINT32_MAX) {
         DEBUG_LOG("Invalid page width for PWG Raster output.");
         return -1;
     }
-    left_margin = ((uint64_t)dpi_x * PWG_LEFT_MARGIN_MM * 10 + 127) / 254;
-    if (left_margin > SIZE_MAX - width) {
-        DEBUG_LOG("PWG Raster page is too wide.");
+    output_width_pixels =
+        ((uint64_t)dpi_x * PWG_A4_WIDTH_MM * 10 + 127) / 254;
+    output_height_pixels =
+        ((uint64_t)dpi_y * PWG_A4_HEIGHT_MM * 10 + 127) / 254;
+    if (output_width_pixels == 0 || output_height_pixels == 0
+        || output_width_pixels > UINT32_MAX
+        || output_height_pixels > UINT32_MAX) {
+        DEBUG_LOG("Invalid A4 dimensions for PWG Raster output.");
         return -1;
     }
-    output_width = width + left_margin;
+    output_width = (size_t)output_width_pixels;
+    output_height = (size_t)output_height_pixels;
+    top_margin_pixels =
+        ((uint64_t)dpi_y * attributes->margin_top + 1270) / 2540;
+    left_margin_pixels =
+        ((uint64_t)dpi_x * attributes->margin_left + 1270) / 2540;
+    right_margin_pixels =
+        ((uint64_t)dpi_x * attributes->margin_right + 1270) / 2540;
+    bottom_margin_pixels =
+        ((uint64_t)dpi_y * attributes->margin_bottom + 1270) / 2540;
+    if (left_margin_pixels >= output_width_pixels
+        || right_margin_pixels >= output_width_pixels - left_margin_pixels
+        || top_margin_pixels >= output_height_pixels
+        || bottom_margin_pixels >= output_height_pixels - top_margin_pixels) {
+        DEBUG_LOG("Invalid A4 dimensions for PWG Raster output.");
+        return -1;
+    }
+    top_margin = (size_t)top_margin_pixels;
+    left_margin = (size_t)left_margin_pixels;
+    right_margin = (size_t)right_margin_pixels;
+    bottom_margin = (size_t)bottom_margin_pixels;
     if (output_width > (SIZE_MAX - 1) / (bytes_per_pixel + 1)
         || output_width > SIZE_MAX / bytes_per_pixel) {
         DEBUG_LOG("PWG Raster scanline is too large.");
@@ -862,37 +932,96 @@ static int write_pwg_raster(const char *driver_name)
         size_t last_row = page_height == 0
             ? gfx_rows : vice_helper_gfx_page_end(page);
         size_t height;
-        size_t row;
 
         if (last_row < first_row || last_row > gfx_rows) {
             DEBUG_LOG("Invalid page boundary for PWG Raster output.");
             goto cleanup;
         }
         height = last_row - first_row;
-        if (height == 0
-            || write_pwg_page_header(file, output_width, height, dpi_x, dpi_y,
-                                     page_count, bytes_per_pixel == 3) < 0) {
+        if (height == 0 || height > UINT32_MAX) {
+            DEBUG_LOG("Invalid page height for PWG Raster output.");
             goto cleanup;
         }
-        for (row = first_row; row < last_row; row++) {
-            const uint8_t *source = pixels + row * width;
-            size_t column;
-            memset(row_data, 255, left_margin * bytes_per_pixel);
-            if (bytes_per_pixel == 3) {
-                for (column = 0; column < width; column++) {
-                    output_pixel_rgb(source[column],
-                                     row_data + (left_margin + column) * 3);
-                }
-            } else {
-                for (column = 0; column < width; column++) {
-                    row_data[left_margin + column] =
-                        source[column] == OUTPUT_PIXEL_BLACK ? 0 : 255;
-                }
-            }
-            if (write_pwg_row(file, row_data, output_width, bytes_per_pixel,
-                              compressed, compressed_capacity) < 0) {
-                DEBUG_LOG("Failed to write PWG Raster page data.");
+        {
+            size_t available_width =
+                output_width - left_margin - right_margin;
+            size_t available_height =
+                output_height - top_margin - bottom_margin;
+            uint64_t scale_numerator = 1;
+            uint64_t scale_denominator = 1;
+            uint64_t content_width_pixels =
+                ((uint64_t)width * dpi_x + driver_dpi_x / 2)
+                / driver_dpi_x;
+            uint64_t content_height_pixels =
+                ((uint64_t)height * dpi_y + driver_dpi_y / 2)
+                / driver_dpi_y;
+            size_t content_width;
+            size_t content_height;
+            size_t output_row;
+
+            if (content_width_pixels == 0 || content_height_pixels == 0
+                || content_width_pixels > UINT32_MAX
+                || content_height_pixels > UINT32_MAX) {
+                DEBUG_LOG("Invalid scaled page dimensions for PWG Raster output.");
                 goto cleanup;
+            }
+            if (content_width_pixels > available_width) {
+                scale_numerator = available_width;
+                scale_denominator = content_width_pixels;
+            }
+            if ((uint64_t)available_height * scale_denominator
+                < scale_numerator * content_height_pixels) {
+                scale_numerator = available_height;
+                scale_denominator = content_height_pixels;
+            }
+            content_width =
+                (size_t)(content_width_pixels * scale_numerator
+                         / scale_denominator);
+            content_height =
+                (size_t)(content_height_pixels * scale_numerator
+                         / scale_denominator);
+            if (content_width == 0 || content_height == 0) {
+                DEBUG_LOG("PWG Raster content is too large to fit on A4.");
+                goto cleanup;
+            }
+            if (write_pwg_page_header(file, output_width, output_height,
+                                      dpi_x, dpi_y, page_count,
+                                      bytes_per_pixel == 3) < 0) {
+                goto cleanup;
+            }
+            for (output_row = 0; output_row < output_height; output_row++) {
+                memset(row_data, 255, row_size);
+                if (output_row >= top_margin
+                    && output_row - top_margin < content_height) {
+                    size_t source_y =
+                        (size_t)((uint64_t)(output_row - top_margin) * height
+                                 / content_height);
+                    const uint8_t *source =
+                        pixels + (first_row + source_y) * width;
+                    size_t column;
+
+                    for (column = 0; column < content_width; column++) {
+                        size_t source_x =
+                            (size_t)((uint64_t)column * width
+                                     / content_width);
+
+                        if (bytes_per_pixel == 3) {
+                            output_pixel_rgb(
+                                source[source_x],
+                                row_data + (left_margin + column) * 3);
+                        } else {
+                            row_data[left_margin + column] =
+                                source[source_x] == OUTPUT_PIXEL_BLACK
+                                    ? 0 : 255;
+                        }
+                    }
+                }
+                if (write_pwg_row(file, row_data, output_width,
+                                  bytes_per_pixel, compressed,
+                                  compressed_capacity) < 0) {
+                    DEBUG_LOG("Failed to write PWG Raster page data.");
+                    goto cleanup;
+                }
             }
         }
     }
@@ -944,18 +1073,30 @@ int vicepr_finish(void)
         status = EXIT_FAILURE;
     }
     if (pwg_path != NULL
-        && write_pwg_raster(vicepr_session_driver) < 0) {
+        && write_pwg_raster(vicepr_session_driver,
+                            vicepr_session_dpi_x,
+                            vicepr_session_dpi_y,
+                            &vicepr_session_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     clear_vicepr_session();
     return status;
 }
 
-int vicepr_main(int argc, char **argv)
+int vicepr_main(int argc, char **argv, PrinterAttr *attributes)
 #else
 int main(int argc, char **argv)
 #endif
 {
+#if !defined(__CIRCLE__)
+    unsigned int dpi_x = 0;
+    unsigned int dpi_y = 0;
+    PrinterAttr standalone_attributes = {0, 0, 0, 500, 0, 0};
+#else
+    unsigned int dpi_x;
+    unsigned int dpi_y;
+#endif
+    const PrinterAttr *output_attributes;
 #if !defined(__CIRCLE__)
     uint8_t input[4096];
     size_t bytes_read;
@@ -974,6 +1115,23 @@ int main(int argc, char **argv)
     int last_was_formfeed = 0;
 #endif
     int status = EXIT_SUCCESS;
+
+#if defined(__CIRCLE__)
+    if (attributes == NULL) {
+        DEBUG_LOG("Printer attributes are required for PWG Raster output.");
+        return EXIT_FAILURE;
+    }
+    dpi_x = attributes->dpi_x;
+    dpi_y = attributes->dpi_y;
+    output_attributes = attributes;
+#else
+    output_attributes = &standalone_attributes;
+#endif
+
+    if ((dpi_x == 0) != (dpi_y == 0)) {
+        DEBUG_LOG("Both horizontal and vertical DPI values must be provided.");
+        return EXIT_FAILURE;
+    }
 
     test_mode = 0;
     stdout_enabled = 0;
@@ -1075,7 +1233,17 @@ int main(int argc, char **argv)
         if (strcmp(driver_name, vicepr_session_driver) != 0
             || !same_optional_string(gfx_path, vicepr_session_gfx_path)
             || !same_optional_string(pdf_path, vicepr_session_pdf_path)
-            || !same_optional_string(pwg_path, vicepr_session_pwg_path)) {
+            || !same_optional_string(pwg_path, vicepr_session_pwg_path)
+            || dpi_x != vicepr_session_dpi_x
+            || dpi_y != vicepr_session_dpi_y
+            || attributes->margin_top
+                != vicepr_session_attributes.margin_top
+            || attributes->margin_left
+                != vicepr_session_attributes.margin_left
+            || attributes->margin_right
+                != vicepr_session_attributes.margin_right
+            || attributes->margin_bottom
+                != vicepr_session_attributes.margin_bottom) {
             DEBUG_LOG("Printer settings changed before finishing the "
                       "current page.");
             return EXIT_FAILURE;
@@ -1130,6 +1298,9 @@ int main(int argc, char **argv)
         vicepr_session_gfx_path = session_gfx_path;
         vicepr_session_pdf_path = session_pdf_path;
         vicepr_session_pwg_path = session_pwg_path;
+        vicepr_session_dpi_x = dpi_x;
+        vicepr_session_dpi_y = dpi_y;
+        vicepr_session_attributes = *attributes;
         vicepr_session_shutdown_driver = shutdown_driver;
         vicepr_session_active = 1;
     } else if (printer_driver->drv_open(0, secondary_addr) < 0) {
@@ -1240,7 +1411,9 @@ int main(int argc, char **argv)
     if (pdf_path != NULL && write_gfx_pdf() < 0) {
         status = EXIT_FAILURE;
     }
-    if (pwg_path != NULL && write_pwg_raster(driver_name) < 0) {
+    if (pwg_path != NULL
+        && write_pwg_raster(driver_name, dpi_x, dpi_y,
+                            output_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     return status;
@@ -1256,7 +1429,9 @@ int main(int argc, char **argv)
     if (pdf_path != NULL && write_gfx_pdf() < 0) {
         status = EXIT_FAILURE;
     }
-    if (pwg_path != NULL && write_pwg_raster(driver_name) < 0) {
+    if (pwg_path != NULL
+        && write_pwg_raster(driver_name, dpi_x, dpi_y,
+                            output_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     vice_helper_free_gfx_pixels();
