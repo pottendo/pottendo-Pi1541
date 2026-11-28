@@ -293,5 +293,9 @@ for a in ${archs} ; do
 done
 cp README.md ${RELEASE}
 cp -r src/webcontent/web ${RELEASE}
+cd ${RELEASE}/debug-syms
+zip debug-syms.zip *.lst *.map
+rm -f *.lst *.map
+cd ${base}
 ls -l ${RELEASE}
 echo "successfully built for ${archs}"
