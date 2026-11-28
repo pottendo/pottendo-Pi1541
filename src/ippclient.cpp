@@ -23,6 +23,8 @@
 #include "string.h"
 #include <list>
 
+/* #define PRINT_DEBUG */
+
 IPPClient::IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *pr)
 : printer(pr)
 , dns(mNet->GetNet())
@@ -78,8 +80,10 @@ bool IPPClient::Connect(char *conn)
 		DEBUG_LOG("%s: failed to get printer attributes", __FUNCTION__);
     else
 	{
+#ifdef PRINT_DEBUG        
         DEBUG_LOG("%s: Attributes:", __FUNCTION__);
         hexdump(pBuffer + hsize, bsize);
+#endif        
         char *t1, *t2, *t3;
         std::string prsup("");
         t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], "pwg-raster-document-type-supported", strlen("pwg-raster-document-type-supported"));
@@ -385,11 +389,11 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
     j = fbinary(&pBuffer[hlen], &pBuffer[hlen], "HTTP/1.1 200 OK", strlen("HTTP/1.1 200 OK"));
     pBuffer[hlen] = '\0';
     if (!j)
-        DEBUG_LOG("%s: IPP print-job returnd:%s\n", __FUNCTION__, pBuffer);
+        DEBUG_LOG("%s: IPP print-job returned:%s\n", __FUNCTION__, pBuffer);
     else
         DEBUG_LOG("%s: IPP print-job successful.", __FUNCTION__);
 
-#ifndef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     uint8_t job_state = 0;
     j = fbinary(&pBuffer[hlen], &pBuffer[hlen + bl], "job-uri", strlen("job-uri"));
     if (j)
