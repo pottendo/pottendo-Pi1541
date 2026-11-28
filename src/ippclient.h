@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include "printer-attr.h"
 
 using namespace std;
 
@@ -36,7 +37,8 @@ enum {
     PR_BW  = 0x2
 };
 
-class IPPAttr {
+class IPPAttr 
+{
     string attr_name;
     string attr_value;
     vector<char> bin;
@@ -74,15 +76,15 @@ class IPPClient
     CircleMbedTLS::CTLSSimpleClientSocket socket;
     int dprint_supported;
     IPPAttr uri;
-    uint32_t dpi_x, dpi_y;
+    PrinterAttr attributes;
 public:
     IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *printer);
     ~IPPClient();
-    bool Connect(void);
+    bool Connect(char *conn); // "keep-alive" or "close"
     bool GetAttributes(char *buf, size_t len, size_t &hsize, size_t &bsize, uint8_t code, char *data = nullptr, char *conn = nullptr);
     inline int dprint_support(void) { return dprint_supported; }
     bool Print(const char *buf, size_t len);
-    inline void get_dpi(uint32_t &dx, uint32_t &dy) { dx = dpi_x; dy = dpi_y; };
+    inline void get_attributes(PrinterAttr &pa) { pa = attributes; }
 };
 
 #endif

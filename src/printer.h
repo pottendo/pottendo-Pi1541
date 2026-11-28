@@ -55,10 +55,10 @@ class Printer
     string fp;
     bool dprint;
     IPPClient *ipp_client;
-    uint32_t dpi_x, dpi_y;
+    PrinterAttr attributes;
 public:
     static const string def_prefix;
-    Printer(u8 deviceID, bool activate, uint32_t dpi_x = 60, uint32_t dpi_y = 72);
+    Printer(u8 deviceID, bool activate);
     ~Printer();
     IEC_Bus* GetIEC_Bus() { return &iec_bus; }
     void emulate(void);
@@ -66,7 +66,7 @@ public:
     void get_prspool(string &p, string ext, bool basename = false);
     void next_spoolnr(uint16_t spnr);
     void flush(string drv, string &res);
-    void flush_vice(string drv, string &res, bool gfx = false, unsigned int dpi_x = 60, unsigned int dpi_y = 72);
+    void flush_vice(string drv, string &res, bool gfx = false);
     bool flush_raw(string &res);
     inline bool running(void) { return run; }
     inline void set_running(bool r) { run = r; }
@@ -76,7 +76,7 @@ public:
     inline size_t get_spooled(void) { return spooled; }
     inline string get_fullpath(void) { return fp; }
     inline bool get_dprint(void) { return dprint; }
-    inline void get_dpi(uint32_t &dx, uint32_t &dy) { dx = dpi_x; dy = dpi_y; };
+    inline void get_attributes(PrinterAttr &pa) { pa = attributes; }
 
     static uint16_t next_snr;
 };

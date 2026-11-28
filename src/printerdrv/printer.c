@@ -44,6 +44,7 @@
 #include "printer.h"
 #include "charsets.h"
 #include "proto.h"
+#include "../printer-attr.h"
 /* #include "patchlevel.h" */
 
 #define PRN_DEFAULTMODE  FT_LATIN_1
@@ -118,14 +119,13 @@ static PRINTER *PrinterData = NULL;
 static int   petcii = 1;
 
 #if defined(__CIRCLE__)
-int petlp_main(int argc, char **argv, unsigned int dpi_x, unsigned int dpi_y)
+int petlp_main(int argc, char **argv, PrinterAttr *attributes)
 #else
 int main(int argc, char **argv)
 #endif
 {
 #if defined(__CIRCLE__)
-	(void)dpi_x;
-	(void)dpi_y;
+	(void)attributes;
 #endif
 	FILE *source = stdin;
 	BYTE *s;

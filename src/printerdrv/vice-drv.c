@@ -31,6 +31,7 @@
 #include "drv-mps803.h"
 #include "drv-1520.h"
 #include "vice-helper.h"
+#include "../printer-attr.h"
 #include "../miniz.h"
 
 #define TEST_GLYPHS_PER_LINE 5
@@ -38,7 +39,6 @@
 #define PNG_MARGIN 10
 #define PNG_MAX_WIDTH 4096
 #define PDF_MARGIN 10
-#define PWG_LEFT_MARGIN_MM 5
 #define PWG_A4_WIDTH_MM 210
 #define PWG_A4_HEIGHT_MM 297
 
@@ -56,6 +56,7 @@ static char *vicepr_session_pdf_path;
 static char *vicepr_session_pwg_path;
 static unsigned int vicepr_session_dpi_x;
 static unsigned int vicepr_session_dpi_y;
+static PrinterAttr vicepr_session_attributes;
 static void (*vicepr_session_shutdown_driver)(void);
 static int vicepr_session_had_input;
 static int vicepr_session_last_was_formfeed;
@@ -96,6 +97,8 @@ static void clear_vicepr_session(void)
     vicepr_session_pwg_path = NULL;
     vicepr_session_dpi_x = 0;
     vicepr_session_dpi_y = 0;
+    memset(&vicepr_session_attributes, 0,
+           sizeof(vicepr_session_attributes));
     vicepr_session_shutdown_driver = NULL;
     vicepr_session_active = 0;
     vicepr_session_had_input = 0;
@@ -821,7 +824,8 @@ static int write_pwg_row(vice_helper_file_t *file, const uint8_t *pixels,
 
 static int write_pwg_raster(const char *driver_name,
                             unsigned int requested_dpi_x,
-                            unsigned int requested_dpi_y)
+                            unsigned int requested_dpi_y,
+                            const PrinterAttr *attributes)
 {
     vice_helper_file_t *file = NULL;
     const uint8_t *pixels = vice_helper_gfx_pixels();
@@ -831,7 +835,14 @@ static int write_pwg_raster(const char *driver_name,
     size_t page_count = page_height == 0
         ? (gfx_rows == 0 ? 0 : 1) : vice_helper_gfx_page_count();
     size_t bytes_per_pixel = strcmp(driver_name, "mps1520") == 0 ? 3 : 1;
+    size_t top_margin;
     size_t left_margin;
+    size_t right_margin;
+    size_t bottom_margin;
+    uint64_t top_margin_pixels;
+    uint64_t left_margin_pixels;
+    uint64_t right_margin_pixels;
+    uint64_t bottom_margin_pixels;
     size_t output_width;
     size_t output_height;
     uint64_t output_width_pixels;
@@ -870,11 +881,25 @@ static int write_pwg_raster(const char *driver_name,
     }
     output_width = (size_t)output_width_pixels;
     output_height = (size_t)output_height_pixels;
-    left_margin = ((uint64_t)dpi_x * PWG_LEFT_MARGIN_MM * 10 + 127) / 254;
-    if (left_margin >= output_width) {
+    top_margin_pixels =
+        ((uint64_t)dpi_y * attributes->margin_top + 1270) / 2540;
+    left_margin_pixels =
+        ((uint64_t)dpi_x * attributes->margin_left + 1270) / 2540;
+    right_margin_pixels =
+        ((uint64_t)dpi_x * attributes->margin_right + 1270) / 2540;
+    bottom_margin_pixels =
+        ((uint64_t)dpi_y * attributes->margin_bottom + 1270) / 2540;
+    if (left_margin_pixels >= output_width_pixels
+        || right_margin_pixels >= output_width_pixels - left_margin_pixels
+        || top_margin_pixels >= output_height_pixels
+        || bottom_margin_pixels >= output_height_pixels - top_margin_pixels) {
         DEBUG_LOG("Invalid A4 dimensions for PWG Raster output.");
         return -1;
     }
+    top_margin = (size_t)top_margin_pixels;
+    left_margin = (size_t)left_margin_pixels;
+    right_margin = (size_t)right_margin_pixels;
+    bottom_margin = (size_t)bottom_margin_pixels;
     if (output_width > (SIZE_MAX - 1) / (bytes_per_pixel + 1)
         || output_width > SIZE_MAX / bytes_per_pixel) {
         DEBUG_LOG("PWG Raster scanline is too large.");
@@ -918,7 +943,10 @@ static int write_pwg_raster(const char *driver_name,
             goto cleanup;
         }
         {
-            size_t available_width = output_width - left_margin;
+            size_t available_width =
+                output_width - left_margin - right_margin;
+            size_t available_height =
+                output_height - top_margin - bottom_margin;
             uint64_t scale_numerator = 1;
             uint64_t scale_denominator = 1;
             uint64_t content_width_pixels =
@@ -941,9 +969,9 @@ static int write_pwg_raster(const char *driver_name,
                 scale_numerator = available_width;
                 scale_denominator = content_width_pixels;
             }
-            if ((uint64_t)output_height * scale_denominator
+            if ((uint64_t)available_height * scale_denominator
                 < scale_numerator * content_height_pixels) {
-                scale_numerator = output_height;
+                scale_numerator = available_height;
                 scale_denominator = content_height_pixels;
             }
             content_width =
@@ -963,9 +991,10 @@ static int write_pwg_raster(const char *driver_name,
             }
             for (output_row = 0; output_row < output_height; output_row++) {
                 memset(row_data, 255, row_size);
-                if (output_row < content_height) {
+                if (output_row >= top_margin
+                    && output_row - top_margin < content_height) {
                     size_t source_y =
-                        (size_t)((uint64_t)output_row * height
+                        (size_t)((uint64_t)(output_row - top_margin) * height
                                  / content_height);
                     const uint8_t *source =
                         pixels + (first_row + source_y) * width;
@@ -1046,15 +1075,15 @@ int vicepr_finish(void)
     if (pwg_path != NULL
         && write_pwg_raster(vicepr_session_driver,
                             vicepr_session_dpi_x,
-                            vicepr_session_dpi_y) < 0) {
+                            vicepr_session_dpi_y,
+                            &vicepr_session_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     clear_vicepr_session();
     return status;
 }
 
-int vicepr_main(int argc, char **argv, unsigned int dpi_x,
-                unsigned int dpi_y)
+int vicepr_main(int argc, char **argv, PrinterAttr *attributes)
 #else
 int main(int argc, char **argv)
 #endif
@@ -1062,7 +1091,12 @@ int main(int argc, char **argv)
 #if !defined(__CIRCLE__)
     unsigned int dpi_x = 0;
     unsigned int dpi_y = 0;
+    PrinterAttr standalone_attributes = {0, 0, 0, 500, 0, 0};
+#else
+    unsigned int dpi_x;
+    unsigned int dpi_y;
 #endif
+    const PrinterAttr *output_attributes;
 #if !defined(__CIRCLE__)
     uint8_t input[4096];
     size_t bytes_read;
@@ -1081,6 +1115,18 @@ int main(int argc, char **argv)
     int last_was_formfeed = 0;
 #endif
     int status = EXIT_SUCCESS;
+
+#if defined(__CIRCLE__)
+    if (attributes == NULL) {
+        DEBUG_LOG("Printer attributes are required for PWG Raster output.");
+        return EXIT_FAILURE;
+    }
+    dpi_x = attributes->dpi_x;
+    dpi_y = attributes->dpi_y;
+    output_attributes = attributes;
+#else
+    output_attributes = &standalone_attributes;
+#endif
 
     if ((dpi_x == 0) != (dpi_y == 0)) {
         DEBUG_LOG("Both horizontal and vertical DPI values must be provided.");
@@ -1189,7 +1235,15 @@ int main(int argc, char **argv)
             || !same_optional_string(pdf_path, vicepr_session_pdf_path)
             || !same_optional_string(pwg_path, vicepr_session_pwg_path)
             || dpi_x != vicepr_session_dpi_x
-            || dpi_y != vicepr_session_dpi_y) {
+            || dpi_y != vicepr_session_dpi_y
+            || attributes->margin_top
+                != vicepr_session_attributes.margin_top
+            || attributes->margin_left
+                != vicepr_session_attributes.margin_left
+            || attributes->margin_right
+                != vicepr_session_attributes.margin_right
+            || attributes->margin_bottom
+                != vicepr_session_attributes.margin_bottom) {
             DEBUG_LOG("Printer settings changed before finishing the "
                       "current page.");
             return EXIT_FAILURE;
@@ -1246,6 +1300,7 @@ int main(int argc, char **argv)
         vicepr_session_pwg_path = session_pwg_path;
         vicepr_session_dpi_x = dpi_x;
         vicepr_session_dpi_y = dpi_y;
+        vicepr_session_attributes = *attributes;
         vicepr_session_shutdown_driver = shutdown_driver;
         vicepr_session_active = 1;
     } else if (printer_driver->drv_open(0, secondary_addr) < 0) {
@@ -1357,7 +1412,8 @@ int main(int argc, char **argv)
         status = EXIT_FAILURE;
     }
     if (pwg_path != NULL
-        && write_pwg_raster(driver_name, dpi_x, dpi_y) < 0) {
+        && write_pwg_raster(driver_name, dpi_x, dpi_y,
+                            output_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     return status;
@@ -1374,7 +1430,8 @@ int main(int argc, char **argv)
         status = EXIT_FAILURE;
     }
     if (pwg_path != NULL
-        && write_pwg_raster(driver_name, dpi_x, dpi_y) < 0) {
+        && write_pwg_raster(driver_name, dpi_x, dpi_y,
+                            output_attributes) < 0) {
         status = EXIT_FAILURE;
     }
     vice_helper_free_gfx_pixels();

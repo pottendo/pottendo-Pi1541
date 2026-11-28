@@ -5,6 +5,7 @@ This is an optional port of Pi1541 (V1.25 Beta F) to the current Circle bare met
 ## News V2.5 vs. V2.4
 
 V2.5Beta 1
+- Improved printer: accept chunked HTML response, derive DPI and margins for A4 printing, scale the image and  print not relying on printer scale capabilities.
 - PrinterName must now be prefixed with `ipp://` or `ipps://` to select TLS or not; some printer may require this.
 
 ## News V2.4 vs. V2.3.1

@@ -946,7 +946,7 @@ void Pi1541Cores::Run(unsigned int core)			/* Virtual method */
 			}
 			DataMemBarrier();
 			DEBUG_LOG("%s: printer wakeup (%ld wakes)", __FUNCTION__, wakes_prn);
-			printer = new Printer(printerID, core3activated, 60, 72);
+			printer = new Printer(printerID, core3activated);
 			printer->emulate();
 			core3activated = 0;
 			delete printer;

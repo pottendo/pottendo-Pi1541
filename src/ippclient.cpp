@@ -29,8 +29,7 @@ IPPClient::IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *pr)
 , socket(mNet, IPPROTO_TCP)
 , dprint_supported(PR_INV)
 , uri(0x45, "printer-uri", string(pr) + "/ipp/print")
-, dpi_x(0)
-, dpi_y(0)
+, attributes({60, 72, 350, 350, 350, 1270})
 {
     string p(printer);
     size_t pos = p.find("ipp://");
@@ -39,7 +38,7 @@ IPPClient::IPPClient(CircleMbedTLS::CTLSSimpleSupport *mNet, const char *pr)
     else if (p.find("ipps://") != string::npos)
         printer += 7;
     else
-        uri = IPPAttr(0x45, "priner-uri", string("ipps://") + pr + "/ipp/print");
+        uri = IPPAttr(0x45, "printer-uri", string("ipps://") + pr + "/ipp/print");
     DEBUG_LOG("%s: IPPClient for printer %s created.", __FUNCTION__, p.c_str());
 }
 
@@ -48,7 +47,7 @@ IPPClient::~IPPClient()
     DEBUG_LOG("%s: IPPClient for printer %s deleted.", __FUNCTION__, printer);
 }
 
-bool IPPClient::Connect(void)
+bool IPPClient::Connect(char *conn)
 {
     int res;
     if (!dns.Resolve(printer, &IPPrinter))
@@ -75,7 +74,7 @@ bool IPPClient::Connect(void)
 
     char pBuffer[nMaxSize];
  	size_t hsize, bsize;
-	if (!GetAttributes(pBuffer, nMaxSize, hsize, bsize, 0x0B, nullptr, "keep-alive"))
+	if (!GetAttributes(pBuffer, nMaxSize, hsize, bsize, 0x0B, nullptr, conn))
 		DEBUG_LOG("%s: failed to get printer attributes", __FUNCTION__);
     else
 	{
@@ -111,12 +110,35 @@ bool IPPClient::Connect(void)
         {
             t1 += strlen("pwg-raster-document-resolution-supported");
             t1 += 2; // len, usually 9
-            dpi_x = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
+            attributes.dpi_x = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
             t1 += 4;
-            dpi_y = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
+            attributes.dpi_y = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
         }
-
-        DEBUG_LOG("%s: direct print support: %s, %dx%ddpi", __FUNCTION__, (dprint_supported ? prsup.c_str() : "none"), dpi_x, dpi_y);
+        // check margins now
+        char *margins[] = { "media-top-margin", "media-left-margin", "media-right-margin", "media-bottom-margin"};
+        uint32_t res[4];
+        for (int i = 0; i < 4; i++)
+        {
+            t1 = fbinary(&pBuffer[hsize], &pBuffer[hsize + bsize], margins[i], strlen(margins[i]));
+            if (t1)
+            {
+                t1 += strlen(margins[i]);
+                t1 += 5; // len and valtype info
+                res[i] = (*t1 << 24) + ((*(t1+1)) << 16) + ((*(t1+2)) << 8) + (*(t1 + 3));
+            }
+            else
+                res[i] = (i == 3) ? 1270 : 350; // default of 3.5mm, bottom 12.7mm
+        }
+        attributes.margin_top = res[0];
+        attributes.margin_left = res[1];
+        attributes.margin_right = res[2];
+        attributes.margin_bottom = res[3];
+        DEBUG_LOG("%s: direct print support: %s, %dx%ddpi, margins(t/l/r/b): %d/%d/%d/%d", __FUNCTION__, 
+            (dprint_supported ? prsup.c_str() : "none"), 
+            attributes.dpi_x, attributes.dpi_y,
+            attributes.margin_top, attributes.margin_left,
+            attributes.margin_right, attributes.margin_bottom
+        );
 	}
     return dprint_support();
 }
@@ -257,8 +279,10 @@ bool IPPClient::GetAttributes(char *buf, size_t blen, size_t &hsize, size_t &bsi
         ipp_get_attr.push_back(uri);
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-type-supported"));
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-supported"));
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "media-col-default"));
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "document-format-supported"));
         ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "pwg-raster-document-resolution-supported"));
+        ipp_get_attr.push_back(IPPAttr(0x44, "requested-attributes", "print-scaling-supported"));
     } 
     else if (code == 0x09)
     {
@@ -311,17 +335,18 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
     ipp_print_job.push_back(IPPAttr(0x49, "document-format", "image/pwg-raster"));
     ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x02)));    // Job attributes
     ipp_print_job.push_back(IPPAttr(0x44, "media", "iso_a4_210x297mm"));
-    ipp_print_job.push_back(IPPAttr(0x44, "print-scaling", "none"));
+    ipp_print_job.push_back(IPPAttr(0x44, "print-scaling", "auto"));
     ipp_print_job.push_back(IPPAttr(0x32, "printer-resolution", static_cast<uint16_t>(9),
-        static_cast<uint32_t>(dpi_x), static_cast<uint32_t>(dpi_y), static_cast<uint8_t>(3)));
+        static_cast<uint32_t>(attributes.dpi_x), static_cast<uint32_t>(attributes.dpi_y), static_cast<uint8_t>(3)));
     ipp_print_job.push_back(IPPAttr(static_cast<uint8_t>(0x03)));    // end marker
     for (auto attr : ipp_print_job)
     {
         ipp_cmd.insert(ipp_cmd.end(), attr.get_binr().begin(), attr.get_binr().end());
     }
+#ifdef PRINT_DEBUG    
     DEBUG_LOG("%s: print job attributes: ", __FUNCTION__);
     hexdump(ipp_cmd.data(), ipp_cmd.size());
-
+#endif
     std::string ipp_req = 
         "POST /ipp/print HTTP/1.1"
         "\r\nHost: " + std::string(printer) +
@@ -351,13 +376,20 @@ bool IPPClient::Print(const char *out_buf, size_t blen)
     char *body;
     size_t hlen = 0, bl = 0;
     char pBuffer[nMaxSize];
+    char *j;
     if (!Receive(socket, pBuffer, nMaxSize, &body, hlen, bl))
     {
         DEBUG_LOG("%s: receive header failed, hlen = %d, bl = %d", __FUNCTION__, hlen, bl);
         return false;
     }
-#ifndef PRINT_DEBUG    
-    char *j;
+    j = fbinary(&pBuffer[hlen], &pBuffer[hlen], "HTTP/1.1 200 OK", strlen("HTTP/1.1 200 OK"));
+    pBuffer[hlen] = '\0';
+    if (!j)
+        DEBUG_LOG("%s: IPP print-job returnd:%s\n", __FUNCTION__, pBuffer);
+    else
+        DEBUG_LOG("%s: IPP print-job successful.", __FUNCTION__);
+
+#ifndef PRINT_DEBUG
     uint8_t job_state = 0;
     j = fbinary(&pBuffer[hlen], &pBuffer[hlen + bl], "job-uri", strlen("job-uri"));
     if (j)
